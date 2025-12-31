@@ -46,9 +46,10 @@ const { getString, loadLanguage } = useStrings();
 const settingsStore = useSettingsStore();
 const modalStore = useModalStore();
 
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const activeTab = ref("general");
 
-const tabs = [
+const allTabs = [
 	{ id: "general", label: "settings.tabs.general", icon: "mdi:cog" },
 	{ id: "appearance", label: "settings.tabs.appearance", icon: "mdi:palette" },
 	{ id: "player", label: "settings.tabs.player", icon: "mdi:music" },
@@ -58,6 +59,10 @@ const tabs = [
 	{ id: "hotkeys", label: "settings.tabs.hotkeys", icon: "mdi:keyboard" },
 	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" }
 ];
+
+const tabs = computed(() => {
+	return isTauri ? allTabs : allTabs.filter(tab => tab.id !== "hotkeys");
+});
 
 const components: Record<string, any> = {
 	general: SettingsGeneral,
@@ -78,11 +83,21 @@ const handleClose = () => {
 	modalStore.close();
 };
 
+watch(() => tabs.value, (newTabs) => {
+	if (!isTauri && activeTab.value === "hotkeys") {
+		activeTab.value = "general";
+	}
+}, { immediate: true });
+
 onMounted(async () => {
 	await settingsStore.load();
 	const lang = settingsStore.settings.general.lang;
 	if (lang) {
 		await loadLanguage(lang);
+	}
+
+	if (!isTauri && activeTab.value === "hotkeys") {
+		activeTab.value = "general";
 	}
 });
 </script>

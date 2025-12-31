@@ -1,5 +1,10 @@
-import path from "node:path";
-import fs from "fs-extra";
+import ruLocale from "~~/i18n/locales/ru.json";
+import enLocale from "~~/i18n/locales/en.json";
+
+const locales: Record<string, any> = {
+	ru: ruLocale,
+	en: enLocale
+};
 
 export default defineEventHandler(async (event) => {
 	const locale = getRouterParam(event, "locale");
@@ -11,16 +16,14 @@ export default defineEventHandler(async (event) => {
 		});
 	}
 
-	const localePath = path.resolve(process.cwd(), "i18n", "locales", `${locale}.json`);
+	const localeData = locales[locale];
 
-	if (!fs.pathExistsSync(localePath)) {
+	if (!localeData) {
 		throw createError({
 			statusCode: 404,
 			statusMessage: `Locale file not found: ${locale}`
 		});
 	}
 
-	const localeData = await fs.readJson(localePath);
 	return localeData;
 });
-

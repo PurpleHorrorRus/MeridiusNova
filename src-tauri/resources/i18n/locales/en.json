@@ -1,0 +1,216 @@
+{
+	"navigation": {
+		"main": "Home",
+		"myMusic": "My Music",
+		"playlists": "Playlists",
+		"discover": "Discover",
+		"radio": "Radio",
+		"settings": "Settings"
+	},
+	"general": {
+		"loading": "Loading...",
+		"error": "Error",
+		"recommendations": "Recommendations",
+		"newAlbums": "New Albums",
+		"newArtists": "New Artists",
+		"newReleases": "New Releases",
+		"chart": "Chart",
+		"collections": "Collections",
+		"radio": "Radio",
+		"vkmix": {
+			"title": "Listen to VK Mix",
+			"description": "A playlist that adapts to your tastes"
+		}
+	},
+	"player": {
+		"play": "Play",
+		"pause": "Pause",
+		"next": "Next",
+		"previous": "Previous",
+		"volume": "Volume",
+		"repeat": "Repeat",
+		"repeatOn": "Repeat on",
+		"shuffle": "Shuffle",
+		"mute": "Mute",
+		"speed": "Speed",
+		"addToLibrary": "Add to library",
+		"removeFromLibrary": "Remove from library",
+		"removeFromPlaylist": "Remove from playlist"
+	},
+	"settings": {
+		"title": "Settings",
+		"tabs": {
+			"general": "General",
+			"appearance": "Appearance",
+			"player": "Player",
+			"optimization": "Optimization",
+			"downloads": "Downloads",
+			"equalizer": "Equalizer",
+			"hotkeys": "Hotkeys",
+			"accounts": "Accounts"
+		},
+		"general": {
+			"language": {
+				"title": "Language",
+				"russian": "Русский",
+				"english": "English"
+			},
+			"window": {
+				"title": "Window",
+				"startup": "Open on system startup",
+				"hideOnClose": "Hide to system tray on close"
+			},
+			"discord": {
+				"title": "Discord",
+				"enable": "Enable Discord Rich Presence",
+				"timeline": "Show timeline",
+				"reverse": "Reverse countdown"
+			},
+			"streamer": {
+				"title": "Streamer Mode",
+				"enable": "Enable streamer mode",
+				"path": "Path",
+				"pathPlaceholder": "Select folder for saving",
+				"choose": "Choose"
+			}
+		},
+		"appearance": {
+			"themes": {
+				"title": "Themes"
+			}
+		},
+		"player": {
+			"audioOutput": "Audio Output Device",
+			"volume": {
+				"title": "Volume",
+				"divider": "Volume divider"
+			},
+			"latest": {
+				"title": "Track Saving",
+				"save": "Save current track",
+				"exit": "Play on exit",
+				"play": "Play on application startup"
+			},
+			"rewind": {
+				"title": "Rewind",
+				"enable": "Rewind to start of track"
+			},
+			"normalizer": {
+				"title": "Volume Normalization",
+				"enable": "Enable normalizer",
+				"max": "Maximum volume increase (dB)"
+			},
+			"crossfade": {
+				"title": "Crossfade",
+				"enable": "Enable crossfade",
+				"duration": "Crossfade duration (sec)",
+				"fade": "Fade effect on transition"
+			},
+			"step": {
+				"title": "Volume Step",
+				"wheel": "Mouse wheel (%)",
+				"hotkey": "Hotkey (%)"
+			},
+			"playbackRateStep": {
+				"title": "Playback Rate Step",
+				"click": "Click",
+				"wheel": "Mouse wheel",
+				"hotkey": "Hotkey"
+			}
+		},
+		"optimization": {
+			"title": "Optimization",
+			"hardwareAcceleration": "Tauri Hardware Acceleration",
+			"download": {
+				"auto": "Automatically determine number of simultaneous downloads",
+				"fixed": "Fixed number of downloads"
+			}
+		},
+		"downloads": {
+			"title": "Downloads",
+			"enable": "Download music",
+			"folder": "Download folder",
+			"folderPlaceholder": "Default - user music folder",
+			"choose": "Choose",
+			"ffmpeg": {
+				"title": "FFmpeg",
+				"notInstalled": "FFmpeg is not installed",
+				"installed": "FFmpeg is installed",
+				"install": "Install",
+				"installing": "Installing..."
+			},
+			"template": {
+				"title": "Filename Template",
+				"headers": "Available headers"
+			}
+		},
+		"equalizer": {
+			"title": "Equalizer",
+			"enable": "Enable equalizer",
+			"presets": "Presets",
+			"levels": "Equalizer Levels",
+			"graph": "Graph",
+			"export": "Export",
+			"import": "Import"
+		},
+		"hotkeys": {
+			"title": "Hotkeys",
+			"playpause": "Play / Pause",
+			"playnext": "Next Track",
+			"playprev": "Previous Track",
+			"volup": "Increase Volume",
+			"voldown": "Decrease Volume",
+			"volmute": "Toggle Mute",
+			"rateup": "Increase Playback Rate",
+			"ratedown": "Decrease Playback Rate",
+			"nextplaylist": "Next Playlist",
+			"prevplaylist": "Previous Playlist"
+		},
+		"accounts": {
+			"title": "Accounts",
+			"add": "Add Account",
+			"switch": "Switch",
+			"remove": "Remove"
+		}
+	},
+	"playlist": {
+		"tracks": "tracks",
+		"duration": "Duration",
+		"updated": "Updated"
+	},
+	"collection": {
+		"tabs": {
+			"music": "Music",
+			"playlists": "Playlists",
+			"albums": "Albums"
+		}
+	},
+	"search": {
+		"placeholder": "Search music...",
+		"results": "Search results",
+		"noResults": "No results found"
+	},
+	"modal": {
+		"confirm": {
+			"cancel": "Cancel",
+			"confirm": "Confirm"
+		},
+		"close": "Close"
+	},
+	"downloads": {
+		"title": "Downloads",
+		"clearQueue": "Clear queue",
+		"clearCompleted": "Clear completed",
+		"clearAll": "Clear all",
+		"openInExplorer": "Open in explorer",
+		"status": {
+			"queued": "Queued",
+			"preparing": "Preparing",
+			"downloading": "Downloading",
+			"processing": "Processing",
+			"completed": "Completed",
+			"failed": "Failed"
+		}
+	}
+}
+

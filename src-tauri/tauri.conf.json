@@ -29,7 +29,8 @@
 			"icons/icon.ico"
 		],
 		"resources": [
-			"resources/.output"
+			"resources/.output",
+			"resources/i18n"
 		],
 		"externalBin": [
 			"binaries/server"
