@@ -1,0 +1,22 @@
+# Пароль для шифрования сессий (используется в nuxt-auth-utils)
+# Должен быть строкой длиной минимум 32 символа
+NUXT_SESSION_PASSWORD=
+
+# Приватный ключ для шифрования cookies
+# Формат: приватный ключ в формате PEM (-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----)
+NUXT_COOKIE_KEY="-----BEGIN PRIVATE KEY-----
+..............
+-----END PRIVATE KEY-----
+"
+
+# ID клиента Discord приложения для Rich Presence
+# Получить можно в Discord Developer Portal: https://discord.com/developers/applications
+DISCORD_CLIENT_ID=
+
+# Секретный ключ клиента Discord приложения для Rich Presence
+# Получить можно в Discord Developer Portal: https://discord.com/developers/applications
+DISCORD_CLIENT_SECRET=
+
+# Путь к бинарному файлу FFmpeg
+# Установите путь к вашему FFmpeg, если он не находится в PATH
+FFMPEG_BINARY=

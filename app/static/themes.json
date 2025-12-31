@@ -1,0 +1,104 @@
+[
+	{
+		"id": "classic",
+		"name": "Meridius Classic",
+		"description": "Классическая цветовая схема Meridius",
+		"satisfies": true,
+		"accent": {
+			"primary": "#141414",
+			"secondary": "#E9003F"
+		},
+		"colors": {
+			"bg-primary": "#121212",
+			"bg-secondary": "#181818",
+			"bg-sidebar": "#1a1a1a",
+			"bg-player": "#181818",
+			"bg-tertiary": "#282828",
+			"bg-hover": "#2a2a2a",
+			"bg-active": "#2a2a2a",
+			"text": "#ffffff",
+			"text-secondary": "#b3b3b3",
+			"text-tertiary": "#6b6b6b",
+			"primary": "#E9003F",
+			"primary-hover": "#ff1a5c",
+			"border": "#282828",
+			"border-secondary": "#2a2a2a",
+			"scroll": "#404040",
+			"scroll-hover": "#505050",
+			"hover": "rgba(255, 255, 255, 0.1)",
+			"active": "rgba(255, 255, 255, 0.15)"
+		},
+		"author": {
+			"name": "PurpleHorrorRus",
+			"contact": "https://vk.ru/id529592613"
+		}
+	},
+	{
+		"id": "vk-black",
+		"name": "VK Black",
+		"description": "Чёрная цветовая схема, вдохновлённая цветовой схемой VK",
+		"satisfies": true,
+		"accent": {
+			"primary": "#121212",
+			"secondary": "#71aaeb"
+		},
+		"colors": {
+			"bg-primary": "#121212",
+			"bg-secondary": "#19191a",
+			"bg-sidebar": "#121212",
+			"bg-player": "#2b2b2b",
+			"bg-tertiary": "#202020",
+			"bg-hover": "#292929",
+			"bg-active": "#343434",
+			"text": "#ffffff",
+			"text-secondary": "#939393",
+			"text-tertiary": "#7c7c7c",
+			"primary": "#71aaeb",
+			"primary-hover": "#aeb7c2",
+			"border": "#202020",
+			"border-secondary": "#2a2a2a",
+			"scroll": "#545454",
+			"scroll-hover": "#666666",
+			"hover": "rgba(255, 255, 255, 0.05)",
+			"active": "rgba(255, 255, 255, 0.1)"
+		},
+		"author": {
+			"name": "PurpleHorrorRus",
+			"contact": "https://vk.ru/id529592613"
+		}
+	},
+	{
+		"id": "vk-white",
+		"name": "VK White",
+		"description": "Светлая цветовая схема, вдохновлённая цветовой схемой VK",
+		"satisfies": true,
+		"accent": {
+			"primary": "#ffffff",
+			"secondary": "#5181b8"
+		},
+		"colors": {
+			"bg-primary": "#ffffff",
+			"bg-secondary": "#f5f5f5",
+			"bg-sidebar": "#ffffff",
+			"bg-player": "#ffffff",
+			"bg-tertiary": "#edeef0",
+			"bg-hover": "#e5e5e5",
+			"bg-active": "#d9d9d9",
+			"text": "#000000",
+			"text-secondary": "#818c99",
+			"text-tertiary": "#99a2ad",
+			"primary": "#5181b8",
+			"primary-hover": "#2787f5",
+			"border": "#e5e5e5",
+			"border-secondary": "#d9d9d9",
+			"scroll": "#b5b5b5",
+			"scroll-hover": "#999999",
+			"hover": "rgba(0, 0, 0, 0.05)",
+			"active": "rgba(0, 0, 0, 0.1)"
+		},
+		"author": {
+			"name": "PurpleHorrorRus",
+			"contact": "https://vk.ru/id529592613"
+		}
+	}
+]

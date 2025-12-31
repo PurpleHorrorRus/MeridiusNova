@@ -1,0 +1,74 @@
+{
+	"navigation": {
+		"main": "Главная",
+		"myMusic": "Моя музыка",
+		"playlists": "Плейлисты",
+		"discover": "Открытия",
+		"radio": "Радио",
+		"settings": "Настройки"
+	},
+	"general": {
+		"loading": "Загрузка...",
+		"error": "Ошибка",
+		"recommendations": "Рекомендации",
+		"newAlbums": "Новые альбомы",
+		"newArtists": "Новые исполнители",
+		"newReleases": "Новые релизы",
+		"chart": "Чарт",
+		"collections": "Коллекции",
+		"radio": "Радио"
+	},
+	"player": {
+		"play": "Воспроизвести",
+		"pause": "Пауза",
+		"next": "Следующий",
+		"previous": "Предыдущий",
+		"volume": "Громкость",
+		"repeat": "Повтор",
+		"shuffle": "Перемешать",
+		"mute": "Выключить звук"
+	},
+	"settings": {
+		"title": "Настройки",
+		"player": "Плеер",
+		"interface": "Интерфейс",
+		"notifications": "Уведомления",
+		"synchronization": "Синхронизация",
+		"crossfade": {
+			"enable": "Включить кроссфейд",
+			"duration": "Длительность кроссфейда (сек)",
+			"fade": "Затухание"
+		},
+		"normalizer": {
+			"enable": "Включить нормализатор",
+			"max": "Максимальный уровень"
+		},
+		"language": {
+			"title": "Язык",
+			"russian": "Русский",
+			"english": "English"
+		},
+		"discord": {
+			"enable": "Включить Discord Rich Presence",
+			"timeline": "Показывать время",
+			"reverse": "Обратный отсчет"
+		}
+	},
+	"playlist": {
+		"tracks": "треков",
+		"duration": "Длительность",
+		"updated": "Обновлено"
+	},
+	"search": {
+		"placeholder": "Поиск музыки...",
+		"results": "Результаты поиска",
+		"noResults": "Ничего не найдено"
+	},
+	"collection": {
+		"tabs": {
+			"music": "Музыка",
+			"playlists": "Плейлисты"
+		}
+	}
+}
+

@@ -1,0 +1,7 @@
+{
+	"main": "./server-wrapper.cjs",
+	"output": "build/sea-prep.blob",
+	"disableExperimentalSEAWarning": true,
+	"useSnapshot": false,
+	"useCodeCache": true
+}

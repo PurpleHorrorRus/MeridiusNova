@@ -1,0 +1,22 @@
+html {
+	--font: 'Inter', sans-serif;
+
+	--primary: #131313;
+	--secondary: #e9003f;
+
+	--text: #ffffff;
+	--subtitle: #999999;
+
+	--hover: #2a2a2a;
+
+	--titlebar: #242424;
+}
+
+div, p, span, h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font);
+    color: var(--text);
+
+	.subtitle {
+		color: var(--subtitle);
+	}
+}

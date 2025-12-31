@@ -1,0 +1,101 @@
+export const useHotkeysStore = defineStore("hotkeys", {
+	state: (): {
+		registered: Record<string, string>;
+	} => ({
+		registered: {}
+	}),
+
+	actions: {
+		async register(action: string, accelerator: string): Promise<boolean> {
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+
+			if (isTauri) {
+				const { unregister, register } = await import("@tauri-apps/plugin-global-shortcut");
+
+				if (this.registered[action]) {
+					await unregister(this.registered[action]);
+				}
+
+				if (accelerator) {
+					await register(accelerator, () => {
+						this.handleAction(action);
+					});
+					this.registered[action] = accelerator;
+				}
+			}
+
+			return true;
+		},
+
+		async unregister(action: string): Promise<boolean> {
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+
+			if (isTauri && this.registered[action]) {
+				const { unregister } = await import("@tauri-apps/plugin-global-shortcut");
+				await unregister(this.registered[action]);
+				delete this.registered[action];
+			}
+
+			return true;
+		},
+
+		async handleAction(action: string): Promise<void> {
+			const playerStore = await import("./player").then(m => m.usePlayerStore());
+			const playlistStore = await import("./playlist").then(m => m.usePlaylistStore());
+			const settingsStore = await import("./settings").then(m => m.useSettingsStore());
+
+			switch (action) {
+				case "playpause":
+					playerStore().toggle();
+					break;
+				case "playnext":
+					playlistStore().next();
+					break;
+				case "playprev":
+					await playlistStore().previous();
+					break;
+				case "volup": {
+					const step = settingsStore().settings.player.step.hotkey / 100;
+					const newVolume = Math.min(1, playerStore().volume + step);
+					playerStore().setVolume(newVolume);
+					break;
+				}
+				case "voldown": {
+					const step = settingsStore().settings.player.step.hotkey / 100;
+					const newVolume = Math.max(0, playerStore().volume - step);
+					playerStore().setVolume(newVolume);
+					break;
+				}
+				case "volmute":
+					playerStore().toggleMute();
+					break;
+				case "rateup": {
+					const step = settingsStore().settings.player.playbackRateStep.hotkey;
+					const newRate = Math.min(2, playerStore().playbackRate + step);
+					playerStore().setPlaybackRate(newRate);
+					break;
+				}
+				case "ratedown": {
+					const step = settingsStore().settings.player.playbackRateStep.hotkey;
+					const newRate = Math.max(0.5, playerStore().playbackRate - step);
+					playerStore().setPlaybackRate(newRate);
+					break;
+				}
+				case "nextplaylist":
+					playlistStore().nextPlaylist();
+					break;
+				case "prevplaylist":
+					playlistStore().prevPlaylist();
+					break;
+			}
+		}
+	}
+});

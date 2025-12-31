@@ -1,0 +1,54 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "enables the default permissions",
+	"windows": [
+		"main"
+	],
+	"permissions": [
+		"core:default",
+		"core:window:allow-start-dragging",
+		"core:window:allow-minimize",
+		"core:window:allow-is-maximizable",
+		"core:window:allow-unmaximize",
+		"core:window:allow-maximize",
+		"core:window:allow-close",
+		"core:window:allow-is-minimized",
+		"core:window:allow-is-maximized",
+		"cors-fetch:default",
+		"store:default",
+		"store:allow-load",
+		"store:allow-save",
+		"store:allow-get",
+		"store:allow-set",
+		"store:allow-has",
+		"store:allow-delete",
+		"store:allow-clear",
+		"store:allow-reset",
+		"store:allow-keys",
+		"store:allow-values",
+		"store:allow-entries",
+		"store:allow-length",
+		"global-shortcut:allow-is-registered",
+		"global-shortcut:allow-register",
+		"global-shortcut:allow-unregister",
+		"global-shortcut:allow-unregister-all",
+		{
+			"identifier": "shell:allow-execute",
+			"allow": [
+				{
+					"args": true,
+					"name": "binaries/server",
+					"sidecar": true
+				},
+				{
+					"name": "explorer",
+					"args": true
+				}
+			]
+		},
+		"opener:default",
+		"opener:allow-open-path",
+		"opener:allow-reveal-item-in-dir"
+	]
+}

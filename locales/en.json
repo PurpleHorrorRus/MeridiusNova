@@ -1,0 +1,74 @@
+{
+	"navigation": {
+		"main": "Home",
+		"myMusic": "My Music",
+		"playlists": "Playlists",
+		"discover": "Discover",
+		"radio": "Radio",
+		"settings": "Settings"
+	},
+	"general": {
+		"loading": "Loading...",
+		"error": "Error",
+		"recommendations": "Recommendations",
+		"newAlbums": "New Albums",
+		"newArtists": "New Artists",
+		"newReleases": "New Releases",
+		"chart": "Chart",
+		"collections": "Collections",
+		"radio": "Radio"
+	},
+	"player": {
+		"play": "Play",
+		"pause": "Pause",
+		"next": "Next",
+		"previous": "Previous",
+		"volume": "Volume",
+		"repeat": "Repeat",
+		"shuffle": "Shuffle",
+		"mute": "Mute"
+	},
+	"settings": {
+		"title": "Settings",
+		"player": "Player",
+		"interface": "Interface",
+		"notifications": "Notifications",
+		"synchronization": "Synchronization",
+		"crossfade": {
+			"enable": "Enable crossfade",
+			"duration": "Crossfade duration (sec)",
+			"fade": "Fade out"
+		},
+		"normalizer": {
+			"enable": "Enable normalizer",
+			"max": "Max level"
+		},
+		"language": {
+			"title": "Language",
+			"russian": "Русский",
+			"english": "English"
+		},
+		"discord": {
+			"enable": "Enable Discord Rich Presence",
+			"timeline": "Show timeline",
+			"reverse": "Reverse countdown"
+		}
+	},
+	"playlist": {
+		"tracks": "tracks",
+		"duration": "Duration",
+		"updated": "Updated"
+	},
+	"search": {
+		"placeholder": "Search music...",
+		"results": "Search results",
+		"noResults": "No results found"
+	},
+	"collection": {
+		"tabs": {
+			"music": "Music",
+			"playlists": "Playlists"
+		}
+	}
+}
+
