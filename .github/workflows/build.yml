@@ -15,6 +15,8 @@ jobs:
     name: Build Windows
     runs-on: windows-latest
     if: github.event_name != 'pull_request' || github.base_ref != 'production'
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -94,6 +96,8 @@ jobs:
     name: Build Linux
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.base_ref != 'production'
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -192,34 +196,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-build-${{ steps.get_version.outputs.version }}
+          name: windows-build-${{ needs.build-windows.outputs.version }}
           path: ./artifacts/windows
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          name: linux-build-${{ steps.get_version.outputs.version }}
+          name: linux-build-${{ needs.build-linux.outputs.version }}
           path: ./artifacts/linux
 
       - name: Extract Linux artifacts
         run: |
           mkdir -p ./artifacts/linux-extracted
-          tar -xzf ./artifacts/linux/linux-build-${{ steps.get_version.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
+          tar -xzf ./artifacts/linux/linux-build-${{ needs.build-linux.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ needs.build-windows.outputs.version }}
+          name: Release v${{ needs.build-windows.outputs.version }}
           prerelease: ${{ github.ref == 'refs/heads/beta' }}
           files: |
             ./artifacts/windows/**
@@ -236,34 +234,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-build-${{ steps.get_version.outputs.version }}
+          name: windows-build-${{ needs.build-windows.outputs.version }}
           path: ./artifacts/windows
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          name: linux-build-${{ steps.get_version.outputs.version }}
+          name: linux-build-${{ needs.build-linux.outputs.version }}
           path: ./artifacts/linux
 
       - name: Extract Linux artifacts
         run: |
           mkdir -p ./artifacts/linux-extracted
-          tar -xzf ./artifacts/linux/linux-build-${{ steps.get_version.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
+          tar -xzf ./artifacts/linux/linux-build-${{ needs.build-linux.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
 
       - name: Create Pre-Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Development Build v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ needs.build-windows.outputs.version }}
+          name: Development Build v${{ needs.build-windows.outputs.version }}
           prerelease: true
           files: |
             ./artifacts/windows/**
@@ -309,15 +301,20 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
+        env:
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            NUXT_SESSION_PASSWORD=${{ secrets.NUXT_SESSION_PASSWORD }}
-            NUXT_COOKIE_KEY=${{ secrets.NUXT_COOKIE_KEY }}
-            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
-            DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
+          secrets: |
+            id=NUXT_SESSION_PASSWORD,env=NUXT_SESSION_PASSWORD
+            id=NUXT_COOKIE_KEY,env=NUXT_COOKIE_KEY
+            id=DISCORD_CLIENT_ID,env=DISCORD_CLIENT_ID
+            id=DISCORD_CLIENT_SECRET,env=DISCORD_CLIENT_SECRET
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova:buildcache,mode=max

@@ -1,36 +1,47 @@
-FROM node:alpine AS builder
+FROM node:alpine AS build
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
 
-COPY app server i18n locales public nuxt.config.ts tsconfig.json ./
+RUN npm ci --ignore-scripts
 
-ARG NUXT_SESSION_PASSWORD
-ARG NUXT_COOKIE_KEY
-ARG DISCORD_CLIENT_ID
-ARG DISCORD_CLIENT_SECRET
+COPY nuxt.config.ts tsconfig.json ./
+COPY app ./app
+COPY server ./server
+COPY public ./public
+COPY i18n ./i18n
+COPY locales ./locales
 
-RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
-    NUXT_COOKIE_KEY="$NUXT_COOKIE_KEY" \
-    DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
-    DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
+RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD,required=false \
+    --mount=type=secret,id=NUXT_COOKIE_KEY,required=false \
+    --mount=type=secret,id=DISCORD_CLIENT_ID,required=false \
+    --mount=type=secret,id=DISCORD_CLIENT_SECRET,required=false \
+    export NUXT_SESSION_PASSWORD=$(test -f /run/secrets/NUXT_SESSION_PASSWORD && cat /run/secrets/NUXT_SESSION_PASSWORD || echo "") && \
+    export NUXT_COOKIE_KEY=$(test -f /run/secrets/NUXT_COOKIE_KEY && cat /run/secrets/NUXT_COOKIE_KEY || echo "") && \
+    export DISCORD_CLIENT_ID=$(test -f /run/secrets/DISCORD_CLIENT_ID && cat /run/secrets/DISCORD_CLIENT_ID || echo "") && \
+    export DISCORD_CLIENT_SECRET=$(test -f /run/secrets/DISCORD_CLIENT_SECRET && cat /run/secrets/DISCORD_CLIENT_SECRET || echo "") && \
     npx nuxt build
 
 FROM node:alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --only=production
+COPY --from=build --chown=node:node /app/.output ./.output
+COPY --from=build --chown=node:node /app/package*.json ./
 
-COPY --from=builder /app/.output ./.output
+RUN npm ci --only=production --ignore-scripts && \
+    npm cache clean --force
+
+USER node
+
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 
 EXPOSE 3000
-ENV PORT=3000 NITRO_PORT=3000 NODE_ENV=production
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-	CMD node -e "require('http').get('http://localhost:3000/api/healthcheck', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"
+    CMD node -e "require('http').get('http://localhost:3000/api/healthcheck', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"
 
 CMD ["node", ".output/server/index.mjs"]
