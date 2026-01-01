@@ -43,7 +43,6 @@ default = [
   "rustls-tls",
   "http2",
   "charset",
-  "macos-system-configuration",
   "cookies",
 ]
 multipart = ["reqwest/multipart"]
