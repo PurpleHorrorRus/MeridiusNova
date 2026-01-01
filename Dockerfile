@@ -17,10 +17,10 @@ RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD,required=false \
     --mount=type=secret,id=NUXT_COOKIE_KEY,required=false \
     --mount=type=secret,id=DISCORD_CLIENT_ID,required=false \
     --mount=type=secret,id=DISCORD_CLIENT_SECRET,required=false \
-    export NUXT_SESSION_PASSWORD=$(test -f /run/secrets/NUXT_SESSION_PASSWORD && cat /run/secrets/NUXT_SESSION_PASSWORD || echo "") && \
-    export NUXT_COOKIE_KEY=$(test -f /run/secrets/NUXT_COOKIE_KEY && cat /run/secrets/NUXT_COOKIE_KEY || echo "") && \
-    export DISCORD_CLIENT_ID=$(test -f /run/secrets/DISCORD_CLIENT_ID && cat /run/secrets/DISCORD_CLIENT_ID || echo "") && \
-    export DISCORD_CLIENT_SECRET=$(test -f /run/secrets/DISCORD_CLIENT_SECRET && cat /run/secrets/DISCORD_CLIENT_SECRET || echo "") && \
+    NUXT_SESSION_PASSWORD=$(test -f /run/secrets/NUXT_SESSION_PASSWORD && cat /run/secrets/NUXT_SESSION_PASSWORD || echo "") \
+    NUXT_COOKIE_KEY=$(test -f /run/secrets/NUXT_COOKIE_KEY && cat /run/secrets/NUXT_COOKIE_KEY || echo "") \
+    DISCORD_CLIENT_ID=$(test -f /run/secrets/DISCORD_CLIENT_ID && cat /run/secrets/DISCORD_CLIENT_ID || echo "") \
+    DISCORD_CLIENT_SECRET=$(test -f /run/secrets/DISCORD_CLIENT_SECRET && cat /run/secrets/DISCORD_CLIENT_SECRET || echo "") \
     npx nuxt build
 
 FROM node:alpine
@@ -38,6 +38,12 @@ USER node
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
+
+# Секреты должны быть переданы при запуске контейнера через -e или docker-compose
+# ENV NUXT_SESSION_PASSWORD=""
+# ENV NUXT_COOKIE_KEY=""
+# ENV DISCORD_CLIENT_ID=""
+# ENV DISCORD_CLIENT_SECRET=""
 
 EXPOSE 3000
 
