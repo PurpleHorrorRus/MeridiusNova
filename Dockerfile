@@ -33,17 +33,20 @@ COPY --from=build --chown=node:node /app/package*.json ./
 RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
-USER node
+ARG NUXT_SESSION_PASSWORD
+ARG NUXT_COOKIE_KEY
+ARG DISCORD_CLIENT_ID
+ARG DISCORD_CLIENT_SECRET
 
 ENV PORT=3000
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
+ENV NUXT_SESSION_PASSWORD=$NUXT_SESSION_PASSWORD
+ENV NUXT_COOKIE_KEY=$NUXT_COOKIE_KEY
+ENV DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID
+ENV DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET
 
-# Секреты должны быть переданы при запуске контейнера через -e или docker-compose
-# ENV NUXT_SESSION_PASSWORD=""
-# ENV NUXT_COOKIE_KEY=""
-# ENV DISCORD_CLIENT_ID=""
-# ENV DISCORD_CLIENT_SECRET=""
+USER node
 
 EXPOSE 3000
 
