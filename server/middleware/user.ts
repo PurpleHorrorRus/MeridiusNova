@@ -12,6 +12,12 @@ export default defineEventHandler(async event => {
 	}
 	
 	const { cookieKey } = useRuntimeConfig();
+	
+	if (!cookieKey || cookieKey === "") {
+		console.error("ERROR: cookieKey is empty or undefined!");
+		return;
+	}
+	
 	const decoded = await jwt.verify(token, cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie;
 	
 	if (decoded.expires < Date.now() / 1000) {

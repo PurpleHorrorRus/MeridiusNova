@@ -34,12 +34,10 @@ COPY --from=build --chown=node:node /app/package*.json ./
 RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
-# Секреты запекаются в образ при сборке (требование проекта)
-# Предупреждения Docker сканера о SecretsUsedInArgOrEnv ожидаемы и могут быть проигнорированы
-ARG NUXT_SESSION_PASSWORD
-ARG NUXT_COOKIE_KEY
-ARG DISCORD_CLIENT_ID
-ARG DISCORD_CLIENT_SECRET
+ARG NUXT_SESSION_PASSWORD=""
+ARG NUXT_COOKIE_KEY=""
+ARG DISCORD_CLIENT_ID=""
+ARG DISCORD_CLIENT_SECRET=""
 
 ENV PORT=3000
 ENV HOST=0.0.0.0
@@ -48,6 +46,13 @@ ENV NUXT_SESSION_PASSWORD=$NUXT_SESSION_PASSWORD
 ENV NUXT_COOKIE_KEY=$NUXT_COOKIE_KEY
 ENV DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID
 ENV DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET
+
+RUN echo "Checking build args..." && \
+    echo "NUXT_COOKIE_KEY length: $(echo -n "$NUXT_COOKIE_KEY" | wc -c)" && \
+    if [ -z "$NUXT_COOKIE_KEY" ] || [ "$NUXT_COOKIE_KEY" = "" ]; then \
+        echo "ERROR: NUXT_COOKIE_KEY is empty or not set!"; \
+        exit 1; \
+    fi
 
 USER node
 
