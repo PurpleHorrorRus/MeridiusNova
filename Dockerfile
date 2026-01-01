@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --ignore-scripts
+RUN npm install --ignore-scripts
 
 COPY nuxt.config.ts tsconfig.json ./
 COPY app ./app
@@ -30,7 +30,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/package*.json ./
 
-RUN npm ci --only=production --ignore-scripts && \
+RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
 USER node
