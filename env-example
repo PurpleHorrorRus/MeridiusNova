@@ -1,3 +1,8 @@
+# Приватный ключ для подписи Tauri приложения
+# tauri signer generate -w ./src-tauri/keys
+TAURI_SIGNING_PRIVATE_KEY=
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
+
 # Пароль для шифрования сессий (используется в nuxt-auth-utils)
 # Должен быть строкой длиной минимум 32 символа
 NUXT_SESSION_PASSWORD=

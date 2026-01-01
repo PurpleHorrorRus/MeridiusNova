@@ -30,6 +30,10 @@ echo ""
 echo "Step 1: Building Nuxt..."
 export ESBUILD_WORKER_THREADS=0
 export ESBUILD_USE_INLINE_CACHE=1
+export NUXT_SESSION_PASSWORD="${NUXT_SESSION_PASSWORD:-}"
+export NUXT_COOKIE_KEY="${NUXT_COOKIE_KEY:-}"
+export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID:-}"
+export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET:-}"
 npx --no-install nuxt build
 
 if [ $? -ne 0 ]; then
