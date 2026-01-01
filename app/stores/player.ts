@@ -449,7 +449,7 @@ export const usePlayerStore = defineStore("player", {
 			controllerData.endedHandler = async () => {
 				if (navigator.mediaSession) navigator.mediaSession.metadata = null;
 
-				const isCrossfadeActive = controllerData.crossfadeInstance?.state !== 0;
+				const isCrossfadeActive = controllerData.crossfadeInstance !== null && controllerData.crossfadeInstance.state !== 0;
 
 				if (!isCrossfadeActive && song.full_id === this.song?.full_id) {
 					if (usePlaylistStore().repeat) {

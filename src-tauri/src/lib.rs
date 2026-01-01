@@ -199,32 +199,24 @@ pub fn run() {
 
             let (use_remote_server, remote_url) = {
                 let config = if let Ok(store) = app.store(".settings.dat") {
-                    println!("[DEBUG] Store opened successfully");
                     if let Some(settings_value) = store.get("settings") {
-                        println!("[DEBUG] Found settings in store");
                         if let Some(config) = check_from_settings(&settings_value) {
-                            println!("[DEBUG] Server config parsed: use_remote={}, url={}", config.use_remote, config.remote_url);
                             Some(config)
                         } else {
-                            println!("[DEBUG] Failed to parse server config from settings");
                             None
                         }
                     } else {
-                        println!("[DEBUG] No 'settings' key in store");
                         None
                     }
                 } else {
-                    println!("[DEBUG] Failed to open store");
                     None
                 };
 
                 match config {
                     Some(config) if config.use_remote => {
-                        println!("[DEBUG] Using remote server: {}", config.remote_url);
                         (config.use_remote, config.remote_url)
                     },
                     _ => {
-                        println!("[DEBUG] Using local server on port {}", port);
                         #[cfg(not(debug_assertions))]
                         {
                             let (_rx, child) = app
@@ -247,25 +239,20 @@ pub fn run() {
             };
 
             let url = if use_remote_server {
-                println!("[DEBUG] Final URL: {}", remote_url);
                 match Url::parse(&remote_url) {
                     Ok(parsed_url) => {
                         if parsed_url.host().is_none() {
-                            println!("[DEBUG] Invalid URL: empty host, falling back to localhost");
                             format!("http://localhost:{}", port)
                         } else {
                             remote_url
                         }
                     },
-                    Err(e) => {
-                        println!("[DEBUG] Failed to parse URL '{}': {:?}, falling back to localhost", remote_url, e);
+                    Err(_) => {
                         format!("http://localhost:{}", port)
                     }
                 }
             } else {
-                let local_url = format!("http://localhost:{}", port);
-                println!("[DEBUG] Final URL: {}", local_url);
-                local_url
+                format!("http://localhost:{}", port)
             };
 
             let (width, height) = if let Ok(store) = app.store("window-state.json") {
@@ -298,11 +285,14 @@ pub fn run() {
             .min_inner_size(450.0, 550.0)
             .resizable(true)
             .decorations(false)
-            .devtools(true)
+            .devtools(cfg!(debug_assertions))
             .build()
             .expect("Failed to create window");
 
-            window.open_devtools();
+            #[cfg(debug_assertions)]
+            {
+                window.open_devtools();
+            }
 
             Ok(())
         })

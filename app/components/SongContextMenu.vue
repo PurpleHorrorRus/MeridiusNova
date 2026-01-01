@@ -71,7 +71,7 @@
 			</button>
 
 			<button
-				v-if="songProps.canDownload"
+				v-if="songProps.canDownload && isTauri"
 				class="context-menu-item"
 				@click="handleDownload"
 			>
@@ -152,6 +152,8 @@ const { current, playing } = usePlaylist();
 const { openModal } = useModal();
 const vkStore = useVkStore();
 const playlistStore = usePlaylistStore();
+
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const showPlaylistSubmenu = ref(false);
 const menuStyle = ref<{ left?: string; top?: string }>({});

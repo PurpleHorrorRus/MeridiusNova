@@ -73,8 +73,6 @@ fn normalize_url(url_str: &str, port: Option<u64>) -> String {
 		format!("{}://{}{}/", protocol, host, path)
 	};
 
-	println!("[DEBUG] normalize_url: input='{}', output='{}'", url_str, result);
-	
 	result
 }
 
@@ -93,17 +91,11 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	
 	let mut url = url_str.trim().to_string();
 	
-	println!("[DEBUG] Original URL from settings: {}", url);
-	
 	if url.starts_with("http://://") {
 		url = url.replacen("http://://", "http://", 1);
-		println!("[DEBUG] Fixed http://:// to http://");
 	} else if url.starts_with("https://://") {
 		url = url.replacen("https://://", "https://", 1);
-		println!("[DEBUG] Fixed https://:// to https://");
 	}
-	
-	println!("[DEBUG] URL after fix: {}", url);
 	
 	let url = normalize_url(&url, port);
 

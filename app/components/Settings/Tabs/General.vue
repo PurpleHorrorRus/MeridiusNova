@@ -17,234 +17,234 @@
 			</div>
 		</div>
 
-		<div class="settings-section">
-			<h2 class="section-title">{{ getString("settings.general.window.title") }}</h2>
-			<div class="settings-items">
-				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.window.startup"
-							@change="updateStartup"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.window.startup") }}
-					</label>
-				</div>
+	<div v-if="isTauri" class="settings-section">
+		<h2 class="section-title">{{ getString("settings.general.window.title") }}</h2>
+		<div class="settings-items">
+			<div class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.window.startup"
+						@change="updateStartup"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.window.startup") }}
+				</label>
+			</div>
 
-				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.window.hideOnClose"
-							@change="updateHideOnClose"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.window.hideOnClose") }}
-					</label>
-				</div>
+			<div class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.window.hideOnClose"
+						@change="updateHideOnClose"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.window.hideOnClose") }}
+				</label>
 			</div>
 		</div>
+	</div>
 
-		<div class="settings-section">
-			<h2 class="section-title">{{ getString("settings.general.discord.title") }}</h2>
-			<div class="settings-items">
-				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.general.discord.enable"
-							@change="updateDiscordEnable"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.discord.enable") }}
-					</label>
-				</div>
+	<div v-if="isTauri" class="settings-section">
+		<h2 class="section-title">{{ getString("settings.general.discord.title") }}</h2>
+		<div class="settings-items">
+			<div class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.general.discord.enable"
+						@change="updateDiscordEnable"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.discord.enable") }}
+				</label>
+			</div>
 
-				<div v-if="settings.general.discord.enable" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.general.discord.timeline"
-							@change="updateDiscordTimeline"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.discord.timeline") }}
-					</label>
-				</div>
+			<div v-if="settings.general.discord.enable" class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.general.discord.timeline"
+						@change="updateDiscordTimeline"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.discord.timeline") }}
+				</label>
+			</div>
 
-				<div v-if="settings.general.discord.enable" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.general.discord.reverse"
-							@change="updateDiscordReverse"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.discord.reverse") }}
-					</label>
-				</div>
+			<div v-if="settings.general.discord.enable" class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.general.discord.reverse"
+						@change="updateDiscordReverse"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.discord.reverse") }}
+				</label>
 			</div>
 		</div>
+	</div>
 
-		<div class="settings-section">
-			<h2 class="section-title">{{ getString("settings.general.streamer.title") }}</h2>
-			<div class="settings-items">
-				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.general.streamer.enable"
-							@change="updateStreamerEnable"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.streamer.enable") }}
-					</label>
-				</div>
-
-				<div v-if="streamerHint" class="settings-tip">
-					{{ streamerHint }}
-				</div>
-
-				<div v-if="settings.general.streamer.enable" class="settings-item">
-					<label class="settings-label">{{ getString("settings.general.streamer.path") }}</label>
-					<div class="settings-input-group">
-						<input
-							:value="settings.general.streamer.path"
-							@input="updateStreamerPath"
-							type="text"
-							class="settings-input"
-							:placeholder="getString('settings.general.streamer.pathPlaceholder')"
-						/>
-						<button
-							@click="chooseStreamerPath"
-							class="settings-button"
-						>
-							{{ getString("settings.general.streamer.choose") }}
-						</button>
-					</div>
-				</div>
+	<div v-if="isTauri" class="settings-section">
+		<h2 class="section-title">{{ getString("settings.general.streamer.title") }}</h2>
+		<div class="settings-items">
+			<div class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.general.streamer.enable"
+						@change="updateStreamerEnable"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.streamer.enable") }}
+				</label>
 			</div>
-		</div>
 
-		<div class="settings-section">
-			<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
-			<div class="settings-items">
-				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.general.server.enable"
-							@change="updateServerEnable"
-							class="settings-checkbox"
-						/>
-						{{ getString("settings.general.server.enable") }}
-					</label>
-				</div>
-
-				<div v-if="settings.general.server.enable" class="settings-item">
-					<label class="settings-label settings-label-block">{{ getString("settings.general.server.url") }}</label>
-					<div class="settings-input-group">
-						<input
-							:value="settings.general.server.url"
-							@input="updateServerUrl"
-							type="text"
-							class="settings-input"
-							:placeholder="getString('settings.general.server.urlPlaceholder')"
-						/>
-						<span class="settings-separator">:</span>
-						<input
-							:value="settings.general.server.port"
-							@input="updateServerPort"
-							type="number"
-							min="1"
-							max="65535"
-							class="settings-input settings-input-port"
-							:placeholder="getString('settings.general.server.portPlaceholder')"
-						/>
-						<button
-							@click="isServerAvailable === true ? connectToServer() : checkServer()"
-							:disabled="checking || !settings.general.server.url"
-							class="settings-button"
-							:class="{ 'settings-button-primary': isServerAvailable === true }"
-						>
-							<Icon
-								v-if="checking"
-								name="mdi:loading"
-								class="settings-button-icon spinning"
-							/>
-							{{
-								checking
-									? getString("settings.general.server.checking")
-									: isServerAvailable === true
-										? getString("settings.general.server.connect")
-										: getString("settings.general.server.check")
-							}}
-						</button>
-					</div>
-				</div>
-
-				<div v-if="settings.general.server.enable && serverError" class="settings-tip settings-error">
-					<Icon name="mdi:alert-circle" class="settings-tip-icon" />
-					{{ serverError }}
-				</div>
-
-				<div v-if="settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
-					<Icon name="mdi:check-circle" class="settings-tip-icon" />
-					{{ getString("settings.general.server.available") }}
-				</div>
+			<div v-if="streamerHint" class="settings-tip">
+				{{ streamerHint }}
 			</div>
-		</div>
 
-		<div class="settings-section">
-			<h2 class="section-title">{{ getString("settings.general.updates.title") }}</h2>
-			<div class="settings-items">
-				<div class="settings-item">
-					<label class="settings-label">{{ getString("settings.general.updates.currentVersion") }}</label>
-					<span class="settings-version">{{ currentVersion || "—" }}</span>
-				</div>
-
-				<div class="settings-item">
-					<label class="settings-label">{{ getString("settings.general.updates.channel") }}</label>
-					<select
-						:value="settings.general.updateChannel"
-						@change="updateChannel"
-						class="settings-select"
-					>
-						<option value="production">{{ getString("settings.general.updates.channelOptions.production") }}</option>
-						<option value="beta">{{ getString("settings.general.updates.channelOptions.beta") }}</option>
-						<option value="development">{{ getString("settings.general.updates.channelOptions.development") }}</option>
-					</select>
-				</div>
-
-				<div class="settings-item">
+			<div v-if="settings.general.streamer.enable" class="settings-item">
+				<label class="settings-label">{{ getString("settings.general.streamer.path") }}</label>
+				<div class="settings-input-group">
+					<input
+						:value="settings.general.streamer.path"
+						@input="updateStreamerPath"
+						type="text"
+						class="settings-input"
+						:placeholder="getString('settings.general.streamer.pathPlaceholder')"
+					/>
 					<button
-						@click="checkUpdates"
-						:disabled="checkingUpdates || !isTauri"
+						@click="chooseStreamerPath"
 						class="settings-button"
 					>
-						{{ checkingUpdates ? getString("settings.general.updates.checking") : getString("settings.general.updates.check") }}
-					</button>
-				</div>
-
-				<div v-if="updateError" class="settings-tip settings-error">
-					{{ updateError }}
-				</div>
-
-				<div v-if="updateAvailable && !updateError && updateInfo" class="settings-tip settings-success">
-					{{ getString("settings.general.updates.available") }}: {{ updateInfo.version }}
-				</div>
-
-				<div v-if="updateAvailable && !updateError" class="settings-item">
-					<button
-						@click="installUpdate"
-						class="settings-button settings-button-primary"
-					>
-						{{ getString("settings.general.updates.install") }}
+						{{ getString("settings.general.streamer.choose") }}
 					</button>
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<div v-if="isTauri" class="settings-section">
+		<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
+		<div class="settings-items">
+			<div class="settings-item">
+				<label class="settings-label">
+					<input
+						type="checkbox"
+						:checked="settings.general.server.enable"
+						@change="updateServerEnable"
+						class="settings-checkbox"
+					/>
+					{{ getString("settings.general.server.enable") }}
+				</label>
+			</div>
+
+			<div v-if="settings.general.server.enable" class="settings-item">
+				<label class="settings-label settings-label-block">{{ getString("settings.general.server.url") }}</label>
+				<div class="settings-input-group">
+					<input
+						:value="settings.general.server.url"
+						@input="updateServerUrl"
+						type="text"
+						class="settings-input"
+						:placeholder="getString('settings.general.server.urlPlaceholder')"
+					/>
+					<span class="settings-separator">:</span>
+					<input
+						:value="settings.general.server.port"
+						@input="updateServerPort"
+						type="number"
+						min="1"
+						max="65535"
+						class="settings-input settings-input-port"
+						:placeholder="getString('settings.general.server.portPlaceholder')"
+					/>
+					<button
+						@click="isServerAvailable === true ? connectToServer() : checkServer()"
+						:disabled="checking || !settings.general.server.url"
+						class="settings-button"
+						:class="{ 'settings-button-primary': isServerAvailable === true }"
+					>
+						<Icon
+							v-if="checking"
+							name="mdi:loading"
+							class="settings-button-icon spinning"
+						/>
+						{{
+							checking
+								? getString("settings.general.server.checking")
+								: isServerAvailable === true
+									? getString("settings.general.server.connect")
+									: getString("settings.general.server.check")
+						}}
+					</button>
+				</div>
+			</div>
+
+			<div v-if="settings.general.server.enable && serverError" class="settings-tip settings-error">
+				<Icon name="mdi:alert-circle" class="settings-tip-icon" />
+				{{ serverError }}
+			</div>
+
+			<div v-if="settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
+				<Icon name="mdi:check-circle" class="settings-tip-icon" />
+				{{ getString("settings.general.server.available") }}
+			</div>
+		</div>
+	</div>
+
+	<div v-if="isTauri" class="settings-section">
+		<h2 class="section-title">{{ getString("settings.general.updates.title") }}</h2>
+		<div class="settings-items">
+			<div class="settings-item">
+				<label class="settings-label">{{ getString("settings.general.updates.currentVersion") }}</label>
+				<span class="settings-version">{{ currentVersion || "—" }}</span>
+			</div>
+
+			<div class="settings-item">
+				<label class="settings-label">{{ getString("settings.general.updates.channel") }}</label>
+				<select
+					:value="settings.general.updateChannel"
+					@change="updateChannel"
+					class="settings-select"
+				>
+					<option value="production">{{ getString("settings.general.updates.channelOptions.production") }}</option>
+					<option value="beta">{{ getString("settings.general.updates.channelOptions.beta") }}</option>
+					<option value="development">{{ getString("settings.general.updates.channelOptions.development") }}</option>
+				</select>
+			</div>
+
+			<div class="settings-item">
+				<button
+					@click="checkUpdates"
+					:disabled="checkingUpdates"
+					class="settings-button"
+				>
+					{{ checkingUpdates ? getString("settings.general.updates.checking") : getString("settings.general.updates.check") }}
+				</button>
+			</div>
+
+			<div v-if="updateError" class="settings-tip settings-error">
+				{{ updateError }}
+			</div>
+
+			<div v-if="updateAvailable && !updateError && updateInfo" class="settings-tip settings-success">
+				{{ getString("settings.general.updates.available") }}: {{ updateInfo.version }}
+			</div>
+
+			<div v-if="updateAvailable && !updateError" class="settings-item">
+				<button
+					@click="installUpdate"
+					class="settings-button settings-button-primary"
+				>
+					{{ getString("settings.general.updates.install") }}
+				</button>
+			</div>
+		</div>
+	</div>
 	</div>
 </template>
 

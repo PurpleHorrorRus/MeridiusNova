@@ -192,6 +192,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/production' || github.ref == 'refs/heads/beta') && github.ref != 'refs/heads/development'
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -230,6 +232,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux]
     if: github.event_name == 'push' && github.ref == 'refs/heads/development' && github.ref != 'refs/heads/production' && github.ref != 'refs/heads/beta'
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

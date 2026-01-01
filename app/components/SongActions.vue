@@ -37,7 +37,7 @@
 		</button>
 
 		<button
-			v-if="canDownload"
+			v-if="canDownload && isTauri"
 			class="action-button"
 			@click="handleDownload"
 			title="Скачать"
@@ -88,6 +88,8 @@ const playlistStore = usePlaylistStore();
 const { removeSongFromPlaylist } = usePlaylistActions();
 const { updateTrackInAllPlaces } = useUpdateTrack();
 const songsContext = useSongsContext();
+
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 // Получаем актуальный трек из songsContext для реактивности
 const audio = computed(() => {

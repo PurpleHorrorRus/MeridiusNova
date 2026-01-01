@@ -1,6 +1,6 @@
 <template>
 	<div class="settings-tab-player">
-		<div class="settings-section">
+		<div v-if="isTauri" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.audioOutput") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -203,7 +203,7 @@
 			</div>
 		</div>
 
-		<div class="settings-section">
+		<div v-if="isTauri" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.step.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
