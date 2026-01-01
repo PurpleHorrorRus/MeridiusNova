@@ -306,7 +306,6 @@ jobs:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova
           tags: |
             type=raw,value=${{ steps.image_tag.outputs.tag }}
-            type=sha,prefix={{branch}}-,format=short
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
