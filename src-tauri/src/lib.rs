@@ -59,9 +59,50 @@ fn set_startup(enable: bool) -> Result<(), String> {
 		}
 	}
 
-	#[cfg(not(target_os = "windows"))]
+	#[cfg(target_os = "linux")]
 	{
-		// TODO: Implement for other platforms
+		use std::fs;
+		use std::path::PathBuf;
+
+		let app_path = std::env::current_exe()
+			.map_err(|e| format!("Failed to get exe path: {}", e))?;
+		let app_path_str = app_path.to_string_lossy().to_string();
+
+		let home_dir = std::env::var("HOME")
+			.map_err(|_| "Failed to get HOME directory".to_string())?;
+
+		let autostart_dir = PathBuf::from(&home_dir).join(".config").join("autostart");
+		let desktop_file = autostart_dir.join("meridius-nova.desktop");
+
+		if enable {
+			fs::create_dir_all(&autostart_dir)
+				.map_err(|e| format!("Failed to create autostart directory: {}", e))?;
+
+			let desktop_content = format!(
+				"[Desktop Entry]\n\
+				Type=Application\n\
+				Name=Meridius Nova\n\
+				Exec={}\n\
+				Hidden=false\n\
+				NoDisplay=false\n\
+				X-GNOME-Autostart-enabled=true\n",
+				app_path_str
+			);
+
+			fs::write(&desktop_file, desktop_content)
+				.map_err(|e| format!("Failed to write desktop file: {}", e))?;
+		} else {
+			if desktop_file.exists() {
+				fs::remove_file(&desktop_file)
+					.map_err(|e| format!("Failed to remove desktop file: {}", e))?;
+			}
+		}
+	}
+
+	#[cfg(target_os = "macos")]
+	{
+		// TODO: Implement for macOS using Launch Agents
+		let _ = enable;
 	}
 
 	Ok(())

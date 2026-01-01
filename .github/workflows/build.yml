@@ -177,23 +177,18 @@ jobs:
           VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create Linux artifacts archive
+        run: |
+          mkdir -p artifacts/linux
+          cp src-tauri/target/release/bundle/appimage/*.AppImage artifacts/linux/ 2>/dev/null || true
+          cp src-tauri/target/release/bundle/deb/*.deb artifacts/linux/ 2>/dev/null || true
+          tar -czf linux-build-${{ steps.get_version.outputs.version }}.tar.gz -C artifacts/linux .
+
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-build-${{ steps.get_version.outputs.version }}
-          path: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload Linux artifacts (generic)
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
+          path: linux-build-${{ steps.get_version.outputs.version }}.tar.gz
           if-no-files-found: warn
           retention-days: 30
 
@@ -224,6 +219,11 @@ jobs:
           name: linux-build-${{ steps.get_version.outputs.version }}
           path: ./artifacts/linux
 
+      - name: Extract Linux artifacts
+        run: |
+          mkdir -p ./artifacts/linux-extracted
+          tar -xzf ./artifacts/linux/linux-build-${{ steps.get_version.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -232,7 +232,7 @@ jobs:
           prerelease: ${{ github.ref == 'refs/heads/beta' }}
           files: |
             ./artifacts/windows/**
-            ./artifacts/linux/**
+            ./artifacts/linux-extracted/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -263,6 +263,11 @@ jobs:
           name: linux-build-${{ steps.get_version.outputs.version }}
           path: ./artifacts/linux
 
+      - name: Extract Linux artifacts
+        run: |
+          mkdir -p ./artifacts/linux-extracted
+          tar -xzf ./artifacts/linux/linux-build-${{ steps.get_version.outputs.version }}.tar.gz -C ./artifacts/linux-extracted
+
       - name: Create Pre-Release
         uses: softprops/action-gh-release@v1
         with:
@@ -271,6 +276,6 @@ jobs:
           prerelease: true
           files: |
             ./artifacts/windows/**
-            ./artifacts/linux/**
+            ./artifacts/linux-extracted/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

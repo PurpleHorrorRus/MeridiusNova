@@ -34,6 +34,15 @@ function getShortCommitHash() {
 	}
 }
 
+function getNumericCommitId() {
+	try {
+		const hash = execSync("git rev-parse --short=4 HEAD", { encoding: "utf-8" }).trim();
+		return parseInt(hash, 16) % 65536;
+	} catch {
+		return Math.floor(Math.random() * 65536);
+	}
+}
+
 function getBetaNumber() {
 	try {
 		const tags = execSync("git tag --list '*-beta.*' --sort=-version:refname", { encoding: "utf-8" }).trim();
@@ -99,8 +108,8 @@ function main() {
 		version = `${baseVersion}-beta.${betaNumber}`;
 	} else {
 		const baseVersion = readVersionFromConfig();
-		const commitHash = getShortCommitHash();
-		version = `${baseVersion}-${commitHash}`;
+		const commitId = getNumericCommitId();
+		version = `${baseVersion}-${commitId}`;
 	}
 
 	console.log(`Generating version: ${version} for branch: ${branch}`);
