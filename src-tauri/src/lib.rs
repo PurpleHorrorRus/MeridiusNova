@@ -163,7 +163,7 @@ pub fn run() {
 				#[cfg(not(debug_assertions))]
 				{
 					let config = if let Ok(store) = app.store(".settings.dat") {
-						store.get("settings").and_then(|v| check_from_settings(v))
+						store.get("settings").as_ref().and_then(|v| check_from_settings(v))
 					} else {
 						None
 					};
