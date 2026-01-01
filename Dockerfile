@@ -15,10 +15,13 @@ COPY locales ./locales
 
 ARG NUXT_SESSION_PASSWORD
 ARG NUXT_COOKIE_KEY
+ARG DISCORD_CLIENT_ID
+ARG DISCORD_CLIENT_SECRET
 
-RUN NUXT_COOKIE_KEY=$(echo -e "$NUXT_COOKIE_KEY") && \
-    NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
-    NUXT_COOKIE_KEY="$NUXT_COOKIE_KEY" \
+RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
+    NUXT_COOKIE_KEY="$(echo -e "$NUXT_COOKIE_KEY")" \
+    DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+    DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
     npx nuxt build
 
 FROM node:alpine
@@ -28,15 +31,13 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/package*.json ./
 
-RUN npm install --only=production --ignore-scripts && \
-    npm cache clean --force
-
-ENV PORT=3000
-ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 
+RUN npm install --only=production --ignore-scripts && \
+    npm cache clean --force
+	
 USER node
-
+	
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
