@@ -13,6 +13,8 @@ build/sea-prep.blob
 src-tauri/binaries
 src-tauri/target
 src-tauri/Cargo.lock
+src-tauri/keys
+src-tauri/keys.pub
 
 .env
 package-lock.json
