@@ -3,7 +3,7 @@ FROM node:alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY app server i18n locales public nuxt.config.ts tsconfig.json ./
 
@@ -24,7 +24,7 @@ FROM node:alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 COPY --from=builder /app/.output ./.output
 
