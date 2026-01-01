@@ -275,6 +275,7 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/development' || github.ref == 'refs/heads/production')
+    environment: ${{ github.ref == 'refs/heads/production' && 'production' || 'development' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
