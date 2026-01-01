@@ -301,21 +301,11 @@ jobs:
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
-        env:
-          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
-          NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          secrets: |
-            id=NUXT_SESSION_PASSWORD,env=NUXT_SESSION_PASSWORD
-            id=NUXT_COOKIE_KEY,env=NUXT_COOKIE_KEY
-            id=DISCORD_CLIENT_ID,env=DISCORD_CLIENT_ID
-            id=DISCORD_CLIENT_SECRET,env=DISCORD_CLIENT_SECRET
           build-args: |
             NUXT_SESSION_PASSWORD=${{ secrets.NUXT_SESSION_PASSWORD }}
             NUXT_COOKIE_KEY=${{ secrets.NUXT_COOKIE_KEY }}

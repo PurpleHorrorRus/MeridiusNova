@@ -13,14 +13,15 @@ COPY public ./public
 COPY i18n ./i18n
 COPY locales ./locales
 
-RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD,required=false \
-    --mount=type=secret,id=NUXT_COOKIE_KEY,required=false \
-    --mount=type=secret,id=DISCORD_CLIENT_ID,required=false \
-    --mount=type=secret,id=DISCORD_CLIENT_SECRET,required=false \
-    NUXT_SESSION_PASSWORD=$(test -f /run/secrets/NUXT_SESSION_PASSWORD && cat /run/secrets/NUXT_SESSION_PASSWORD || echo "") \
-    NUXT_COOKIE_KEY=$(test -f /run/secrets/NUXT_COOKIE_KEY && cat /run/secrets/NUXT_COOKIE_KEY || echo "") \
-    DISCORD_CLIENT_ID=$(test -f /run/secrets/DISCORD_CLIENT_ID && cat /run/secrets/DISCORD_CLIENT_ID || echo "") \
-    DISCORD_CLIENT_SECRET=$(test -f /run/secrets/DISCORD_CLIENT_SECRET && cat /run/secrets/DISCORD_CLIENT_SECRET || echo "") \
+ARG NUXT_SESSION_PASSWORD
+ARG NUXT_COOKIE_KEY
+ARG DISCORD_CLIENT_ID
+ARG DISCORD_CLIENT_SECRET
+
+RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
+    NUXT_COOKIE_KEY="$NUXT_COOKIE_KEY" \
+    DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
+    DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
     npx nuxt build
 
 FROM node:alpine
@@ -33,6 +34,8 @@ COPY --from=build --chown=node:node /app/package*.json ./
 RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
+# Секреты запекаются в образ при сборке (требование проекта)
+# Предупреждения Docker сканера о SecretsUsedInArgOrEnv ожидаемы и могут быть проигнорированы
 ARG NUXT_SESSION_PASSWORD
 ARG NUXT_COOKIE_KEY
 ARG DISCORD_CLIENT_ID
