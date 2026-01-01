@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
 	const http = getHttpInstance();
 
 	const userSession = await getUserSession(event);
-	const session = (userSession as unknown as { session?: TAuthSession })?.session;
+	const session = userSession?.session as TAuthSession;
 
 	if (!session || !session.qr || !session.init) {
 		throw createError({
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 		access_token: ""
 	}, configuration.auth.options);
 
-	if (qrCheckResponse.response.status === 2) {
+	if (qrCheckResponse.response?.status === 2) {
 		const connectCodeAuthResponse = await http.request<TCheckResponse>(configuration.endpoints.qr.connectCodeAuth, {
 			token: qrCheckResponse.response.super_app_token,
 			uuid: http.uuid,

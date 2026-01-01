@@ -12,7 +12,7 @@ export default defineEventHandler(async event => {
 	}
 	
 	const { cookieKey } = useRuntimeConfig();
-	
+
 	if (!cookieKey || cookieKey === "") {
 		console.error("ERROR: cookieKey is empty or undefined!");
 		return;

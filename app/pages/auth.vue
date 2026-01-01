@@ -37,7 +37,8 @@ import Qrcode from "qrcode.vue";
 
 import { useVkStore } from "~/stores/vk";
 
-import type { TQrResponse, TCheckResponse } from "~~/server/utils/types";
+import type { TQrResponse } from "~~/server/utils/types";
+import type { TWebTokenResponse } from "~~/server/types/auth";
 
 definePageMeta({
 	layout: false
@@ -49,27 +50,46 @@ const authInit = useAuthInit();
 
 // Если пользователь уже авторизован, редиректим на главную
 if (vkStore.authenticated && vkStore.user) {
-	await navigateTo("/general");
+	await navigateTo("/");
 }
 
 const intervalId = ref<ReturnType<typeof setInterval> | null>(null);
 const expiresAt = ref<number | null>(null);
+const data = ref<TQrResponse | null>(null);
+const pending = ref(true);
+
 const isExpired = computed(() => {
 	if (!expiresAt.value) return false;
 	return Date.now() / 1000 >= expiresAt.value;
 });
 
-const { data, refresh, pending } = await useAsyncData<TQrResponse>("qr", async () => {
-	const response = await $fetch<TQrResponse>("/api/vk/qr");
+const loadQr = async () => {
+	pending.value = true;
+
+	const [error, response] = await $fetch<TQrResponse>("/api/vk/qr", {
+		credentials: "include"
+	}).then(data => [null, data]).catch(err => [err, null]);
+	
+	if (error) {
+		console.error("Failed to load QR code:", error);
+		pending.value = false;
+		return;
+	}
+	
+	data.value = response;
+
 	if (response?.expires_in) {
 		expiresAt.value = Math.floor(Date.now() / 1000) + response.expires_in;
 	}
-	return response;
-});
+
+	pending.value = false;
+};
 
 const refreshQr = async () => {
-	await refresh();
+	await loadQr();
 };
+
+await loadQr();
 
 const stopInterval = () => {
 	if (intervalId.value) {
@@ -79,21 +99,18 @@ const stopInterval = () => {
 };
 
 const check = async () => {
-	const checked = await $fetch<TCheckResponse["data"] | false>("/api/vk/qr-check").catch(() => {
-		return false;
-	});
+	const checked = await $fetch<TWebTokenResponse["data"] | false>("/api/vk/qr-check", {
+		credentials: "include"
+	}).catch(() => (false));
 
-	if (checked && typeof checked === "object" && "auth_info" in checked) {
-		const authData = checked as TCheckResponse["data"];
+	if (!checked) {
+		return;
+	}
 
-		if (authData.auth_info && authData.auth_info.user) {
-			stopInterval();
-			const initialized = await authInit.initialize();
-			
-			if (initialized) {
-				await navigateTo("/general");
-			}
-		}
+	stopInterval();
+	
+	if (await authInit.initialize()) {
+		await navigateTo("/");
 	}
 };
 
