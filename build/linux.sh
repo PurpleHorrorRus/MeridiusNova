@@ -27,6 +27,9 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
+# Remove existing server file or directory if it exists
+rm -rf server
+
 # Copy node binary to server
 node -e "require('fs').copyFileSync(process.execPath, 'server')"
 
