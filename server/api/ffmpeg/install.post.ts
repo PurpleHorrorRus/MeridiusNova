@@ -27,8 +27,23 @@ export default defineEventHandler(async (event) => {
 	const os = await import("os");
 	const path = await import("path");
 
-	const homeDir = os.homedir();
-	const ffmpegDir = path.join(homeDir, ".ffmpeg");
+	const getFFmpegDir = (): string => {
+		const platform = process.platform;
+		const homeDir = os.homedir();
+
+		if (platform === "win32") {
+			const appData = process.env.APPDATA || path.join(homeDir, "AppData", "Roaming");
+			return path.join(appData, "com.infinite.meridius", "ffmpeg");
+		} else if (platform === "darwin") {
+			const appData = path.join(homeDir, "Library", "Application Support", "com.infinite.meridius");
+			return path.join(appData, "ffmpeg");
+		} else {
+			const appData = process.env.XDG_DATA_HOME || path.join(homeDir, ".local", "share");
+			return path.join(appData, "com.infinite.meridius", "ffmpeg");
+		}
+	};
+
+	const ffmpegDir = getFFmpegDir();
 
 	if (!existsSync(ffmpegDir)) {
 		await mkdir(ffmpegDir, { recursive: true });
@@ -130,7 +145,9 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const ffmpegBuffer = ffmpegEntry.getData();
-	const ffmpegPath = path.join(ffmpegDir, "ffmpeg.exe");
+	const platform = process.platform;
+	const ffmpegExe = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+	const ffmpegPath = path.join(ffmpegDir, ffmpegExe);
 	await writeFile(ffmpegPath, ffmpegBuffer);
 
 	await unlink(zipPath);

@@ -3,11 +3,12 @@ import HTMLParser from "node-html-parser";
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
+import { IRequest, TPayload, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
 
 import type { EventHandlerRequest, H3Event } from "h3";
-import type { TSearchResult, TMore, THintsPayload, TPlaylist, TSearchCategory } from "~~/server/utils/types";
-import { IRequest, TPayload, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
+
 import type { TGetSectionParams } from "~~/server/utils/base";
+import type { TSearchResult, TMore, THintsPayload, TPlaylist, TSearchCategory } from "~~/server/utils/types";
 import type { TRawAudio, TAudio } from "~~/server/api/vk/audio/types";
 
 class SearchRequests extends BaseRequest implements IRequest {
@@ -258,15 +259,22 @@ class SearchRequests extends BaseRequest implements IRequest {
 			return undefined;
 		}
 
-		try {
-			const url = new URL(link, "https://vk.com");
+		const url = (() => {
+			try {
+				return new URL(link, "https://vk.com");
+			} catch {
+				return null;
+			}
+		})();
+
+		if (url) {
 			const typeParam = url.searchParams.get("type");
 			return typeParam || undefined;
-		} catch {
-			// Если link не полный URL, попробуем извлечь параметр напрямую
-			const match = link.match(/[?&]type=([^&]+)/);
-			return match ? match[1] : undefined;
 		}
+
+		// Если link не полный URL, попробуем извлечь параметр напрямую
+		const match = link.match(/[?&]type=([^&]+)/);
+		return match ? match[1] : undefined;
 	}
 
 	protected async builderPlaylists(html: string | string[]): Promise<TPlaylist[]> {
@@ -330,14 +338,18 @@ class SearchRequests extends BaseRequest implements IRequest {
 		for (const category of categories) {
 			if (category.type === "global_audios" && category.sectionId) {
 				// Для "Все треки" загружаем через load_catalog_section
-				try {
-					const categoryData = await this.loadCategoryBySectionId(category.sectionId);
+				const categoryData = await this.loadCategoryBySectionId(category.sectionId).catch(() => null);
+
+				if (categoryData) {
 					category.audios = categoryData.audios.filter(audio => audio.owner_id !== userId);
 					category.more = categoryData.more;
 
 					if (category.more && this.validateMore(category.more)) {
 						category.next = async () => {
-							const nextData = await this.loadCategoryBySectionId(category.sectionId!, category.more!.next_from);
+							const nextData = await this.loadCategoryBySectionId(category.sectionId!, category.more!.next_from).catch(() => null);
+							if (!nextData) {
+								return category;
+							}
 							const filteredNextAudios = nextData.audios.filter(audio => audio.owner_id !== userId);
 							return {
 								...category,
@@ -349,7 +361,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 							};
 						};
 					}
-				} catch (error) {
+				} else {
 					// Если не удалось загрузить, оставляем пустым
 					category.audios = [];
 				}

@@ -126,16 +126,152 @@
 				</div>
 			</div>
 		</div>
+
+		<div class="settings-section">
+			<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
+			<div class="settings-items">
+				<div class="settings-item">
+					<label class="settings-label">
+						<input
+							type="checkbox"
+							:checked="settings.general.server.enable"
+							@change="updateServerEnable"
+							class="settings-checkbox"
+						/>
+						{{ getString("settings.general.server.enable") }}
+					</label>
+				</div>
+
+				<div v-if="settings.general.server.enable" class="settings-item">
+					<label class="settings-label settings-label-block">{{ getString("settings.general.server.url") }}</label>
+					<div class="settings-input-group">
+						<input
+							:value="settings.general.server.url"
+							@input="updateServerUrl"
+							type="text"
+							class="settings-input"
+							:placeholder="getString('settings.general.server.urlPlaceholder')"
+						/>
+						<span class="settings-separator">:</span>
+						<input
+							:value="settings.general.server.port"
+							@input="updateServerPort"
+							type="number"
+							min="1"
+							max="65535"
+							class="settings-input settings-input-port"
+							:placeholder="getString('settings.general.server.portPlaceholder')"
+						/>
+						<button
+							@click="isServerAvailable === true ? connectToServer() : checkServer()"
+							:disabled="checking || !settings.general.server.url"
+							class="settings-button"
+							:class="{ 'settings-button-primary': isServerAvailable === true }"
+						>
+							<Icon
+								v-if="checking"
+								name="mdi:loading"
+								class="settings-button-icon spinning"
+							/>
+							{{
+								checking
+									? getString("settings.general.server.checking")
+									: isServerAvailable === true
+										? getString("settings.general.server.connect")
+										: getString("settings.general.server.check")
+							}}
+						</button>
+					</div>
+				</div>
+
+				<div v-if="settings.general.server.enable && serverError" class="settings-tip settings-error">
+					<Icon name="mdi:alert-circle" class="settings-tip-icon" />
+					{{ serverError }}
+				</div>
+
+				<div v-if="settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
+					<Icon name="mdi:check-circle" class="settings-tip-icon" />
+					{{ getString("settings.general.server.available") }}
+				</div>
+			</div>
+		</div>
+
+		<div class="settings-section">
+			<h2 class="section-title">{{ getString("settings.general.updates.title") }}</h2>
+			<div class="settings-items">
+				<div class="settings-item">
+					<label class="settings-label">{{ getString("settings.general.updates.currentVersion") }}</label>
+					<span class="settings-version">{{ currentVersion || "—" }}</span>
+				</div>
+
+				<div class="settings-item">
+					<label class="settings-label">{{ getString("settings.general.updates.channel") }}</label>
+					<select
+						:value="settings.general.updateChannel"
+						@change="updateChannel"
+						class="settings-select"
+					>
+						<option value="production">{{ getString("settings.general.updates.channelOptions.production") }}</option>
+						<option value="beta">{{ getString("settings.general.updates.channelOptions.beta") }}</option>
+						<option value="development">{{ getString("settings.general.updates.channelOptions.development") }}</option>
+					</select>
+				</div>
+
+				<div class="settings-item">
+					<button
+						@click="checkUpdates"
+						:disabled="checkingUpdates || !isTauri"
+						class="settings-button"
+					>
+						{{ checkingUpdates ? getString("settings.general.updates.checking") : getString("settings.general.updates.check") }}
+					</button>
+				</div>
+
+				<div v-if="updateError" class="settings-tip settings-error">
+					{{ updateError }}
+				</div>
+
+				<div v-if="updateAvailable && !updateError && updateInfo" class="settings-tip settings-success">
+					{{ getString("settings.general.updates.available") }}: {{ updateInfo.version }}
+				</div>
+
+				<div v-if="updateAvailable && !updateError" class="settings-item">
+					<button
+						@click="installUpdate"
+						class="settings-button settings-button-primary"
+					>
+						{{ getString("settings.general.updates.install") }}
+					</button>
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
+import { useServerCheck } from "~/composables/useServerCheck";
+import { useUpdater } from "~/composables/useUpdater";
+
 import { useSettingsStore } from "~/stores/settings";
 import { useStreamerStore } from "~/stores/streamer";
 
 const { getString, loadLanguage } = useStrings();
 const settingsStore = useSettingsStore();
 const streamerStore = useStreamerStore();
+const { checking, isAvailable: isServerAvailable, error: serverError, checkServer: checkServerHealth, reset: resetServerCheck } = useServerCheck();
+const {
+	currentVersion,
+	checking: checkingUpdates,
+	updateAvailable,
+	updateError,
+	updateInfo,
+	getUpdateChannel,
+	setUpdateChannel,
+	checkForUpdates,
+	installUpdate: installUpdateHandler
+} = useUpdater();
+
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const settings = computed(() => settingsStore.settings);
 
@@ -181,9 +317,10 @@ const updateDiscordEnable = async (event: Event) => {
 		const { useDiscordStore } = await import("~/stores/discord");
 		const discordStore = useDiscordStore();
 		await discordStore.connect();
-		const playerStore = await import("~/stores/player").then(m => m.usePlayerStore());
-		if (playerStore().song) {
-			await discordStore.setActivity(playerStore().song);
+		const { usePlayerStore } = await import("~/stores/player");
+		const playerStore = usePlayerStore();
+		if (playerStore.song) {
+			await discordStore.setActivity(playerStore.song);
 		}
 	} else if (import.meta.client && !target.checked) {
 		const { useDiscordStore } = await import("~/stores/discord");
@@ -260,6 +397,87 @@ const chooseStreamerPath = async () => {
 		}
 	}
 };
+
+const updateServerEnable = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	settingsStore.updateSection("general", {
+		server: {
+			...settings.value.general.server,
+			enable: target.checked
+		}
+	});
+};
+
+const updateServerUrl = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	settingsStore.updateSection("general", {
+		server: {
+			...settings.value.general.server,
+			url: target.value
+		}
+	});
+	resetServerCheck();
+};
+
+const updateServerPort = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	const port = parseInt(target.value, 10);
+	if (!isNaN(port) && port > 0 && port <= 65535) {
+		settingsStore.updateSection("general", {
+			server: {
+				...settings.value.general.server,
+				port: port
+			}
+		});
+		resetServerCheck();
+	}
+};
+
+const checkServer = async () => {
+	if (!settings.value.general.server.url) {
+		return;
+	}
+
+	let serverUrl = settings.value.general.server.url;
+	if (!serverUrl.includes("://")) {
+		serverUrl = `http://${serverUrl}`;
+	}
+
+	const url = new URL(serverUrl);
+	if (!url.port && settings.value.general.server.port) {
+		url.port = settings.value.general.server.port.toString();
+	}
+
+	await checkServerHealth(url.toString());
+};
+
+const connectToServer = async () => {
+	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+
+	if (isTauri && import.meta.client) {
+		await settingsStore.save();
+
+		const { invoke } = await import("@tauri-apps/api/core");
+		await invoke("restart_app");
+	}
+};
+
+const updateChannel = async (event: Event) => {
+	const target = event.target as HTMLSelectElement;
+	await setUpdateChannel(target.value as "production" | "beta" | "development");
+};
+
+const checkUpdates = async () => {
+	await checkForUpdates();
+};
+
+const installUpdate = async () => {
+	const success = await installUpdateHandler();
+	if (success) {
+		const { invoke } = await import("@tauri-apps/api/core");
+		await invoke("restart_app");
+	}
+};
 </script>
 
 <style scoped lang="scss">
@@ -295,7 +513,8 @@ const chooseStreamerPath = async () => {
 
 .settings-item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	flex-wrap: wrap;
 	gap: 16px;
 	padding: 16px;
 	background: var(--bg-secondary, #1a1a1a);
@@ -328,6 +547,11 @@ const chooseStreamerPath = async () => {
 	color: var(--text, #fff);
 	flex: 1;
 	line-height: 1.5;
+}
+
+.settings-label-block {
+	flex: 0 0 100%;
+	margin-bottom: 8px;
 }
 
 .settings-checkbox {
@@ -383,11 +607,33 @@ const chooseStreamerPath = async () => {
 	gap: 10px;
 	flex: 1;
 	min-width: 0;
+	align-items: center;
+	flex-wrap: nowrap;
+	width: 100%;
+}
 
-	@media (max-width: 768px) {
-		flex-direction: column;
-		width: 100%;
-	}
+.settings-separator {
+	color: var(--text-secondary, #b3b3b3);
+	font-size: 14px;
+	font-weight: 500;
+	flex-shrink: 0;
+}
+
+.settings-input-port {
+	width: 70px !important;
+	min-width: 70px !important;
+	max-width: 70px !important;
+	flex: 0 0 70px !important;
+}
+
+.settings-input-port::-webkit-outer-spin-button,
+.settings-input-port::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.settings-input-port[type=number] {
+	-moz-appearance: textfield;
 }
 
 .settings-input {
@@ -404,10 +650,7 @@ const chooseStreamerPath = async () => {
 	min-width: 0;
 	max-width: 100%;
 	box-sizing: border-box;
-
-	@media (max-width: 768px) {
-		width: 100%;
-	}
+	flex-shrink: 1;
 
 	&:hover {
 		border-color: var(--secondary, #e9003f);
@@ -425,6 +668,10 @@ const chooseStreamerPath = async () => {
 }
 
 .settings-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
 	padding: 10px 20px;
 	background: var(--secondary, #e9003f);
 	border: none;
@@ -435,6 +682,7 @@ const chooseStreamerPath = async () => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	white-space: nowrap;
+	flex-shrink: 0;
 
 	&:hover {
 		background: var(--primary-hover, #ff1a5c);
@@ -448,7 +696,9 @@ const chooseStreamerPath = async () => {
 }
 
 .settings-tip {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: 8px;
 	width: 100%;
 	margin: 4px 0 0 0;
 	padding: 12px 16px;
@@ -459,5 +709,50 @@ const chooseStreamerPath = async () => {
 	border: 1px solid var(--border, #282828);
 	border-radius: 8px;
 	border-left: 3px solid var(--secondary, #e9003f);
+}
+
+.settings-tip-icon {
+	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+}
+
+.settings-error {
+	color: #ff4444;
+	border-left-color: #ff4444;
+}
+
+.settings-success {
+	color: #44ff44;
+	border-left-color: #44ff44;
+}
+
+.settings-button-primary {
+	flex-shrink: 0;
+}
+
+.settings-button-icon {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+
+.spinning {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.settings-version {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-secondary, #b3b3b3);
 }
 </style>

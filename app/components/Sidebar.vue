@@ -339,11 +339,15 @@ const switchAccount = async (account: any) => {
 
 .search-input {
 	flex: 1;
+	min-width: 0;
 	background: transparent;
 	border: none;
 	outline: none;
 	color: var(--text, #fff);
 	font-size: 14px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 
 	@media (max-width: 1000px) {
 		font-size: 13px;

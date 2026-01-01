@@ -165,6 +165,7 @@ export type TAudio = {
 	}>;
 	chart?: TChartRaw;
 	raw?: TRawAudio;
+	addedSong?: TAudio; // Трек из библиотеки пользователя после добавления
 };
 
 export type TReloadAudiosPayload = [TRawAudio[] | "no_audios"];

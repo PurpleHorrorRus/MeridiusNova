@@ -1,14 +1,17 @@
-import { getPlaylistsRequestsInstance } from "../playlists/playlists";
-import { getAudioRequestsInstance } from "../audio/audio";
-import { downloadManager, type IPlaylistDownload } from "~~/server/utils/download-manager";
-import { AudioDownloader } from "~~/server/utils/audio-downloader";
-import type { TPlaylist } from "~~/server/utils/types";
-import type { TAudio } from "../audio/types";
-import path from "path";
-import fs from "fs-extra";
-import os from "os";
-import filenamify from "filenamify";
 import Promise from "bluebird";
+import fs from "fs-extra";
+import filenamify from "filenamify";
+import os from "os";
+import path from "path";
+
+import { getAudioRequestsInstance } from "../audio/audio";
+import { getPlaylistsRequestsInstance } from "../playlists/playlists";
+import { AudioDownloader } from "~~/server/utils/audio-downloader";
+import { downloadManager } from "~~/server/utils/download-manager";
+
+import type { TAudio } from "../audio/types";
+import type { IPlaylistDownload } from "~~/server/utils/download-manager";
+import type { TPlaylist } from "~~/server/utils/types";
 
 const getSettings = async (): Promise<{ downloadPath: string; template: string; ffmpegPath: string; concurrency: number }> => {
 	const settingsFile = path.resolve(os.homedir(), ".meridius", "settings.json");

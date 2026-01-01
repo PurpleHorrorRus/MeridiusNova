@@ -7,7 +7,7 @@
 		"frontendDist": "http://localhost:3001",
 		"devUrl": "http://localhost:3000",
 		"beforeDevCommand": "npm run dev",
-		"beforeBuildCommand": "npm run build:windows"
+		"beforeBuildCommand": ""
 	},
 	"app": {
 		"withGlobalTauri": true,
@@ -35,5 +35,13 @@
 		"externalBin": [
 			"binaries/server"
 		]
+	},
+	"plugins": {
+		"updater": {
+			"pubkey": "{{TAURI_PUBLIC_KEY}}",
+			"endpoints": [
+				"https://api.github.com/repos/{{REPO_OWNER}}/{{REPO_NAME}}/releases/latest"
+			]
+		}
 	}
 }

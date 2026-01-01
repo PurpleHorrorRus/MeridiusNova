@@ -31,16 +31,17 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-import { useModalStore } from "~/stores/modal";
-import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
+import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
 import SettingsAppearance from "~/components/Settings/Tabs/Appearance.vue";
-import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
-import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
 import SettingsDownloads from "~/components/Settings/Tabs/Downloads.vue";
 import SettingsEqualizer from "~/components/Settings/Tabs/Equalizer.vue";
+import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
 import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
-import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
+import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
+import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
+
+import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
 
 const { getString, loadLanguage } = useStrings();
 const settingsStore = useSettingsStore();

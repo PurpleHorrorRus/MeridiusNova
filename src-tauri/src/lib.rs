@@ -4,6 +4,11 @@ use tauri_plugin_shell::ShellExt;
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
+mod server_check;
+
+#[cfg(not(debug_assertions))]
+use server_check::check_from_settings;
+
 #[cfg(not(debug_assertions))]
 struct ServerState {
 	child: std::sync::Arc<std::sync::Mutex<Option<tauri_plugin_shell::process::CommandChild>>>,
@@ -62,97 +67,71 @@ fn set_startup(enable: bool) -> Result<(), String> {
 	Ok(())
 }
 
-#[derive(serde::Serialize)]
-struct AudioDevice {
-	device_id: String,
-	label: String,
+#[tauri::command]
+fn check_remote_server(url: String) -> Result<bool, String> {
+	use std::time::Duration;
+	
+	let healthcheck_url = if url.ends_with('/') {
+		format!("{}api/healthcheck", url)
+	} else {
+		format!("{}/api/healthcheck", url)
+	};
+
+	let client = reqwest::blocking::Client::builder()
+		.timeout(Duration::from_secs(5))
+		.build()
+		.map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+	match client.get(&healthcheck_url)
+		.header("Accept", "application/json")
+		.send() {
+		Ok(response) => {
+			if response.status().is_success() {
+				match response.json::<serde_json::Value>() {
+					Ok(json) => {
+						if let Some(status) = json.get("status") {
+							Ok(status.as_str() == Some("ok"))
+						} else {
+							Ok(false)
+						}
+					},
+					Err(_) => Ok(false)
+				}
+			} else {
+				Ok(false)
+			}
+		},
+		Err(_) => Ok(false)
+	}
 }
 
 #[tauri::command]
-fn get_audio_output_devices() -> Result<Vec<AudioDevice>, String> {
+fn restart_app(app: tauri::AppHandle) -> Result<(), String> {
+	use std::process::Command;
+	use std::time::Duration;
+	
+	let exe_path = std::env::current_exe()
+		.map_err(|e| format!("Failed to get exe path: {}", e))?;
+
 	#[cfg(target_os = "windows")]
 	{
-		use std::process::Command;
-		
-		let ps_script = r#"
-			Add-Type -TypeDefinition @"
-				using System;
-				using System.Runtime.InteropServices;
-				public class AudioDevice {
-					[DllImport("winmm.dll")]
-					public static extern int waveOutGetNumDevs();
-					[DllImport("winmm.dll", CharSet = CharSet.Auto)]
-					public static extern int waveOutGetDevCaps(int deviceID, ref WAVEOUTCAPS caps, int size);
-					[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-					public struct WAVEOUTCAPS {
-						public ushort wMid;
-						public ushort wPid;
-						public uint vDriverVersion;
-						[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-						public string szPname;
-						public uint dwFormats;
-						public ushort wChannels;
-						public ushort wReserved1;
-						public uint dwSupport;
-					}
-				}
-"@
-			$devices = @()
-			$deviceCount = [AudioDevice]::waveOutGetNumDevs()
-			for ($i = 0; $i -lt $deviceCount; $i++) {
-				$caps = New-Object AudioDevice+WAVEOUTCAPS
-				$result = [AudioDevice]::waveOutGetDevCaps($i, [ref]$caps, [System.Runtime.InteropServices.Marshal]::SizeOf($caps))
-				if ($result -eq 0) {
-					$devices += [PSCustomObject]@{
-						DeviceId = $i.ToString()
-						Label = $caps.szPname.Trim()
-					}
-				}
-			}
-			$devices | ConvertTo-Json -Compress
-		"#;
-
-		let output = Command::new("powershell")
-			.args(&["-NoProfile", "-Command", ps_script])
-			.output()
-			.map_err(|e| format!("Failed to execute PowerShell: {}", e))?;
-
-		if !output.status.success() {
-			let error_msg = String::from_utf8_lossy(&output.stderr);
-			return Err(format!("PowerShell error: {}", error_msg));
-		}
-
-		let output_str = String::from_utf8_lossy(&output.stdout);
-		
-		if output_str.trim().is_empty() {
-			return Ok(vec![]);
-		}
-
-		let devices: Vec<serde_json::Value> = serde_json::from_str(&output_str)
-			.map_err(|e| format!("Failed to parse JSON: {}", e))?;
-
-		let mut result: Vec<AudioDevice> = devices
-			.into_iter()
-			.filter_map(|device| {
-				let device_id = device.get("DeviceId")?.as_str()?.to_string();
-				let label = device.get("Label")?.as_str()?.to_string();
-				Some(AudioDevice { device_id, label })
-			})
-			.collect();
-
-		result.insert(0, AudioDevice {
-			device_id: "default".to_string(),
-			label: "Устройство по умолчанию".to_string(),
-		});
-
-		Ok(result)
+		Command::new("cmd")
+			.args(&["/C", "start", "", &exe_path.to_string_lossy()])
+			.spawn()
+			.map_err(|e| format!("Failed to restart app: {}", e))?;
 	}
 
 	#[cfg(not(target_os = "windows"))]
 	{
-		// TODO: Implement for other platforms
-		Ok(vec![])
+		Command::new(&exe_path)
+			.spawn()
+			.map_err(|e| format!("Failed to restart app: {}", e))?;
 	}
+
+	std::thread::sleep(Duration::from_millis(500));
+	app.exit(0);
+	
+	Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -166,7 +145,9 @@ pub fn run() {
 		.plugin(tauri_plugin_dialog::init())
 		.plugin(tauri_plugin_fs::init())
 		.plugin(tauri_plugin_http::init())
-		.invoke_handler(tauri::generate_handler![set_startup, get_audio_output_devices])
+		.plugin(tauri_plugin_updater::Builder::new().build())
+		.plugin(tauri_plugin_os::init())
+		.invoke_handler(tauri::generate_handler![set_startup, check_remote_server, restart_app])
 		.setup(|app| {
 			#[cfg(desktop)]
 			{
@@ -178,24 +159,50 @@ pub fn run() {
 				3001
 			};
 
-			#[cfg(not(debug_assertions))]
-			{
-				let (_rx, child) = app
-					.shell()
-					.sidecar("server")
-					.unwrap()
-					.arg(port.to_string())
-					.spawn()
-					.expect("Failed to spawn server sidecar");
+			let (use_remote_server, remote_url) = {
+				#[cfg(not(debug_assertions))]
+				{
+					let config = if let Ok(store) = app.store(".settings.dat") {
+						store.get("settings").and_then(|v| check_from_settings(v))
+					} else {
+						None
+					};
 
-				app.manage(ServerState {
-					child: std::sync::Arc::new(std::sync::Mutex::new(Some(child)))
-				});
+					match config {
+						Some(config) if config.use_remote => {
+							(config.use_remote, config.remote_url)
+						},
+						_ => {
+							let (_rx, child) = app
+								.shell()
+								.sidecar("server")
+								.unwrap()
+								.arg(port.to_string())
+								.spawn()
+								.expect("Failed to spawn server sidecar");
 
-				std::thread::sleep(std::time::Duration::from_secs(2));
-			}
+							app.manage(ServerState {
+								child: std::sync::Arc::new(std::sync::Mutex::new(Some(child)))
+							});
 
-			let url = format!("http://localhost:{}", port);
+							std::thread::sleep(std::time::Duration::from_secs(2));
+
+							(false, String::new())
+						}
+					}
+				}
+
+				#[cfg(debug_assertions)]
+				{
+					(false, String::new())
+				}
+			};
+
+			let url = if use_remote_server {
+				remote_url
+			} else {
+				format!("http://localhost:{}", port)
+			};
 
 		let (width, height) = if let Ok(store) = app.store("window-state.json") {
 			let saved_width = store.get("window_width")

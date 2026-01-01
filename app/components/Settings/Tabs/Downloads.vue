@@ -44,10 +44,10 @@
 					<div class="settings-input-group">
 						<input
 							:value="settings.download.path"
-							@input="updateDownloadPath"
 							type="text"
 							class="settings-input"
 							:placeholder="getString('settings.downloads.folderPlaceholder')"
+							readonly
 						/>
 						<button
 							@click="chooseDownloadPath"
@@ -112,11 +112,6 @@ const installFFmpeg = async () => {
 const updateDownloadEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	settingsStore.updateSection("download", { enable: target.checked });
-};
-
-const updateDownloadPath = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { path: target.value });
 };
 
 const chooseDownloadPath = async () => {

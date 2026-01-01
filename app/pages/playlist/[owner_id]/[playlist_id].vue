@@ -139,7 +139,7 @@ const audios = computed(() => {
 
 	// Fallback: используем треки из audio endpoint
 	if (data.value && data.value.audios) {
-	return data.value.audios;
+		return data.value.audios;
 	}
 
 	return [];
@@ -147,6 +147,13 @@ const audios = computed(() => {
 
 // Предоставляем контекст треков для компонентов Song
 provideSongsContext(audios);
+
+// Предоставляем доступ к data для обновлений
+// ВАЖНО: предоставляем сам массив audios как computed, а не data
+provide("playlistAudiosComputed", audios);
+provide("playlistData", data);
+// Также предоставляем playlistData для обновления list
+provide("playlistInfo", playlistData);
 
 const hasMore = computed(() => {
 	if (!data.value || !data.value.more) {

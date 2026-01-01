@@ -49,6 +49,27 @@
 		},
 		"opener:default",
 		"opener:allow-open-path",
-		"opener:allow-reveal-item-in-dir"
+		"opener:allow-reveal-item-in-dir",
+		"dialog:default",
+		"os:allow-platform",
+		"fs:allow-exists",
+		"fs:allow-read-file",
+		"fs:allow-read-dir",
+		"fs:allow-write-file",
+		"fs:allow-create",
+		"fs:allow-remove",
+		"fs:allow-rename",
+		"fs:allow-copy-file",
+		"fs:allow-read-text-file",
+		"fs:allow-write-text-file",
+		{
+			"identifier": "fs:scope",
+			"allow": [
+				"$APPDATA/**",
+				"$APPCACHE/**",
+				"$APPLOCALDATA/**",
+				"$HOME/.ffmpeg/**"
+			]
+		}
 	]
 }

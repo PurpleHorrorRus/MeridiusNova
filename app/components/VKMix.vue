@@ -39,10 +39,12 @@
 </template>
 
 <script setup lang="ts">
-import { usePlayerStore } from "~/stores/player";
-import { usePlaylistStore } from "~/stores/playlist";
 import { useAudio } from "~/composables/useAudio";
 import { useQueue } from "~/composables/useQueue";
+
+import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+
 import type { TPlaylist, TVkMixResponse } from "~~/server/utils/types";
 
 const { getString } = useStrings();

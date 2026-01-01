@@ -63,6 +63,9 @@ const audios = computed(() => {
 
 provideSongsContext(audios);
 
+// Предоставляем доступ к data для обновлений
+provide("collectionData", data);
+
 const hasMore = computed(() => {
 	if (!data.value || !data.value.more) {
 		return false;

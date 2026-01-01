@@ -1,10 +1,11 @@
 import { Client } from "@xhayper/discord-rpc";
 import { ActivityType } from "discord-api-types/v10";
 
-import type { TAudio } from "~~/server/api/vk/audio/types";
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 export type TDiscordActivity = {
 	type: ActivityType;

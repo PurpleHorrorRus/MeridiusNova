@@ -1,4 +1,5 @@
 import { useVkStore } from "~/stores/vk";
+
 import type { TAudio } from "~~/server/utils/types";
 
 export const useSongProps = () => {
@@ -7,12 +8,12 @@ export const useSongProps = () => {
 	const generateSongProps = (song: TAudio) => {
 		const userId = vkStore.user_id;
 		const isRestricted = Boolean(song.is_restriction);
-		const isAdded = Boolean(song.added);
+		const isAdded = Boolean(song.addedSong) || song.owner_id === userId;
 		const canDelete = Boolean(song.can_delete);
 		const canAdd = Boolean(song.can_add);
 		const isMySong = song.owner_id === userId;
 
-		return {
+		const result = {
 			canAdd: !isAdded && !isRestricted && !isMySong && canAdd,
 			canDelete: isAdded && canDelete,
 			canAddPlaylist: !isRestricted,
@@ -21,6 +22,8 @@ export const useSongProps = () => {
 			hasLyrics: Boolean(song.lyrics),
 			isRestricted
 		};
+		
+		return result;
 	};
 
 	return {

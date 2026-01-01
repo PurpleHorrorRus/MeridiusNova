@@ -66,19 +66,23 @@ const loadData = async (linkParam?: string, nextFromParam?: string) => {
 
 	const linkToUse = linkParam || link.value;
 
-	try {
-		const params: Record<string, string> = { link: linkToUse };
-		if (nextFromParam) {
-			params.next_from = nextFromParam;
-		}
+	const params: Record<string, string> = { link: linkToUse };
+	if (nextFromParam) {
+		params.next_from = nextFromParam;
+	}
 
-		const response = await $fetch<{
-			artists: TArtist[];
-			more: TMore | null;
-		}>("/api/vk/search/category/artists", {
-			params
-		});
+	const response = await $fetch<{
+		artists: TArtist[];
+		more: TMore | null;
+	}>("/api/vk/search/category/artists", {
+		params
+	}).catch((err: Error) => {
+		error.value = err.message || "Ошибка загрузки исполнителей";
+		console.error("Failed to load artists", err);
+		return null;
+	});
 
+	if (response) {
 		if (nextFromParam) {
 			artists.value.push(...response.artists);
 		} else {
@@ -87,13 +91,10 @@ const loadData = async (linkParam?: string, nextFromParam?: string) => {
 
 		more.value = response.more;
 		error.value = null;
-	} catch (err) {
-		error.value = err instanceof Error ? err.message : "Ошибка загрузки исполнителей";
-		console.error("Failed to load artists", err);
-	} finally {
-		loading.value = false;
-		loadingMore.value = false;
 	}
+
+	loading.value = false;
+	loadingMore.value = false;
 };
 
 const loadMore = async () => {

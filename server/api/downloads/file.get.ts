@@ -1,6 +1,7 @@
-import { downloadManager } from "~~/server/utils/download-manager";
 import fs from "fs-extra";
 import path from "path";
+
+import { downloadManager } from "~~/server/utils/download-manager";
 
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event);

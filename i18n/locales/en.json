@@ -7,6 +7,11 @@
 		"radio": "Radio",
 		"settings": "Settings"
 	},
+	"titlebar": {
+		"update": {
+			"available": "Update Available"
+		}
+	},
 	"general": {
 		"loading": "Loading...",
 		"error": "Error",
@@ -72,6 +77,32 @@
 				"path": "Path",
 				"pathPlaceholder": "Select folder for saving",
 				"choose": "Choose"
+			},
+			"server": {
+				"title": "Remote Server",
+				"enable": "Use remote server",
+				"url": "Server URL",
+				"urlPlaceholder": "http://example.com",
+				"port": "Port",
+				"portPlaceholder": "31415",
+				"check": "Check",
+				"checking": "Checking...",
+				"available": "Server is available",
+				"connect": "Connect"
+			},
+			"updates": {
+				"title": "Updates",
+				"currentVersion": "Current Version",
+				"channel": "Update Channel",
+				"channelOptions": {
+					"production": "Production",
+					"beta": "Beta",
+					"development": "Development"
+				},
+				"check": "Check for Updates",
+				"checking": "Checking for updates...",
+				"available": "Update available",
+				"install": "Install Update"
 			}
 		},
 		"appearance": {

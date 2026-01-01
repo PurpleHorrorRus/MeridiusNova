@@ -2,10 +2,11 @@ import HTMLParser from "node-html-parser";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
+import { IRequest, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
 
 import type { EventHandlerRequest, H3Event } from "h3";
+
 import type { TArtist, TMore, TPlaylistCollection } from "~~/server/utils/types";
-import { IRequest, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
 
 class ArtistsRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
@@ -19,11 +20,10 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 		let data: TRawResponse<TGetCatalogSectionPayload> | null = null;
 		let pageHtml: string | null = null;
 
-		try {
-			data = await this.loadCatalogSectionFromPage(`/artist/${artistPath}`);
-		} catch (error) {
+		data = await this.loadCatalogSectionFromPage(`/artist/${artistPath}`).catch((error: Error) => {
 			console.error("Failed to load catalog section for artist:", artist, error);
-		}
+			return null;
+		});
 
 		let html = "";
 
@@ -35,8 +35,12 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 		}
 
 		if (!html || html.trim() === "") {
-			try {
-				pageHtml = await this.request<string>({}, `/artist/${artistPath}`);
+			pageHtml = await this.request<string>({}, `/artist/${artistPath}`).catch((error: Error) => {
+				console.error("Failed to load artist page directly:", artist, error);
+				return null;
+			});
+
+			if (pageHtml) {
 				const pageRoot = HTMLParser.parse(pageHtml);
 				const artistBlock = pageRoot.querySelector(".MusicAuthor_block");
 				
@@ -48,8 +52,6 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 						html = catalogBlock.innerHTML;
 					}
 				}
-			} catch (error) {
-				console.error("Failed to load artist page directly:", artist, error);
 			}
 		}
 

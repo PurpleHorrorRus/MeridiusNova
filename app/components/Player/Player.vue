@@ -24,7 +24,6 @@
 			<div class="player-left">
 				<div class="cover-wrapper">
 					<img
-						v-if="currentSong.cover || currentSong.coverUrl_p"
 						:src="currentSong.cover || currentSong.coverUrl_p || '/no-cover.webp'"
 						:alt="currentSong.title"
 						class="cover-image"
@@ -180,7 +179,6 @@
 			<div class="compact-track-info">
 				<div class="compact-cover">
 					<img
-						v-if="currentSong.cover || currentSong.coverUrl_p"
 						:src="currentSong.cover || currentSong.coverUrl_p || '/no-cover.webp'"
 						:alt="currentSong.title"
 						class="compact-cover-image"
@@ -297,6 +295,7 @@ const {
 const { addAudio, deleteAudio } = useAudioActions();
 const { generateSongProps } = useSongProps();
 const { removeSongFromPlaylist } = usePlaylistActions();
+const { updateTrackInAllPlaces } = useUpdateTrack();
 const vkStore = useVkStore();
 
 const {
@@ -311,6 +310,7 @@ const { getString } = useStrings();
 const t = getString;
 
 const playlistStore = usePlaylistStore();
+const songsContext = useSongsContext();
 
 const showTooltip = ref(false);
 const tooltipTime = ref(0);
@@ -574,7 +574,25 @@ const handleAdd = async () => {
 		return;
 	}
 
-	await addAudio(currentSong.value).catch(console.error);
+	// Для API используем оригинальный owner_id (не user_id, если трек уже был добавлен)
+	const audioForApi = currentSong.value.owner_id !== vkStore.user_id
+		? currentSong.value
+		: { ...currentSong.value, owner_id: (currentSong.value as any).original_owner_id || currentSong.value.owner_id, full_id: `${(currentSong.value as any).original_owner_id || currentSong.value.owner_id}_${currentSong.value.id}` };
+
+	const updatedSong = await addAudio(audioForApi).catch(console.error);
+	
+	if (updatedSong) {
+		// Обновляем оригинальный трек, сохраняя полный объект трека из библиотеки в addedSong
+		// НЕ меняем owner_id и full_id, чтобы трек не потерялся
+		const updatedTrack = {
+			...currentSong.value,
+			addedSong: updatedSong,
+			can_add: updatedSong.can_add,
+			can_delete: updatedSong.can_delete
+		};
+		
+		updateTrackInAllPlaces(currentSong.value.id, () => updatedTrack, false);
+	}
 };
 
 const handleDelete = async () => {
@@ -585,11 +603,14 @@ const handleDelete = async () => {
 	const playlist = currentPlaylist.value;
 	
 	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0, плейлист принадлежит пользователю и нет addedSong - удаляем из плейлиста
+	// Если трек добавлен в библиотеку (addedSong !== undefined), удаляем из библиотеки
+	// Если трек в плейлисте пользователя (playlist_id >= 0, owner_id === user_id) и не в библиотеке - удаляем из плейлиста
+	const isInLibrary = Boolean(currentSong.value.addedSong) || currentSong.value.owner_id === vkStore.user_id;
 	const shouldRemoveFromPlaylist = playlist 
 		&& playlist.playlist_id >= 0 
 		&& playlist.owner_id === vkStore.user_id
-		&& !(currentSong.value as any).addedSong;
+		&& !isInLibrary
+		&& !currentSong.value.addedSong;
 	
 	let result;
 	
@@ -603,9 +624,38 @@ const handleDelete = async () => {
 				playlist.size = Math.max(0, (playlist.size || 0) - 1);
 			}
 		}
-	} else {
-		// Удаляем из библиотеки
-		result = await deleteAudio(currentSong.value).catch(console.error);
+	} else if (isInLibrary) {
+		// Удаляем из библиотеки, используя трек из addedSong
+		const songToDelete = currentSong.value.addedSong || currentSong.value;
+		
+		result = await deleteAudio(songToDelete).catch(console.error);
+		
+		if (result?.success) {
+			// Проверяем, находимся ли мы на странице библиотеки пользователя
+			// Важно: playlist - это ТЕКУЩИЙ ПЛЕЙЛИСТ ВОСПРОИЗВЕДЕНИЯ, а не плейлист на странице!
+			// Поэтому проверяем ТОЛЬКО route.path, а НЕ playlist
+			// Библиотека это:
+			// 1. /collection (страница библиотеки)
+			// 2. /playlist/USER_ID/-1 (страница плейлиста с playlist_id === -1)
+			const route = useRoute();
+			const isUserLibraryPage = route.path.startsWith('/collection')
+				|| route.path.match(/\/playlist\/\d+\/-1$/);
+			
+			if (isUserLibraryPage) {
+				// Если это страница библиотеки, удаляем трек из списка
+				updateTrackInAllPlaces(currentSong.value.id, () => null, true);
+			} else {
+				// Удаляем addedSong и обновляем флаги, НЕ меняя owner_id и full_id
+				updateTrackInAllPlaces(currentSong.value.id, (track) => {
+					const { addedSong, ...trackWithoutAddedSong } = track;
+					return {
+						...trackWithoutAddedSong,
+						can_add: true,
+						can_delete: false
+					};
+				}, false);
+			}
+		}
 	}
 	
 	if (result?.success) {
@@ -1215,12 +1265,12 @@ const handleDelete = async () => {
 	}
 
 	@media (max-width: 1400px) {
-		width: 240px;
+		width: 300px;
 		gap: 12px;
 	}
 
 	@media (max-width: 1200px) {
-		width: 200px;
+		width: 280px;
 		gap: 10px;
 	}
 
@@ -1230,7 +1280,7 @@ const handleDelete = async () => {
 	}
 
 	@media (min-width: 801px) and (max-width: 1000px) {
-		width: 200px;
+		width: 280px;
 		gap: 10px;
 	}
 }
@@ -1366,21 +1416,6 @@ const handleDelete = async () => {
 	align-items: center;
 	gap: 8px;
 	width: 140px;
-
-	@media (max-width: 1200px) {
-		width: 120px;
-		gap: 6px;
-	}
-
-	@media (max-width: 1000px) {
-		width: 100px;
-		gap: 4px;
-	}
-
-	@media (min-width: 801px) and (max-width: 1000px) {
-		width: 140px;
-		gap: 8px;
-	}
 }
 
 .btn-mute {

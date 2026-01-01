@@ -19,6 +19,7 @@ const defaultSettings: TSettings = {
 		lang: "ru",
 		logging: true,
 		beta: false,
+		updateChannel: "production",
 		discord: {
 			enable: false,
 			timeline: false,
@@ -31,6 +32,11 @@ const defaultSettings: TSettings = {
 		proxy: {
 			enable: false,
 			url: ""
+		},
+		server: {
+			enable: false,
+			url: "",
+			port: 31415
 		}
 	},
 

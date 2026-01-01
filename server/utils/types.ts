@@ -430,6 +430,7 @@ export type TSettings = {
 		lang: string;
 		logging: boolean;
 		beta: boolean;
+		updateChannel: "production" | "beta" | "development";
 		discord: {
 			enable: boolean;
 			timeline: boolean;
@@ -442,6 +443,11 @@ export type TSettings = {
 		proxy: {
 			enable: boolean;
 			url: string;
+		};
+		server: {
+			enable: boolean;
+			url: string;
+			port: number;
 		};
 	};
 	player: {

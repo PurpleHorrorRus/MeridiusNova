@@ -1,14 +1,15 @@
 import path from "node:path";
 import os from "node:os";
 import fs from "fs-extra";
-
 import { CookieJar } from "tough-cookie";
 import FileCookieStore from "tough-cookie-file-store";
+
+import { ERequestMethod } from "./types";
 
 import type { UserSession } from "#auth-utils";
 import type { H3Event, EventHandlerRequest } from "h3";
 
-import { ERequestMethod, type TFetchCorsRequestInit } from "./types";
+import type { TFetchCorsRequestInit } from "./types";
 import type { TWebTokenResponse } from "../types/auth";
 
 export type TRequestOptions = {
@@ -177,43 +178,40 @@ export class Http {
 
 			// Пытаемся распарсить JSON с обработкой ошибок
 			let parsed: T | null = null;
-			try {
-				parsed = JSON.parse(decodedFixed) as T;
-			} catch (error) {
+			parsed = await Promise.resolve(JSON.parse(decodedFixed) as T).catch(async (error: Error) => {
 				// Если парсинг не удался, пытаемся исправить проблемные символы
-				try {
-					// Простое исправление: находим позицию ошибки и пытаемся исправить
-					const errorMessage = error instanceof Error ? error.message : String(error);
-					const positionMatch = errorMessage.match(/position (\d+)/);
+				const errorMessage = error.message;
+				const positionMatch = errorMessage.match(/position (\d+)/);
+				
+				if (positionMatch) {
+					const errorPosition = Number(positionMatch[1]);
+					// Находим проблемный символ и пытаемся его экранировать
+					const beforeError = decodedFixed.substring(0, errorPosition);
+					const atError = decodedFixed[errorPosition];
+					const afterError = decodedFixed.substring(errorPosition + 1);
 					
-					if (positionMatch) {
-						const errorPosition = Number(positionMatch[1]);
-						// Находим проблемный символ и пытаемся его экранировать
-						const beforeError = decodedFixed.substring(0, errorPosition);
-						const atError = decodedFixed[errorPosition];
-						const afterError = decodedFixed.substring(errorPosition + 1);
-						
-						// Если это неэкранированный управляющий символ, экранируем его
-						let fixed = decodedFixed;
-						if (atError && atError.charCodeAt(0) < 32 && atError !== '\n' && atError !== '\r' && atError !== '\t') {
-							// Заменяем проблемный символ на экранированную версию
-							fixed = beforeError + `\\u${atError.charCodeAt(0).toString(16).padStart(4, "0")}` + afterError;
-						} else if (atError === '"' && !beforeError.endsWith('\\')) {
-							// Неэкранированная кавычка внутри строки
-							fixed = beforeError + '\\"' + afterError;
-						}
-						
-						parsed = JSON.parse(fixed) as T;
-					} else {
-						// Если не удалось найти позицию, пробуем общее исправление
-						throw error;
+					// Если это неэкранированный управляющий символ, экранируем его
+					let fixed = decodedFixed;
+					if (atError && atError.charCodeAt(0) < 32 && atError !== '\n' && atError !== '\r' && atError !== '\t') {
+						// Заменяем проблемный символ на экранированную версию
+						fixed = beforeError + `\\u${atError.charCodeAt(0).toString(16).padStart(4, "0")}` + afterError;
+					} else if (atError === '"' && !beforeError.endsWith('\\')) {
+						// Неэкранированная кавычка внутри строки
+						fixed = beforeError + '\\"' + afterError;
 					}
-				} catch (parseError) {
-					// Если и это не помогло, логируем ошибку и возвращаем исходный текст
-					console.warn("Failed to parse JSON:", parseError instanceof Error ? parseError.message : String(parseError));
-					console.warn("JSON snippet (first 500 chars):", decodedFixed.substring(0, 500));
+					
+					return await Promise.resolve(JSON.parse(fixed) as T).catch((parseError: Error) => {
+						// Если и это не помогло, логируем ошибку
+						console.warn("Failed to parse JSON:", parseError.message);
+						console.warn("JSON snippet (first 500 chars):", decodedFixed.substring(0, 500));
+						return null;
+					});
 				}
-			}
+
+				// Если не удалось найти позицию, возвращаем null
+				return null;
+			});
+
 			return (parsed ?? decodedFixed) as T;
 		}
 
@@ -252,16 +250,35 @@ export class Http {
 	}
 
 	protected parseResponse<T extends string | Record<string, any> | any[]>(text: string): T {
-		try {
-			return JSON.parse(text) as T;
-		} catch {
+		const parseJson = (str: string): T | null => {
 			try {
-				const decoded = atob(text);
-				return JSON.parse(decoded) as T;
+				return JSON.parse(str) as T;
 			} catch {
-				return text as unknown as T;
+				return null;
+			}
+		};
+
+		const parsed = parseJson(text);
+		if (parsed !== null) {
+			return parsed;
+		}
+
+		const decoded = (() => {
+			try {
+				return atob(text);
+			} catch {
+				return null;
+			}
+		})();
+
+		if (decoded) {
+			const decodedParsed = parseJson(decoded);
+			if (decodedParsed !== null) {
+				return decodedParsed;
 			}
 		}
+
+		return text as unknown as T;
 	}
 
 	protected getDeviceId(length = 21) {

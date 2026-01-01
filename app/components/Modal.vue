@@ -34,12 +34,13 @@
 </template>
 
 <script setup lang="ts">
-import { useModalStore } from "~/stores/modal";
 import ModalConfirm from "~/components/ModalConfirm.vue";
-import ModalSettings from "~/components/ModalSettings.vue";
 import ModalEditTrack from "~/components/Modals/ModalEditTrack.vue";
 import ModalLyrics from "~/components/Modals/ModalLyrics.vue";
+import ModalSettings from "~/components/ModalSettings.vue";
 import ModalShareAudio from "~/components/Modals/ModalShareAudio.vue";
+
+import { useModalStore } from "~/stores/modal";
 
 const modalStore = useModalStore();
 

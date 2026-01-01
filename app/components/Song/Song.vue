@@ -58,11 +58,10 @@
 import moment from "moment";
 import { storeToRefs } from "pinia";
 
-// useAudio is auto-imported from app/composables
-
-import type { TAudio } from "~~/server/api/vk/audio/types";
 import SongActions from "~/components/SongActions.vue";
 import SongContextMenu from "~/components/SongContextMenu.vue";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{
 	audio: TAudio;

@@ -1,4 +1,6 @@
-import { ref, onMounted, onBeforeUnmount, type Ref } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
+
+import type { Ref } from "vue";
 
 export interface UseScrollLoadOptions {
 	threshold?: number;

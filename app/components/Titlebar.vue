@@ -32,6 +32,11 @@
 		<div id="titlebar-right">
 			<Downloads />
 
+			<div v-if="updateAvailable" class="titlebar-update-notification" @click="openSettings">
+				<Icon name="mdi:download" size="16" />
+				<span class="update-text">{{ getString("titlebar.update.available") }}</span>
+			</div>
+
 			<div class="titlebar-right__button" @click="handleMinimize">
 				<Icon name="bx:minus" />
 			</div>
@@ -49,16 +54,30 @@
 
 <script setup lang="ts">
 import Downloads from "./Downloads/Downloads.vue";
+import { useUpdater } from "~/composables/useUpdater";
+import { useModal } from "~/composables/useModal";
 
 const { getString } = useStrings();
+const { openSettings } = useModal();
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const appWindow = ref<any>(null);
+const { updateAvailable, checkForUpdates } = useUpdater();
 
 onMounted(async () => {
 	if (isTauri && import.meta.client) {
 		const { getCurrentWindow } = await import("@tauri-apps/api/window");
 		appWindow.value = getCurrentWindow();
+
+		await checkForUpdates();
+
+		const checkInterval = setInterval(async () => {
+			await checkForUpdates();
+		}, 10 * 60 * 1000);
+
+		onUnmounted(() => {
+			clearInterval(checkInterval);
+		});
 	}
 });
 
@@ -181,6 +200,36 @@ const handleClose = async () => {
 		justify-content: flex-end;
 		height: 100%;
 		flex-shrink: 0;
+		gap: 8px;
+
+		.titlebar-update-notification {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 12px;
+			background: var(--secondary, #e9003f);
+			border-radius: 4px;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text, #fff);
+
+			&:hover {
+				background: var(--primary-hover, #ff1a5c);
+				transform: translateY(-1px);
+			}
+
+			.update-text {
+				white-space: nowrap;
+			}
+
+			@media (max-width: 600px) {
+				.update-text {
+					display: none;
+				}
+			}
+		}
 
 		.titlebar-right__button {
 			display: flex;

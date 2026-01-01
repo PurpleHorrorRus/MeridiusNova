@@ -1,12 +1,13 @@
 import Hls from "hls.js";
 
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TPlayerState } from "~~/server/utils/types";
-import { usePlaylistStore } from "./playlist";
-import { useDiscordStore } from "./discord";
-import { useSettingsStore } from "./settings";
 import { CrossFade } from "./player/nodes/crossfade";
 import { Normalizer } from "./player/nodes/normalizer";
+import { useDiscordStore } from "./discord";
+import { usePlaylistStore } from "./playlist";
+import { useSettingsStore } from "./settings";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
+import type { TPlayerState } from "~~/server/utils/types";
 
 interface ControllerData {
 	controller: HTMLAudioElement | null;

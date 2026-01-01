@@ -1,7 +1,8 @@
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
-import { usePlayerStore } from "~/stores/player";
+
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlaylist, TVkMixResponse } from "~~/server/utils/types";

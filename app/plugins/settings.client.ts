@@ -100,5 +100,18 @@ export default defineNuxtPlugin(async () => {
 			applyTheme(theme);
 		}
 	});
+
+	// Auto-check for updates on startup (only in Tauri)
+	if (import.meta.client) {
+		const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+		
+		if (isTauri) {
+			setTimeout(async () => {
+				const { useUpdater } = await import("~/composables/useUpdater");
+				const { checkForUpdates } = useUpdater();
+				await checkForUpdates();
+			}, 3000);
+		}
+	}
 });
 

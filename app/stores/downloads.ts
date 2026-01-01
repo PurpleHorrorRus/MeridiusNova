@@ -106,35 +106,42 @@ export const useDownloadsStore = defineStore("downloads", {
 				return;
 			}
 
-			try {
-				const response = await fetch(`/api/downloads/file?downloadId=${downloadId}`);
-				
-				if (!response.ok) {
-					return;
-				}
-
-				const contentDisposition = response.headers.get("Content-Disposition");
-				let filename = fallbackFilename;
-
-				if (contentDisposition) {
-					const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-					if (filenameMatch && filenameMatch[1]) {
-						filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ""));
-					}
-				}
-
-				const blob = await response.blob();
-				const url = window.URL.createObjectURL(blob);
-				const link = document.createElement("a");
-				link.href = url;
-				link.download = filename.endsWith(".mp3") ? filename : `${filename}.mp3`;
-				document.body.appendChild(link);
-				link.click();
-				document.body.removeChild(link);
-				window.URL.revokeObjectURL(url);
-			} catch (error) {
+			const response = await fetch(`/api/downloads/file?downloadId=${downloadId}`).catch((error: Error) => {
 				console.error("Failed to download file in browser:", error);
+				return null;
+			});
+
+			if (!response || !response.ok) {
+				return;
 			}
+
+			const contentDisposition = response.headers.get("Content-Disposition");
+			let filename = fallbackFilename;
+
+			if (contentDisposition) {
+				const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+				if (filenameMatch && filenameMatch[1]) {
+					filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ""));
+				}
+			}
+
+			const blob = await response.blob().catch((error: Error) => {
+				console.error("Failed to get blob:", error);
+				return null;
+			});
+
+			if (!blob) {
+				return;
+			}
+
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = filename.endsWith(".mp3") ? filename : `${filename}.mp3`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 		},
 
 		startPolling(interval: number = 1000): void {

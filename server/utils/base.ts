@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
+import { getCookie } from "h3";
+import { useRuntimeConfig } from "#imports";
 
 import type { EventHandlerRequest, H3Event } from "h3";
 import type { UserSession } from "#auth-utils";
-import { getCookie } from "h3";
-import { useRuntimeConfig } from "#imports";
+import type { HTMLElement } from "node-html-parser";
+
+import type { Http, TRequestOptions } from "./http";
+import type { IRequest, TGetCatalogSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "./types";
+import type { TAudio, TRawAudio } from "~~/server/api/vk/audio/types";
 
 // Используем динамический импорт с кэшированием для jsdom
 let jsdomCache: typeof import("jsdom").JSDOM | null = null;
@@ -27,12 +32,6 @@ if (typeof window === "undefined") {
 function getJSDOM() {
 	return jsdomCache;
 }
-
-import type { HTMLElement } from "node-html-parser";
-import type { Http, TRequestOptions } from "./http";
-import type { IRequest, TGetCatalogSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "./types";
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TRawAudio } from "~~/server/api/vk/audio/types";
 
 export type TGetSectionParams = {
 	owner_id: number;
@@ -314,10 +313,9 @@ export class BaseRequest implements IRequest {
 		if (!sectionId) {
 			const jsonMatch = page.match(/<script[^>]*>[\s\S]*?({[\s\S]*?sectionId[\s\S]*?})[\s\S]*?<\/script>/);
 			if (jsonMatch) {
-				const jsonStr = jsonMatch[1];
 				const parsed = (() => {
 					try {
-						return JSON.parse(jsonStr);
+						return JSON.parse(jsonMatch[1]);
 					} catch {
 						return null;
 					}
@@ -334,15 +332,13 @@ export class BaseRequest implements IRequest {
 			// Fallback 1: попробуем использовать getSection вместо loadCatalogSection
 			// если это страница general или похожая
 			if (link.includes("general") || link.includes("catalog")) {
-				const section = link.includes("general") ? "general" : "all";
-
 				const sectionResponse = await this.getSection<TGetSectionPayload>({
 					owner_id: this.event.context.user.id,
-					section: section
+					section: link.includes("general") ? "general" : "all"
 				});
 
 				// Преобразуем TGetSectionPayload в TGetCatalogSectionPayload
-				const catalogResponse: TRawResponse<TGetCatalogSectionPayload> = {
+				return {
 					...sectionResponse,
 					payload: {
 						0: 0,
@@ -362,8 +358,6 @@ export class BaseRequest implements IRequest {
 						}]
 					}
 				};
-
-				return catalogResponse;
 			}
 
 			// Fallback 2: для explore страниц используем прямой запрос через getSection
@@ -387,7 +381,7 @@ export class BaseRequest implements IRequest {
 
 						if (exploreResponse) {
 							// Преобразуем TGetSectionPayload в TGetCatalogSectionPayload
-							const catalogResponse: TRawResponse<TGetCatalogSectionPayload> = {
+							return {
 								...exploreResponse,
 								payload: {
 									0: 0,
@@ -407,7 +401,6 @@ export class BaseRequest implements IRequest {
 									}]
 								}
 							};
-							return catalogResponse;
 						}
 					}
 				}
@@ -419,7 +412,7 @@ export class BaseRequest implements IRequest {
 			console.error("Page preview (first 1000 chars):", page.substring(0, 1000));
 
 			// Возвращаем пустой ответ вместо ошибки
-			const emptyResponse: TRawResponse<TGetCatalogSectionPayload> = {
+			return {
 				langKeys: { global: [], local: {} },
 				langVersion: "",
 				loaderVersion: "",
@@ -429,15 +422,14 @@ export class BaseRequest implements IRequest {
 				statsMeta: { hash: "", id: 0, platform: "", reloadVersion: 0, st: true, time: 0 },
 				templates: { audio_bits_to_cls: "", _: "" }
 			};
-			return emptyResponse;
 		}
 
-		return await this.loadCatalogSection({
+		return await this.loadCatalogSection<TGetCatalogSectionPayload>({
 			section_id: sectionId
 		}).catch((error: Error) => {
 			console.error("Failed to load catalog section, sectionId:", sectionId, "link:", link, error);
 			
-			const emptyResponse: TRawResponse<TGetCatalogSectionPayload> = {
+			return {
 				langKeys: { global: [], local: {} },
 				langVersion: "",
 				loaderVersion: "",
@@ -447,7 +439,6 @@ export class BaseRequest implements IRequest {
 				statsMeta: { hash: "", id: 0, platform: "", reloadVersion: 0, st: true, time: 0 },
 				templates: { audio_bits_to_cls: "", _: "" }
 			};
-			return emptyResponse;
 		});
 	}
 
@@ -525,8 +516,7 @@ export class BaseRequest implements IRequest {
 			});
 		}
 
-		const builderResult = await context.builder<TGetCatalogSectionPayload, TAudio>(response);
-		let list: TAudio[] = builderResult as TAudio[];
+		let list: TAudio[] = await context.builder<TGetCatalogSectionPayload, TAudio>(response) as TAudio[];
 		let more = this.parseMore(response);
 
 		if (params.count) {
@@ -572,27 +562,24 @@ export class BaseRequest implements IRequest {
 		}
 
 		const catalogResponse = response as TRawResponse<TGetCatalogSectionPayload>;
-		const payloadValue = catalogResponse.payload[1];
 
 		// Проверяем, что payload[1] - это кортеж [string, {...}]
-		if (Array.isArray(payloadValue) && payloadValue.length > 0 && typeof payloadValue[0] === "string" && payloadValue[1] && typeof payloadValue[1] === "object") {
-			const playlistData = payloadValue[1] as { playlist?: { list?: TRawAudio[] } };
+		if (Array.isArray(catalogResponse.payload[1]) && catalogResponse.payload[1].length > 0 && typeof catalogResponse.payload[1][0] === "string" && catalogResponse.payload[1][1] && typeof catalogResponse.payload[1][1] === "object") {
+			const playlistData = catalogResponse.payload[1][1] as { playlist?: { list?: TRawAudio[] } };
 			if (playlistData.playlist && Array.isArray(playlistData.playlist.list) && playlistData.playlist.list.length === 0) {
 				await new Promise(resolve => setTimeout(resolve, 500));
 				return await this.getDataWithMore(context, more, params);
 			}
 		}
 
-		const builderResult = await context.builder<TGetCatalogSectionPayload, TAudio>(catalogResponse);
-		let list: TAudio[] = builderResult as TAudio[];
+		let list: TAudio[] = await context.builder<TGetCatalogSectionPayload, TAudio>(catalogResponse) as TAudio[];
 
 		if (params.count) {
 			list = list.slice(0, params.count);
 		}
 
-		const payloadData = catalogResponse.payload[1];
-		const moreData = Array.isArray(payloadData) && payloadData.length > 1 && payloadData[1] && typeof payloadData[1] === "object"
-			? payloadData[1]
+		const moreData = Array.isArray(catalogResponse.payload[1]) && catalogResponse.payload[1].length > 1 && catalogResponse.payload[1][1] && typeof catalogResponse.payload[1][1] === "object"
+			? catalogResponse.payload[1][1]
 			: null;
 
 		return {

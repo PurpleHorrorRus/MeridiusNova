@@ -1,6 +1,6 @@
 <template>
 	<div class="settings-tab-player">
-		<div v-if="isTauri" class="settings-section">
+		<div class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.audioOutput") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -296,8 +296,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
 import { usePlayerStore } from "~/stores/player";
+import { useSettingsStore } from "~/stores/settings";
 
 const { getString, i18n } = useStrings();
 const settingsStore = useSettingsStore();
@@ -328,18 +328,41 @@ const normalizerTipHint = computed(() => settings.value.settingHints[lang.value]
 const normalizerMaxHint = computed(() => settings.value.settingHints[lang.value]?.player?.normalizer?.max);
 
 const loadDevices = async () => {
-	if (!isTauri || !import.meta.client) {
+	if (!import.meta.client) {
 		return;
 	}
 
-	const { invoke } = await import("@tauri-apps/api/core");
-	
-	const devices = await invoke<AudioDevice[]>("get_audio_output_devices").catch((error) => {
+	if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+		console.error("MediaDevices API is not supported");
+		return;
+	}
+
+	const devices = await navigator.mediaDevices.enumerateDevices().catch((error: Error) => {
 		console.error("Failed to get audio devices:", error);
-		return [] as AudioDevice[];
+		return null;
 	});
 
-	outputDevices.value = devices;
+	if (!devices) {
+		outputDevices.value = [{
+			deviceId: "default",
+			label: "Устройство по умолчанию"
+		}];
+		return;
+	}
+
+	const audioOutputDevices: AudioDevice[] = devices
+		.filter(device => device.kind === "audiooutput")
+		.map(device => ({
+			deviceId: device.deviceId,
+			label: device.label || `Устройство ${device.deviceId.slice(0, 8)}`
+		}));
+
+	audioOutputDevices.unshift({
+		deviceId: "default",
+		label: "Устройство по умолчанию"
+	});
+
+	outputDevices.value = audioOutputDevices;
 	
 	const currentDevice = settings.value.player.output;
 	const index = outputDevices.value.findIndex(device => device.deviceId === currentDevice);
@@ -347,9 +370,7 @@ const loadDevices = async () => {
 };
 
 onMounted(() => {
-	if (isTauri) {
-		loadDevices();
-	}
+	loadDevices();
 });
 
 const changeOutputDevice = async (event: Event) => {

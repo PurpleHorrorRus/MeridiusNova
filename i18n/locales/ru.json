@@ -7,6 +7,11 @@
 		"radio": "Радио",
 		"settings": "Настройки"
 	},
+	"titlebar": {
+		"update": {
+			"available": "Доступно обновление"
+		}
+	},
 	"general": {
 		"loading": "Загрузка...",
 		"error": "Ошибка",
@@ -72,6 +77,32 @@
 				"path": "Путь",
 				"pathPlaceholder": "Выберите папку для сохранения",
 				"choose": "Выбрать"
+			},
+			"server": {
+				"title": "Внешний сервер",
+				"enable": "Использовать внешний сервер",
+				"url": "URL сервера",
+				"urlPlaceholder": "http://example.com",
+				"port": "Порт",
+				"portPlaceholder": "31415",
+				"check": "Проверить",
+				"checking": "Проверка...",
+				"available": "Сервер доступен",
+				"connect": "Подключиться"
+			},
+			"updates": {
+				"title": "Обновления",
+				"currentVersion": "Текущая версия",
+				"channel": "Канал обновлений",
+				"channelOptions": {
+					"production": "Production",
+					"beta": "Beta",
+					"development": "Development"
+				},
+				"check": "Проверить обновления",
+				"checking": "Проверка обновлений...",
+				"available": "Доступно обновление",
+				"install": "Установить обновление"
 			}
 		},
 		"appearance": {
