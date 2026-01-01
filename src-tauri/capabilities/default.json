@@ -5,6 +5,21 @@
 	"windows": [
 		"main"
 	],
+	"webviews": [
+		"main"
+	],
+	"remote": {
+		"urls": [
+			"http://*",
+			"https://*",
+			"http://*/*",
+			"https://*/*",
+			"http://*:*",
+			"https://*:*",
+			"http://*:*/*",
+			"https://*:*/*"
+		]
+	},
 	"permissions": [
 		"core:default",
 		"core:window:allow-start-dragging",

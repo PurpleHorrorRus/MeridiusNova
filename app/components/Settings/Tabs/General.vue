@@ -456,6 +456,8 @@ const connectToServer = async () => {
 
 	if (isTauri && import.meta.client) {
 		await settingsStore.save();
+		
+		await new Promise(resolve => setTimeout(resolve, 500));
 
 		const { invoke } = await import("@tauri-apps/api/core");
 		await invoke("restart_app");

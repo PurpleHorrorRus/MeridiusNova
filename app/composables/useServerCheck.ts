@@ -19,7 +19,9 @@ export const useServerCheck = () => {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-		const response = await fetch(healthcheckUrl, {
+		const fetchFn = typeof window !== "undefined" && window.fetchCORS ? window.fetchCORS : fetch;
+
+		const response = await fetchFn(healthcheckUrl, {
 			method: "GET",
 			signal: controller.signal,
 			headers: {
@@ -47,7 +49,7 @@ export const useServerCheck = () => {
 
 		clearTimeout(timeoutId);
 
-		if (!response.ok) {
+		if (response.status < 200 || response.status >= 300) {
 			checking.value = false;
 			error.value = `HTTP ${response.status}: ${response.statusText}`;
 			isAvailable.value = false;

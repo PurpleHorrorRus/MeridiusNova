@@ -3,10 +3,10 @@ use tauri_plugin_shell::ShellExt;
 
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
+use url::Url;
 
 mod server_check;
 
-#[cfg(not(debug_assertions))]
 use server_check::check_from_settings;
 
 #[cfg(not(debug_assertions))]
@@ -198,17 +198,35 @@ pub fn run() {
             let port = if cfg!(debug_assertions) { 3000 } else { 3001 };
 
             let (use_remote_server, remote_url) = {
-                #[cfg(not(debug_assertions))]
-                {
-                    let config = if let Ok(store) = app.store(".settings.dat") {
-                        store.get("settings").as_ref().and_then(|v| check_from_settings(v))
+                let config = if let Ok(store) = app.store(".settings.dat") {
+                    println!("[DEBUG] Store opened successfully");
+                    if let Some(settings_value) = store.get("settings") {
+                        println!("[DEBUG] Found settings in store");
+                        if let Some(config) = check_from_settings(&settings_value) {
+                            println!("[DEBUG] Server config parsed: use_remote={}, url={}", config.use_remote, config.remote_url);
+                            Some(config)
+                        } else {
+                            println!("[DEBUG] Failed to parse server config from settings");
+                            None
+                        }
                     } else {
+                        println!("[DEBUG] No 'settings' key in store");
                         None
-                    };
+                    }
+                } else {
+                    println!("[DEBUG] Failed to open store");
+                    None
+                };
 
-                    match config {
-                        Some(config) if config.use_remote => (config.use_remote, config.remote_url),
-                        _ => {
+                match config {
+                    Some(config) if config.use_remote => {
+                        println!("[DEBUG] Using remote server: {}", config.remote_url);
+                        (config.use_remote, config.remote_url)
+                    },
+                    _ => {
+                        println!("[DEBUG] Using local server on port {}", port);
+                        #[cfg(not(debug_assertions))]
+                        {
                             let (_rx, child) = app
                                 .shell()
                                 .sidecar("server")
@@ -222,22 +240,32 @@ pub fn run() {
                             });
 
                             std::thread::sleep(std::time::Duration::from_secs(2));
-
-                            (false, String::new())
                         }
+                        (false, String::new())
                     }
-                }
-
-                #[cfg(debug_assertions)]
-                {
-                    (false, String::new())
                 }
             };
 
             let url = if use_remote_server {
-                remote_url
+                println!("[DEBUG] Final URL: {}", remote_url);
+                match Url::parse(&remote_url) {
+                    Ok(parsed_url) => {
+                        if parsed_url.host().is_none() {
+                            println!("[DEBUG] Invalid URL: empty host, falling back to localhost");
+                            format!("http://localhost:{}", port)
+                        } else {
+                            remote_url
+                        }
+                    },
+                    Err(e) => {
+                        println!("[DEBUG] Failed to parse URL '{}': {:?}, falling back to localhost", remote_url, e);
+                        format!("http://localhost:{}", port)
+                    }
+                }
             } else {
-                format!("http://localhost:{}", port)
+                let local_url = format!("http://localhost:{}", port);
+                println!("[DEBUG] Final URL: {}", local_url);
+                local_url
             };
 
             let (width, height) = if let Ok(store) = app.store("window-state.json") {
@@ -259,10 +287,11 @@ pub fn run() {
                 (800.0, 600.0)
             };
 
+            let parsed_url = Url::parse(&url).expect("Failed to parse URL");
             let window = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
-                tauri::WebviewUrl::External(url.parse().unwrap()),
+                tauri::WebviewUrl::External(parsed_url),
             )
             .title("Meridius")
             .inner_size(width, height)

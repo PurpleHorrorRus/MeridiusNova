@@ -1,82 +1,83 @@
-#[cfg(not(debug_assertions))]
 use serde_json::Value;
-#[cfg(not(debug_assertions))]
-use std::time::Duration;
 
-#[cfg(not(debug_assertions))]
 #[derive(Debug)]
 pub struct ServerConfig {
 	pub use_remote: bool,
 	pub remote_url: String,
 }
 
-#[cfg(not(debug_assertions))]
 fn normalize_url(url_str: &str, port: Option<u64>) -> String {
-	let mut url = url_str.to_string();
+	let mut url = url_str.trim().to_string();
 	
-	if !url.contains("://") {
-		url = format!("http://{}", url);
+	if url.is_empty() {
+		return "http://localhost:3001/".to_string();
 	}
 
-	if let Some(port_val) = port {
-		if !url.contains(':') || (!url.contains("://") && url.matches(':').count() <= 1) {
-			if url.ends_with('/') {
-				url = format!("{}:{}", url.trim_end_matches('/'), port_val);
-			} else {
-				url = format!("{}:{}", url, port_val);
-			}
-		} else if let Some(colon_pos) = url.rfind(':') {
-			if let Some(slash_pos) = url[colon_pos..].find('/') {
-				let after_colon = &url[colon_pos + 1..colon_pos + slash_pos];
-				if after_colon.parse::<u16>().is_err() {
-					if url.ends_with('/') {
-						url = format!("{}:{}", url.trim_end_matches('/'), port_val);
-					} else {
-						url = format!("{}:{}", url, port_val);
-					}
-				}
-			} else {
-				let after_colon = &url[colon_pos + 1..];
-				if after_colon.parse::<u16>().is_err() {
-					url = format!("{}:{}", url, port_val);
-				}
-			}
-		}
+	if url.starts_with("http://://") || url.starts_with("https://://") {
+		url = url.replace("://://", "://");
 	}
 
-	url
-}
-
-#[cfg(not(debug_assertions))]
-fn check_healthcheck(url: &str) -> bool {
-	let healthcheck_url = if url.ends_with('/') {
-		format!("{}api/healthcheck", url)
+	let protocol = if url.starts_with("https://") {
+		"https"
+	} else if url.starts_with("http://") {
+		"http"
 	} else {
-		format!("{}/api/healthcheck", url)
+		"http"
 	};
 
-	let client = reqwest::blocking::Client::builder()
-		.timeout(Duration::from_secs(5))
-		.build();
+	let host_and_path = if url.starts_with("http://") {
+		&url[7..]
+	} else if url.starts_with("https://") {
+		&url[8..]
+	} else {
+		&url[..]
+	};
 
-	if let Ok(client) = client {
-		if let Ok(response) = client.get(&healthcheck_url)
-			.header("Accept", "application/json")
-			.send() {
-			if response.status().is_success() {
-				if let Ok(json) = response.json::<Value>() {
-					if let Some(status) = json.get("status") {
-						return status.as_str() == Some("ok");
-					}
-				}
-			}
-		}
+	if host_and_path.is_empty() {
+		return "http://localhost:3001/".to_string();
 	}
 
-	false
+	let host_part = host_and_path.split('/').next().unwrap_or(host_and_path);
+	
+	if host_part.is_empty() {
+		return "http://localhost:3001/".to_string();
+	}
+
+	let (host, existing_port) = if let Some(colon_pos) = host_part.find(':') {
+		let h = &host_part[..colon_pos];
+		let p = &host_part[colon_pos + 1..];
+		if p.parse::<u16>().is_ok() {
+			(h, Some(p.to_string()))
+		} else {
+			(host_part, None)
+		}
+	} else {
+		(host_part, None)
+	};
+
+	if host.is_empty() {
+		return "http://localhost:3001/".to_string();
+	}
+
+	let path = if let Some(slash_pos) = host_and_path.find('/') {
+		&host_and_path[slash_pos..]
+	} else {
+		""
+	};
+
+	let result = if let Some(ref p) = existing_port {
+		format!("{}://{}:{}{}/", protocol, host, p, path)
+	} else if let Some(port_val) = port {
+		format!("{}://{}:{}{}/", protocol, host, port_val, path)
+	} else {
+		format!("{}://{}{}/", protocol, host, path)
+	};
+
+	println!("[DEBUG] normalize_url: input='{}', output='{}'", url_str, result);
+	
+	result
 }
 
-#[cfg(not(debug_assertions))]
 pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	let general = settings.get("general")?.as_object()?;
 	let server = general.get("server")?.as_object()?;
@@ -89,15 +90,26 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	}
 
 	let port = server.get("port").and_then(|v| v.as_u64());
-	let url = normalize_url(url_str, port);
-
-	if check_healthcheck(&url) {
-		Some(ServerConfig {
-			use_remote: true,
-			remote_url: url,
-		})
-	} else {
-		None
+	
+	let mut url = url_str.trim().to_string();
+	
+	println!("[DEBUG] Original URL from settings: {}", url);
+	
+	if url.starts_with("http://://") {
+		url = url.replacen("http://://", "http://", 1);
+		println!("[DEBUG] Fixed http://:// to http://");
+	} else if url.starts_with("https://://") {
+		url = url.replacen("https://://", "https://", 1);
+		println!("[DEBUG] Fixed https://:// to https://");
 	}
+	
+	println!("[DEBUG] URL after fix: {}", url);
+	
+	let url = normalize_url(&url, port);
+
+	Some(ServerConfig {
+		use_remote: true,
+		remote_url: url,
+	})
 }
 

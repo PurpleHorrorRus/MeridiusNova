@@ -34,6 +34,14 @@ export default defineNuxtConfig({
 	},
 
 	runtimeConfig: {
-		cookieKey: process.env.NUXT_COOKIE_KEY || ""
+		cookieKey: process.env.NUXT_COOKIE_KEY || "",
+		session: {
+			password: process.env.NUXT_SESSION_PASSWORD || "",
+
+			cookie: {
+				secure: false,
+				sameSite: "lax"
+			}
+		}
 	}
 });
