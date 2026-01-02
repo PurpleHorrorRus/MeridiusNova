@@ -36,9 +36,6 @@ ENV NODE_ENV=production
 RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
-ARG NUXT_SESSION_PASSWORD
-ENV NUXT_SESSION_PASSWORD=$NUXT_SESSION_PASSWORD
-	
 USER node
 	
 EXPOSE 3000
