@@ -8,7 +8,7 @@
 			{{ error }}
 		</div>
 
-		<div v-else class="playlists-content">
+		<div v-else-if="data" class="playlists-content">
 			<div v-if="playlists.length === 0" class="empty-state">
 				<p>Плейлисты не найдены</p>
 			</div>

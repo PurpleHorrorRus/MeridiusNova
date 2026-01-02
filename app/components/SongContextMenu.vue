@@ -26,7 +26,7 @@
 				class="context-menu-item"
 				@click="handleAdd"
 			>
-				<Icon name="mdi:plus" size="18" />
+				<Icon name="mdi:heart-outline" size="18" />
 				<span>Добавить в библиотеку</span>
 			</button>
 
@@ -35,7 +35,7 @@
 				class="context-menu-item"
 				@click="handleDelete"
 			>
-				<Icon name="mdi:delete" size="18" />
+				<Icon name="mdi:heart" size="18" />
 				<span>{{ deleteLabel }}</span>
 			</button>
 
@@ -71,7 +71,7 @@
 			</button>
 
 			<button
-				v-if="songProps.canDownload && isTauri"
+				v-if="songProps.canDownload && isTauri.value"
 				class="context-menu-item"
 				@click="handleDownload"
 			>
@@ -127,13 +127,19 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useEventListener } from "~/composables/useEventListener";
 import type { TAudio, TPlaylist } from "~~/server/utils/types";
 import { useAudioActions } from "~/composables/useAudioActions";
+import { usePlaylistActions } from "~/composables/usePlaylistActions";
 import { useSongProps } from "~/composables/useSongProps";
 import { usePlaylist } from "~/composables/usePlaylist";
 import { useModal } from "~/composables/useModal";
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
+import { useSongDelete } from "~/composables/useSongDelete";
+import { useSongAdd } from "~/composables/useSongAdd";
+import { useIsTauri } from "~/composables/useIsTauri";
+import { navigateToSimilarTracks } from "~/utils/navigation";
 import Cover from "~/components/Cover.vue";
 
 const props = defineProps<{
@@ -146,14 +152,16 @@ const emit = defineEmits<{
 	close: [];
 }>();
 
-const { addAudio, deleteAudio, addSongToPlaylist, removeSongFromPlaylist, downloadAudio, shareAudio, getSimilarTracks } = useAudioActions();
+const { downloadAudio, shareAudio, getSimilarTracks } = useAudioActions();
+const { addSongToPlaylist, removeSongFromPlaylist } = usePlaylistActions();
 const { generateSongProps } = useSongProps();
 const { current, playing } = usePlaylist();
 const { openModal } = useModal();
 const vkStore = useVkStore();
 const playlistStore = usePlaylistStore();
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+const { handleDelete: deleteSong, getDeleteTitle } = useSongDelete();
+const { handleAdd: addSong } = useSongAdd();
+const { isTauri } = useIsTauri();
 
 const showPlaylistSubmenu = ref(false);
 const menuStyle = ref<{ left?: string; top?: string }>({});
@@ -188,15 +196,11 @@ const currentPlaylist = computed(() => {
 });
 
 const deleteLabel = computed(() => {
-	const playlist = currentPlaylist.value;
-	
-	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0 и нет addedSong - удаляем из плейлиста
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& !(props.audio as any)?.addedSong;
-	
-	return shouldRemoveFromPlaylist ? "Удалить из плейлиста" : "Удалить из библиотеки";
+	if (!props.audio) {
+		return "Удалить из библиотеки";
+	}
+
+	return getDeleteTitle(props.audio);
 });
 
 const myPlaylists = computed(() => {
@@ -216,7 +220,7 @@ const handleAdd = async () => {
 		return;
 	}
 
-	await addAudio(props.audio).catch(console.error);
+	await addSong(props.audio);
 	close();
 };
 
@@ -225,42 +229,7 @@ const handleDelete = async () => {
 		return;
 	}
 
-	const playlist = currentPlaylist.value;
-	
-	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0 и нет addedSong - удаляем из плейлиста
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& !(props.audio as any).addedSong;
-	
-	let result;
-	
-	if (shouldRemoveFromPlaylist) {
-		// Удаляем из плейлиста
-		result = await removeSongFromPlaylist(props.audio, playlist).catch(console.error);
-		
-		if (result?.success) {
-			// Обновляем размер плейлиста
-			if (playlist.size !== undefined) {
-				playlist.size = Math.max(0, (playlist.size || 0) - 1);
-			}
-		}
-	} else {
-		// Удаляем из библиотеки
-		result = await deleteAudio(props.audio).catch(console.error);
-	}
-	
-	if (result?.success) {
-		// Обновляем состояние: удаляем трек из плейлистов и очереди
-		playlistStore.removeSongByFullId(props.audio.full_id);
-		
-		// Если удаленный трек был текущим, переключаемся на следующий
-		const currentSong = playlistStore.currentSong;
-		if (currentSong && currentSong.full_id === props.audio.full_id) {
-			playlistStore.next();
-		}
-	}
-	
+	await deleteSong(props.audio);
 	close();
 };
 
@@ -351,7 +320,7 @@ const handleSimilar = async () => {
 
 	const result = await getSimilarTracks(props.audio).catch(() => null);
 	if (result) {
-		navigateTo(`/songs/${props.audio.id}?audio_owner_id=${props.audio.owner_id}`);
+		navigateToSimilarTracks(props.audio);
 	}
 	close();
 };
@@ -534,15 +503,8 @@ const handleClickOutside = (event: MouseEvent) => {
 	}
 };
 
-onMounted(() => {
-	document.addEventListener("click", handleClickOutside);
-	document.addEventListener("contextmenu", close);
-});
-
-onUnmounted(() => {
-	document.removeEventListener("click", handleClickOutside);
-	document.removeEventListener("contextmenu", close);
-});
+useEventListener(document, "click", handleClickOutside);
+useEventListener(document, "contextmenu", close);
 </script>
 
 <style scoped lang="scss">

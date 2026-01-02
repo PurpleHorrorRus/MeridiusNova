@@ -1,78 +1,76 @@
-export const useDiscover = () => {
-	const feed = ref<any[]>([]);
-	const friends = ref<any[]>([]);
-	const communities = ref<any[]>([]);
-	const updates = ref<any[]>([]);
+const createLoader = (loader: () => Promise<any[]>, errorMessage: string) => {
 	const loading = ref(false);
 	const error = ref<string | null>(null);
+	const data = ref<any[]>([]);
 
-	const loadFeed = async () => {
+	const load = async () => {
 		loading.value = true;
 		error.value = null;
 
-		const result = await Promise.resolve([]).catch((err: Error) => {
-			error.value = err.message || "Failed to load feed";
-			console.error("Failed to load feed:", err);
+		const result = await loader().catch((err: Error) => {
+			error.value = err.message || errorMessage;
+			console.error(errorMessage, err);
 			return [];
 		});
 
-		feed.value = result;
-		loading.value = false;
-	};
-
-	const loadFriends = async () => {
-		loading.value = true;
-		error.value = null;
-
-		const result = await Promise.resolve([]).catch((err: Error) => {
-			error.value = err.message || "Failed to load friends";
-			console.error("Failed to load friends:", err);
-			return [];
-		});
-
-		friends.value = result;
-		loading.value = false;
-	};
-
-	const loadCommunities = async () => {
-		loading.value = true;
-		error.value = null;
-
-		const result = await Promise.resolve([]).catch((err: Error) => {
-			error.value = err.message || "Failed to load communities";
-			console.error("Failed to load communities:", err);
-			return [];
-		});
-
-		communities.value = result;
-		loading.value = false;
-	};
-
-	const loadUpdates = async () => {
-		loading.value = true;
-		error.value = null;
-
-		const result = await Promise.resolve([]).catch((err: Error) => {
-			error.value = err.message || "Failed to load updates";
-			console.error("Failed to load updates:", err);
-			return [];
-		});
-
-		updates.value = result;
+		data.value = result;
 		loading.value = false;
 	};
 
 	return {
-		feed: readonly(feed),
-		friends: readonly(friends),
-		communities: readonly(communities),
-		updates: readonly(updates),
+		data: readonly(data),
 		loading: readonly(loading),
 		error: readonly(error),
-		loadFeed,
-		loadFriends,
-		loadCommunities,
-		loadUpdates
+		load
+	};
+};
+
+import { computed, readonly, ref } from "vue";
+
+const createLoader = (loader: () => Promise<any[]>, errorMessage: string) => {
+	const loading = ref(false);
+	const error = ref<string | null>(null);
+	const data = ref<any[]>([]);
+
+	const load = async () => {
+		loading.value = true;
+		error.value = null;
+
+		const result = await loader().catch((err: Error) => {
+			error.value = err.message || errorMessage;
+			console.error(errorMessage, err);
+			return [];
+		});
+
+		data.value = result;
+		loading.value = false;
+	};
+
+	return {
+		data: readonly(data),
+		loading: readonly(loading),
+		error: readonly(error),
+		load
+	};
+};
+
+export const useDiscover = () => {
+	const feedLoader = createLoader(() => Promise.resolve([]), "Failed to load feed");
+	const friendsLoader = createLoader(() => Promise.resolve([]), "Failed to load friends");
+	const communitiesLoader = createLoader(() => Promise.resolve([]), "Failed to load communities");
+	const updatesLoader = createLoader(() => Promise.resolve([]), "Failed to load updates");
+
+	return {
+		feed: feedLoader.data,
+		friends: friendsLoader.data,
+		communities: communitiesLoader.data,
+		updates: updatesLoader.data,
+		loading: computed(() => feedLoader.loading.value || friendsLoader.loading.value || communitiesLoader.loading.value || updatesLoader.loading.value),
+		error: computed(() => feedLoader.error.value || friendsLoader.error.value || communitiesLoader.error.value || updatesLoader.error.value),
+		loadFeed: feedLoader.load,
+		loadFriends: friendsLoader.load,
+		loadCommunities: communitiesLoader.load,
+		loadUpdates: updatesLoader.load
 	};
 };
 

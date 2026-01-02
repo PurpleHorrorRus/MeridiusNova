@@ -41,6 +41,7 @@ import ModalSettings from "~/components/ModalSettings.vue";
 import ModalShareAudio from "~/components/Modals/ModalShareAudio.vue";
 
 import { useModalStore } from "~/stores/modal";
+import { useEventListener } from "~/composables/useEventListener";
 
 const modalStore = useModalStore();
 
@@ -66,13 +67,7 @@ const handleEscape = (event: KeyboardEvent) => {
 	}
 };
 
-onMounted(() => {
-	document.addEventListener("keydown", handleEscape);
-});
-
-onUnmounted(() => {
-	document.removeEventListener("keydown", handleEscape);
-});
+useEventListener(document, "keydown", handleEscape);
 </script>
 
 <style scoped lang="scss">

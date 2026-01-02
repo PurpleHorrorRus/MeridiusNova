@@ -82,15 +82,11 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-
 const { getString } = useStrings();
 import { useFFmpegStore } from "~/stores/ffmpeg";
 
-const settingsStore = useSettingsStore();
 const ffmpegStore = useFFmpegStore();
-
-const settings = computed(() => settingsStore.settings);
+const { settings, updateSection } = useSettings();
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
@@ -111,7 +107,7 @@ const installFFmpeg = async () => {
 
 const updateDownloadEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { enable: target.checked });
+	updateSection("download", { enable: target.checked });
 };
 
 const chooseDownloadPath = async () => {
@@ -125,13 +121,13 @@ const chooseDownloadPath = async () => {
 		});
 
 		if (selected && typeof selected === "string") {
-			settingsStore.updateSection("download", { path: selected });
+			updateSection("download", { path: selected });
 		}
 	} else if (import.meta.client) {
 		const os = await import("os");
 		const path = await import("path");
 		const defaultPath = path.join(os.homedir(), "Music");
-		settingsStore.updateSection("download", { path: defaultPath });
+		updateSection("download", { path: defaultPath });
 	}
 };
 

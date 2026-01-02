@@ -1,5 +1,5 @@
 <template>
-	<div v-if="hasDownloads" class="downloads-container">
+	<div v-if="hasDownloads" class="downloads-container" ref="downloadsContainerRef">
 		<button
 			class="downloads-button"
 			@click="toggleMenu"
@@ -58,6 +58,7 @@
 <script setup lang="ts">
 import { useDownloadsStore } from "~/stores/downloads";
 import DownloadItem from "./DownloadItem.vue";
+import { useEventListener } from "~/composables/useEventListener";
 
 const { getString } = useStrings();
 const downloadsStore = useDownloadsStore();
@@ -77,21 +78,19 @@ onMounted(() => {
 	downloadsStore.fetchQueue();
 
 	if (import.meta.client) {
-		document.addEventListener("click", handleClickOutside);
+		useEventListener(document, "click", handleClickOutside);
 	}
 });
 
 onUnmounted(() => {
 	downloadsStore.stopPolling();
-
-	if (import.meta.client) {
-		document.removeEventListener("click", handleClickOutside);
-	}
 });
+
+const downloadsContainerRef = ref<HTMLElement | null>(null);
 
 const handleClickOutside = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
-	const container = document.querySelector(".downloads-container");
+	const container = downloadsContainerRef.value;
 	
 	if (container && !container.contains(target)) {
 		closeMenu();

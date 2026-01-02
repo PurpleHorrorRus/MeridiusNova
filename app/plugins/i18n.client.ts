@@ -64,14 +64,13 @@ export default defineNuxtPlugin({
 	name: "i18n",
 	enforce: "post",
 	async setup() {
-		const { useSettingsStore } = await import("~/stores/settings");
-		const settingsStore = useSettingsStore();
+		const { settings, load, loaded } = useSettings();
 
-		if (!settingsStore.loaded) {
-			await settingsStore.load();
+		if (!loaded.value) {
+			await load();
 		}
 
-		const currentLocale = settingsStore.settings.general.lang || "ru";
+		const currentLocale = settings.value.general.lang || "ru";
 		const pack = reactive<StringsPack>(await loadLocale(currentLocale));
 
 		const strings = reactive({
@@ -88,7 +87,7 @@ export default defineNuxtPlugin({
 			Object.assign(strings.pack, newPack);
 		};
 
-		watch(() => settingsStore.settings.general.lang, async (newLang) => {
+		watch(() => settings.value.general.lang, async (newLang) => {
 			if (newLang) {
 				await loadLanguage(newLang);
 			}

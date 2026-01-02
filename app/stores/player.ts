@@ -4,7 +4,6 @@ import { CrossFade } from "./player/nodes/crossfade";
 import { Normalizer } from "./player/nodes/normalizer";
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
-import { useSettingsStore } from "./settings";
 import { isMobileCheck } from "~/composables/useIsMobile";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
@@ -272,7 +271,13 @@ export const usePlayerStore = defineStore("player", {
 			this.loading = true;
 			this.error = null;
 
-			if (song.clear && this.song) {
+			// Don't call stop() during crossfade - let previous track fade out smoothly
+			// Get crossfade config to check if crossfade is enabled
+			const { useSettings } = await import("~/composables/useSettings");
+			const { settings } = useSettings();
+			const crossfadeConfig = settings.value.player.crossfade;
+
+			if (song.clear && this.song && !(song.crossfade && crossfadeConfig.enable)) {
 				await this.stop();
 			}
 
@@ -348,12 +353,13 @@ export const usePlayerStore = defineStore("player", {
 		},
 
 		async loadController(song: TAudio & { crossfade?: boolean }, index: number) {
-			const settingsStore = await import("./settings").then(m => m.useSettingsStore());
+			const { useSettings } = await import("~/composables/useSettings");
+			const { settings } = useSettings();
 			// IMPORTANT: Force refresh of settings or ensure reactivity?
 			// Settings should be reactive.
-			const crossfadeConfig = { ...settingsStore.settings.player.crossfade };
-			const normalizerConfig = settingsStore.settings.player.normalizer;
-			const equalizerConfig = settingsStore.settings.equalizer;
+			const crossfadeConfig = { ...settings.value.player.crossfade };
+			const normalizerConfig = settings.value.player.normalizer;
+			const equalizerConfig = settings.value.equalizer;
 
 			const controllerData: ControllerData = {
 				controller: new Audio(),
@@ -535,7 +541,7 @@ export const usePlayerStore = defineStore("player", {
 			controllerData.controller!.addEventListener("timeupdate", controllerData.timeUpdateHandler);
 			controllerData.controller!.addEventListener("loadedmetadata", controllerData.loadedMetadataHandler);
 
-			const calculatedVolume = this.calculateVolume(this.volume, settingsStore.settings.player.volumeDivider);
+			const calculatedVolume = this.calculateVolume(this.volume, settings.value.player.volumeDivider);
 			controllerData.controller!.volume = this.muted ? 0 : calculatedVolume;
 			controllerData.controller!.playbackRate = this.playbackRate;
 
@@ -661,7 +667,7 @@ export const usePlayerStore = defineStore("player", {
 			return Number(Math.max(0, Math.min(1, calculated)).toFixed(3));
 		},
 
-	setVolume(volume: number) {
+	async setVolume(volume: number) {
 		if (import.meta.client) {
 			const isMobile = isMobileCheck();
 			if (isMobile) {
@@ -673,10 +679,13 @@ export const usePlayerStore = defineStore("player", {
 			this.volume = Math.max(0, Math.min(1, volume));
 		}
 
-		if (!this.muted) this.previousVolume = this.volume;
+		if (!this.muted) {
+			this.previousVolume = this.volume;
+		}
 
-		const settingsStore = useSettingsStore();
-		const volumeDivider = settingsStore.settings.player.volumeDivider;
+		const { useSettings } = await import("~/composables/useSettings");
+		const { settings } = useSettings();
+		const volumeDivider = settings.value.player.volumeDivider;
 		const calculatedVolume = this.calculateVolume(this.volume, volumeDivider);
 
 		const update = (c: ControllerData | null) => {
@@ -689,18 +698,18 @@ export const usePlayerStore = defineStore("player", {
 		update(this.getOpposedController());
 	},
 
-		toggleMute() {
-			this.muted = !this.muted;
-			if (this.muted) {
-				this.previousVolume = this.volume;
-				this.volume = 0;
-			} else {
-				this.volume = this.previousVolume;
-			}
-
-			// Apply volume
-			this.setVolume(this.volume);
-		},
+	async toggleMute() {
+		if (this.muted) {
+			// Включаем звук - восстанавливаем предыдущую громкость
+			this.muted = false;
+			await this.setVolume(this.previousVolume);
+		} else {
+			// Выключаем звук - сохраняем текущую громкость и устанавливаем 0
+			this.previousVolume = this.volume;
+			this.muted = true;
+			await this.setVolume(0);
+		}
+	},
 
 		setPlaybackRate(rate: number) {
 			this.playbackRate = Math.max(0.25, Math.min(4, rate));

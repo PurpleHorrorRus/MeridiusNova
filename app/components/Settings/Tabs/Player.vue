@@ -300,10 +300,8 @@ import { usePlayerStore } from "~/stores/player";
 import { useSettingsStore } from "~/stores/settings";
 
 const { getString, i18n } = useStrings();
-const settingsStore = useSettingsStore();
+const { settings, updateSection } = useSettings();
 const playerStore = usePlayerStore();
-
-const settings = computed(() => settingsStore.settings);
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 interface AudioDevice {
@@ -379,7 +377,7 @@ const changeOutputDevice = async (event: Event) => {
 	const device = outputDevices.value[index];
 	
 	if (device) {
-		settingsStore.updateSection("player", { output: device.deviceId });
+		updateSection("player", { output: device.deviceId });
 		outputDeviceIndex.value = index;
 		
 		const controller = playerStore.currentController;
@@ -396,7 +394,7 @@ const changeOutputDevice = async (event: Event) => {
 const updateVolumeDivider = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseFloat(target.value);
-	settingsStore.updateSection("player", { volumeDivider: value });
+	updateSection("player", { volumeDivider: value });
 	
 	// Пересчитываем громкость с новым делителем
 	playerStore.setVolume(playerStore.volume);
@@ -404,7 +402,7 @@ const updateVolumeDivider = (event: Event) => {
 
 const updateLatestSave = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
 			save: target.checked
@@ -414,7 +412,7 @@ const updateLatestSave = (event: Event) => {
 
 const updateLatestExit = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
 			exit: target.checked
@@ -424,7 +422,7 @@ const updateLatestExit = (event: Event) => {
 
 const updateLatestPlay = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
 			play: target.checked
@@ -434,12 +432,12 @@ const updateLatestPlay = (event: Event) => {
 
 const updateRewind = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", { rewind: target.checked });
+	updateSection("player", { rewind: target.checked });
 };
 
 const updateNormalizerEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		normalizer: {
 			...settings.value.player.normalizer,
 			enable: target.checked
@@ -450,7 +448,7 @@ const updateNormalizerEnable = (event: Event) => {
 const updateNormalizerMax = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseFloat(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		normalizer: {
 			...settings.value.player.normalizer,
 			max: value
@@ -460,7 +458,7 @@ const updateNormalizerMax = (event: Event) => {
 
 const updateCrossfadeEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		crossfade: {
 			...settings.value.player.crossfade,
 			enable: target.checked
@@ -471,17 +469,29 @@ const updateCrossfadeEnable = (event: Event) => {
 const updateCrossfadeDuration = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		crossfade: {
 			...settings.value.player.crossfade,
 			duration: value
 		}
 	});
+
+	// Обновляем длительность в активных экземплярах crossfade
+	const currentController = playerStore.currentController;
+	const opposedController = playerStore.opposedController;
+
+	if (currentController?.crossfadeInstance) {
+		currentController.crossfadeInstance.setDuration(value);
+	}
+
+	if (opposedController?.crossfadeInstance) {
+		opposedController.crossfadeInstance.setDuration(value);
+	}
 };
 
 const updateCrossfadeFade = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		crossfade: {
 			...settings.value.player.crossfade,
 			fade: target.checked
@@ -492,7 +502,7 @@ const updateCrossfadeFade = (event: Event) => {
 const updateStepWheel = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		step: {
 			...settings.value.player.step,
 			wheel: value
@@ -503,7 +513,7 @@ const updateStepWheel = (event: Event) => {
 const updateStepHotkey = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		step: {
 			...settings.value.player.step,
 			hotkey: value
@@ -514,7 +524,7 @@ const updateStepHotkey = (event: Event) => {
 const updatePlaybackRateStepClick = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseFloat(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		playbackRateStep: {
 			...settings.value.player.playbackRateStep,
 			click: value
@@ -525,7 +535,7 @@ const updatePlaybackRateStepClick = (event: Event) => {
 const updatePlaybackRateStepWheel = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseFloat(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		playbackRateStep: {
 			...settings.value.player.playbackRateStep,
 			wheel: value
@@ -536,7 +546,7 @@ const updatePlaybackRateStepWheel = (event: Event) => {
 const updatePlaybackRateStepHotkey = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseFloat(target.value);
-	settingsStore.updateSection("player", {
+	updateSection("player", {
 		playbackRateStep: {
 			...settings.value.player.playbackRateStep,
 			hotkey: value

@@ -8,7 +8,7 @@
 			{{ error }}
 		</div>
 
-		<div v-else class="content">
+		<div v-else-if="playlistsData" class="content">
 			<div class="page-header">
 				<div class="page-header-content">
 					<h1 class="page-title">Моя музыка</h1>

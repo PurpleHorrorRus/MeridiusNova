@@ -6,7 +6,8 @@
 		@mouseleave="showTooltip = false"
 		@touchstart="handleProgressTouch"
 		@touchmove="handleProgressTouchMove"
-		@touchend="showTooltip = false"
+		@touchend="handleProgressTouchEnd"
+		@touchcancel="handleProgressTouchEnd"
 	>
 		<div class="timeline-track">
 			<div class="timeline-fill" :style="{ width: `${progress}%` }">
@@ -109,6 +110,10 @@ const handleProgressTouchMove = (event: TouchEvent) => {
 	tooltipTime.value = percentage * currentDuration;
 	tooltipPosition.value = percentage * 100;
 	showTooltip.value = true;
+};
+
+const handleProgressTouchEnd = () => {
+	showTooltip.value = false;
 };
 </script>
 

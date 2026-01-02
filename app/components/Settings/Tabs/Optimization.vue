@@ -63,11 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-
 const { getString } = useStrings();
-const settingsStore = useSettingsStore();
-const settings = computed(() => settingsStore.settings);
+const { settings, updateSection } = useSettings();
 
 const lang = computed(() => settings.value.general.lang as "ru" | "en");
 const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
@@ -83,12 +80,12 @@ const autoDownloadCount = computed(() => {
 
 const updateHardwareAcceleration = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("window", { hardwareAcceleration: target.checked });
+	updateSection("window", { hardwareAcceleration: target.checked });
 };
 
 const updateAutoDownloads = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("optimization", {
+	updateSection("optimization", {
 		download: {
 			...settings.value.optimization.download,
 			auto: target.checked
@@ -99,7 +96,7 @@ const updateAutoDownloads = (event: Event) => {
 const updateFixedDownloads = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value);
-	settingsStore.updateSection("optimization", {
+	updateSection("optimization", {
 		download: {
 			...settings.value.optimization.download,
 			fixed: value

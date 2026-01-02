@@ -1,4 +1,5 @@
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { ref, onMounted, onBeforeUnmount, inject } from "vue";
+import { useEventListener } from "./useEventListener";
 
 import type { Ref } from "vue";
 
@@ -19,6 +20,7 @@ export const useScrollLoad = (
 	} = options;
 
 	const containerRef = ref<HTMLElement | null>(null);
+	const layoutMainRef = inject<Ref<HTMLElement | null>>("layoutMainRef", ref(null));
 
 	const getContainer = (): HTMLElement | null => {
 		if (providedContainer) {
@@ -27,7 +29,7 @@ export const useScrollLoad = (
 		if (containerRef.value) {
 			return containerRef.value;
 		}
-		return document.querySelector(".layout-main") as HTMLElement | null;
+		return layoutMainRef.value;
 	};
 
 	const isEnabled = (): boolean => {
@@ -57,23 +59,19 @@ export const useScrollLoad = (
 		}
 	};
 
+	const containerElement = ref<HTMLElement | null>(null);
+
 	onMounted(() => {
 		// Даем время на рендеринг, чтобы контейнер точно был в DOM
 		setTimeout(() => {
 			const container = getContainer();
 			if (container) {
-				container.addEventListener("scroll", handleScroll, { passive: true });
+				containerElement.value = container;
+				useEventListener(container, "scroll", handleScroll, { passive: true });
 				containerRef.value = container;
 				handleScroll();
 			}
 		}, 100);
-	});
-
-	onBeforeUnmount(() => {
-		const container = containerRef.value || getContainer();
-		if (container) {
-			container.removeEventListener("scroll", handleScroll);
-		}
 	});
 
 	return {

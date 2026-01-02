@@ -19,9 +19,6 @@ export const useAudio = () => {
 		if (!result) {
 			// Выводим ошибку только если трек не имеет ограничений и не загружается
 			// (т.е. это реальная ошибка, а не ожидаемое поведение)
-			if (!song.is_restriction && !song.url) {
-				console.warn("Failed to play song - no URL available:", song.title || song.full_id);
-			}
 		}
 		return result;
 	};
@@ -61,8 +58,7 @@ export const useAudio = () => {
 			// Загружаем следующий трек по факту
 			const result = await $fetch<TVkMixResponse>("/api/vk/explore/vkmix", {
 				params: playlistStore.vkMixSectionId ? { sectionId: playlistStore.vkMixSectionId } : {}
-			}).catch((error) => {
-				console.error("Failed to load next VK Mix track:", error);
+			}).catch(() => {
 				return null;
 			});
 			

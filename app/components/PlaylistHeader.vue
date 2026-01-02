@@ -96,6 +96,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useEventListener } from "~/composables/useEventListener";
 import type { TPlaylist } from "~~/server/utils/types";
 import { usePlaylistActions } from "~/composables/usePlaylistActions";
 import { useModal } from "~/composables/useModal";
@@ -142,13 +143,7 @@ const handleClickOutside = (event: MouseEvent) => {
 	}
 };
 
-onMounted(() => {
-	document.addEventListener("click", handleClickOutside);
-});
-
-onUnmounted(() => {
-	document.removeEventListener("click", handleClickOutside);
-});
+useEventListener(document, "click", handleClickOutside);
 
 const playlistType = computed(() => {
 	if (props.playlist.official) {

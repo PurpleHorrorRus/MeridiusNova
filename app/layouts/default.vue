@@ -28,6 +28,8 @@
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const mainContainerRef = ref<HTMLElement | null>(null);
 
+provide("layoutMainRef", mainContainerRef);
+
 const { isMobile } = useIsMobile();
 
 const gridStyle = computed(() => {

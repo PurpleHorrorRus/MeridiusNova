@@ -25,7 +25,6 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
 import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
 import SettingsAppearance from "~/components/Settings/Tabs/Appearance.vue";
 import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
@@ -36,7 +35,7 @@ import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
 import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
 
 const { getString, loadLanguage } = useStrings();
-const settingsStore = useSettingsStore();
+const { settings, load } = useSettings();
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const activeTab = ref("general");
@@ -78,8 +77,8 @@ watch(() => tabs.value, (newTabs) => {
 }, { immediate: true });
 
 onMounted(async () => {
-	await settingsStore.load();
-	const lang = settingsStore.settings.general.lang;
+	await load();
+	const lang = settings.value.general.lang;
 	if (lang) {
 		await loadLanguage(lang);
 	}

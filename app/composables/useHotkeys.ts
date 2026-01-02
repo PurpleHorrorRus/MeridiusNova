@@ -1,6 +1,5 @@
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
-import { useSettingsStore } from "~/stores/settings";
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
@@ -61,7 +60,7 @@ const createHandler = (action: string, handler: () => void) => {
 export const useHotkeys = () => {
 	const playerStore = usePlayerStore();
 	const playlistStore = usePlaylistStore();
-	const settingsStore = useSettingsStore();
+	const { settings, updateSection } = useSettings();
 
 	const actionHandlers: Record<string, () => void> = {
 		playpause: createHandler("playpause", () => {
@@ -79,29 +78,29 @@ export const useHotkeys = () => {
 		}),
 
 		volup: createHandler("volup", () => {
-			const step = settingsStore.settings.player.step.hotkey / 100;
+			const step = settings.value.player.step.hotkey / 100;
 			playerStore.setVolume(Math.min(1, playerStore.volume + step));
 		}),
 
 		voldown: createHandler("voldown", () => {
-			const step = settingsStore.settings.player.step.hotkey / 100;
+			const step = settings.value.player.step.hotkey / 100;
 			playerStore.setVolume(Math.max(0, playerStore.volume - step));
 		}),
 
 		volmute: createHandler("volmute", () => {
-			settingsStore.updateSection("player", {
-				mute: !settingsStore.settings.player.mute
+			updateSection("player", {
+				mute: !settings.value.player.mute
 			});
-			playerStore.setVolume(settingsStore.settings.player.mute ? 0 : settingsStore.settings.player.volume);
+			playerStore.setVolume(settings.value.player.mute ? 0 : playerStore.volume);
 		}),
 
 		rateup: createHandler("rateup", () => {
-			const step = settingsStore.settings.player.playbackRateStep.hotkey;
+			const step = settings.value.player.playbackRateStep.hotkey;
 			playerStore.setPlaybackRate(Math.min(2, playerStore.playbackRate + step));
 		}),
 
 		ratedown: createHandler("ratedown", () => {
-			const step = settingsStore.settings.player.playbackRateStep.hotkey;
+			const step = settings.value.player.playbackRateStep.hotkey;
 			playerStore.setPlaybackRate(Math.max(0.5, playerStore.playbackRate - step));
 		}),
 
@@ -120,7 +119,7 @@ export const useHotkeys = () => {
 		}
 
 		const { register } = await import("@tauri-apps/plugin-global-shortcut");
-		const hotkeys = settingsStore.settings.hotkeys;
+		const hotkeys = settings.value.hotkeys;
 
 		for (const [action, accelerator] of Object.entries(hotkeys)) {
 			if (!accelerator || accelerator.length === 0) {
@@ -181,7 +180,7 @@ export const useHotkeys = () => {
 		}
 
 		const { unregister } = await import("@tauri-apps/plugin-global-shortcut");
-		const hotkeys = settingsStore.settings.hotkeys;
+		const hotkeys = settings.value.hotkeys;
 		const accelerator = hotkeys[action];
 
 		if (accelerator) {

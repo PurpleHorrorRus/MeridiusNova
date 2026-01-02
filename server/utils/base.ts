@@ -68,8 +68,15 @@ export class BaseRequest implements IRequest {
 
 		const { cookieKey } = useRuntimeConfig();
 		const { cookieSignOptions } = await import("~~/server/api/vk/web-token.post");
+		const { verifyDeviceFingerprint } = await import("./device-fingerprint");
 
-		const decodedToken = jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>;
+		let decodedToken: Record<string, any>;
+		
+		try {
+			decodedToken = jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>;
+		} catch (error) {
+			throw new Error("Invalid token");
+		}
 
 		if (
 			!decodedToken ||
@@ -79,7 +86,18 @@ export class BaseRequest implements IRequest {
 		) {
 			throw new Error("Malformed token payload");
 		}
-		const decoded = decodedToken as { access_token: string; user_id: number };
+
+		const decoded = decodedToken as { access_token: string; user_id: number; sessionId?: string; deviceFingerprint?: string };
+
+		const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
+		
+		if (isOldToken) {
+			throw new Error("Old token format - re-authentication required");
+		}
+
+		if (decoded.deviceFingerprint && !verifyDeviceFingerprint(this.event, decoded.deviceFingerprint)) {
+			throw new Error("Device fingerprint mismatch - unauthorized access attempt");
+		}
 
 		const query = new URLSearchParams({
 			...params,

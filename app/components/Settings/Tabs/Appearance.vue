@@ -25,11 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-
 const { getString } = useStrings();
-const settingsStore = useSettingsStore();
-const settings = computed(() => settingsStore.settings);
+const { settings, updateSection } = useSettings();
 const { applyTheme } = useTheme();
 
 const themes = [
@@ -41,7 +38,7 @@ const themes = [
 const updateTheme = (event: Event) => {
 	const target = event.target as HTMLSelectElement;
 	const themeId = target.value;
-	settingsStore.updateSection("appearance", { theme: themeId });
+	updateSection("appearance", { theme: themeId });
 	applyTheme(themeId);
 };
 </script>

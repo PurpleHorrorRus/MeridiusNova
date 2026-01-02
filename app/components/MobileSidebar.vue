@@ -128,13 +128,13 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import { useSettingsStore } from "~/stores/settings";
 import { useModal } from "~/composables/useModal";
+import { useEventListener } from "~/composables/useEventListener";
 
 const { getString } = useStrings();
 const route = useRoute();
 const vkStore = useVkStore();
-const settingsStore = useSettingsStore();
+const { settings, load, updateSection } = useSettings();
 const { openSettings } = useModal();
 
 const userId = computed(() => vkStore.user_id || 0);
@@ -160,11 +160,7 @@ onMounted(() => {
 			windowWidth.value = window.innerWidth;
 		};
 
-		window.addEventListener("resize", handleResize);
-
-		onUnmounted(() => {
-			window.removeEventListener("resize", handleResize);
-		});
+		useEventListener(window, "resize", handleResize);
 	}
 });
 
@@ -184,11 +180,10 @@ const isActive = (path: string): boolean => {
 };
 
 const user = computed(() => vkStore.user);
+import { getUserFullName } from "~/utils/user";
+
 const userName = computed(() => {
-	if (!user.value) {
-		return "";
-	}
-	return `${user.value.first_name || ""} ${user.value.last_name || ""}`.trim() || "Пользователь";
+	return getUserFullName(user.value, "Пользователь");
 });
 
 const handleSearchKeydown = (event: KeyboardEvent) => {
@@ -205,44 +200,27 @@ const clearSearch = () => {
 };
 
 onMounted(async () => {
-	await settingsStore.load();
+	await load();
 	await loadAccounts();
 });
 
+import { loadUserAccounts } from "~/utils/accounts";
+import { getUserFullName } from "~/utils/user";
+
 const loadAccounts = async () => {
-	const accountIds = settingsStore.settings.vk.accounts.map(account => account.user);
-
-	if (accountIds.length === 0) {
-		return;
-	}
-
-	const chunks = [];
-	for (let i = 0; i < accountIds.length; i += 100) {
-		chunks.push(accountIds.slice(i, i + 100));
-	}
-
-	for (const chunk of chunks) {
-		const response = await $fetch("/api/vk/users", {
-			params: {
-				user_ids: chunk.join(","),
-				fields: "photo_100"
-			}
-		}).catch(() => null);
-
-		if (response && Array.isArray(response)) {
-			accounts.value.push(...response);
-		}
-	}
+	const accountIds = settings.value.vk.accounts.map(account => account.user);
+	const loadedAccounts = await loadUserAccounts(accountIds);
+	accounts.value.push(...loadedAccounts);
 };
 
 const getAccountName = (account: any): string => {
-	return `${account.first_name || ""} ${account.last_name || ""}`.trim() || "User";
+	return getUserFullName(account, "User");
 };
 
 const switchAccount = async (account: any) => {
-	const accountIndex = settingsStore.settings.vk.accounts.findIndex(acc => acc.user === account.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(acc => acc.user === account.id);
 	if (accountIndex >= 0) {
-		settingsStore.updateSection("vk", { active: accountIndex });
+		updateSection("vk", { active: accountIndex });
 		showAccountMenu.value = false;
 		await navigateTo("/?reload=1");
 	}
@@ -329,9 +307,17 @@ const switchAccount = async (account: any) => {
 
 /* Hide desktop sidebar when mobile bottom nav is active */
 .desktop-sidebar {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+
 	@media (max-width: 600px) {
 		display: none;
 	}
+}
+
+.mobile-sidebar-user-section {
+	margin-top: auto;
 }
 
 /* Mobile specific styles for better responsiveness */
@@ -420,13 +406,6 @@ const switchAccount = async (account: any) => {
 		left: 0;
 		right: 0;
 		max-height: 200px;
-	}
-}
-
-/* Hide desktop sidebar when mobile bottom nav is active */
-.desktop-sidebar {
-	@media (max-width: 600px) {
-		display: none;
 	}
 }
 

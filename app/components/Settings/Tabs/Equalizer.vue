@@ -83,8 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
 import { useEqualizerStore } from "~/stores/equalizer";
+import { useEventListener } from "~/composables/useEventListener";
 
 const { getString } = useStrings();
 
@@ -195,10 +195,8 @@ const presetsData = [
 	}
 ];
 
-const settingsStore = useSettingsStore();
 const equalizerStore = useEqualizerStore();
-
-const settings = computed(() => settingsStore.settings);
+const { settings, updateSection } = useSettings();
 const presets = ref(presetsData);
 const selectedPresetIndex = ref(0);
 const graphCanvas = ref<HTMLCanvasElement | null>(null);
@@ -232,12 +230,8 @@ onMounted(() => {
 	nextTick(() => {
 		resizeCanvas();
 		findPreset();
-		window.addEventListener("resize", resizeCanvas);
+		useEventListener(window, "resize", resizeCanvas);
 	});
-});
-
-onUnmounted(() => {
-	window.removeEventListener("resize", resizeCanvas);
 });
 
 const resizeCanvas = () => {
@@ -280,7 +274,7 @@ const changePreset = (event: Event) => {
 	const preset = presets.value[index];
 
 	if (preset) {
-		settingsStore.updateSection("equalizer", { levels: [...preset.levels] });
+		updateSection("equalizer", { levels: [...preset.levels] });
 		selectedPresetIndex.value = index;
 		equalizerStore.setLevels(preset.levels);
 	}
@@ -290,7 +284,7 @@ const updateLevel = (index: number, value: number) => {
 	const clampedValue = Math.max(-15, Math.min(15, value));
 	const newLevels = [...settings.value.equalizer.levels];
 	newLevels[index] = clampedValue;
-	settingsStore.updateSection("equalizer", { levels: newLevels });
+	updateSection("equalizer", { levels: newLevels });
 	equalizerStore.setLevel(index, clampedValue);
 };
 
@@ -407,7 +401,7 @@ const handleMouseLeave = () => {
 
 const updateEqualizerEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("equalizer", { enable: target.checked });
+	updateSection("equalizer", { enable: target.checked });
 	equalizerStore.setEnabled(target.checked);
 };
 
@@ -439,7 +433,7 @@ const importPreset = () => {
 				const content = e.target?.result as string;
 				const preset = JSON.parse(content);
 				if (preset.levels && Array.isArray(preset.levels) && preset.levels.length === 18) {
-					settingsStore.updateSection("equalizer", { levels: preset.levels });
+					updateSection("equalizer", { levels: preset.levels });
 					equalizerStore.setLevels(preset.levels);
 				}
 			};

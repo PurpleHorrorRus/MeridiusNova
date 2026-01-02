@@ -34,4 +34,6 @@ export type TCookie = {
     user_id: number;
     iat: number;
     expires: number;
+    sessionId: string;
+    deviceFingerprint: string;
 };

@@ -24,9 +24,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { useEventListener } from "~/composables/useEventListener";
 import { storeToRefs } from "pinia";
 import { useAudio } from "~/composables/useAudio";
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
 import { provideSongsContext } from "~/composables/useSongsContext";
 import { isMobileCheck } from "~/composables/useIsMobile";
 import PlayerTimeline from "~/components/Player/PlayerTimeline.vue";
@@ -39,6 +41,7 @@ import FullscreenPlayer from "~/components/Player/FullscreenPlayer.vue";
 const { currentSong } = useAudio();
 
 const playlistStore = usePlaylistStore();
+const playerStore = usePlayerStore();
 
 // Provide the songs context before useUpdateTrack to fix the injection warning
 // Используем storeToRefs для сохранения реактивности
@@ -149,12 +152,24 @@ const handleEscapeKey = (event: KeyboardEvent) => {
 	}
 };
 
-onMounted(() => {
-	document.addEventListener("keydown", handleEscapeKey);
-});
+const handleSpaceKey = (event: KeyboardEvent) => {
+	if (event.key === " " || event.key === "Spacebar") {
+		const target = event.target as HTMLElement;
+		const isInputElement = target.tagName === "INPUT" || 
+			target.tagName === "TEXTAREA" || 
+			target.isContentEditable;
+
+		if (!isInputElement && currentSong.value) {
+			event.preventDefault();
+			playerStore.toggle();
+		}
+	}
+};
+
+useEventListener(document, "keydown", handleEscapeKey);
+useEventListener(document, "keydown", handleSpaceKey);
 
 onUnmounted(() => {
-	document.removeEventListener("keydown", handleEscapeKey);
 	document.body.style.overflow = "";
 });
 </script>

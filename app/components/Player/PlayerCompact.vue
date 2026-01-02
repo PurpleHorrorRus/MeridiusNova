@@ -36,6 +36,15 @@
 
 		<div class="compact-controls-group">
 			<button
+				v-if="songProps.hasLyrics"
+				class="btn-compact-control"
+				@click.stop="handleLyrics"
+				:title="t('player.lyrics') || 'Текст песни'"
+			>
+				<Icon name="mdi:text" size="18" />
+			</button>
+
+			<button
 				class="btn-compact-control"
 				:class="{ active: repeat }"
 				@click="toggleRepeat"
@@ -62,6 +71,8 @@ import { useAudio } from "~/composables/useAudio";
 import { usePlaylist } from "~/composables/usePlaylist";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useStrings } from "~/composables/useStrings";
+import { useSongProps } from "~/composables/useSongProps";
+import { useModal } from "~/composables/useModal";
 
 const {
 	currentSong,
@@ -81,6 +92,20 @@ const { repeat } = usePlaylist();
 
 const shuffle = computed(() => playlistStore.shuffle);
 
+const { generateSongProps } = useSongProps();
+const { openModal } = useModal();
+
+const songProps = computed(() => {
+	const song = currentSong.value;
+	if (!song) {
+		return {
+			hasLyrics: false
+		};
+	}
+
+	return generateSongProps(song);
+});
+
 const formatTime = (seconds: number): string => {
 	if (!isFinite(seconds) || isNaN(seconds)) {
 		return "0:00";
@@ -97,6 +122,14 @@ const toggleRepeat = () => {
 
 const toggleShuffle = () => {
 	playlistStore.toggleShuffle();
+};
+
+const handleLyrics = () => {
+	if (!currentSong.value) {
+		return;
+	}
+
+	openModal("lyrics", { audio: currentSong.value });
 };
 </script>
 

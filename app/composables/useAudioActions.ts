@@ -1,28 +1,26 @@
-import type { TAudio, TLyrics, TPlaylist } from "~~/server/utils/types";
+import type { TAudio, TLyrics } from "~~/server/utils/types";
+import { createAudioBody } from "~/utils/audio-api";
+import { refreshDownloadsQueue } from "~/utils/downloads";
 
 export const useAudioActions = () => {
 	const addAudio = async (audio: TAudio) => {
 		return await $fetch<TAudio>("/api/vk/audio/add", {
 			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+			body: createAudioBody(audio, {
 				add_hash: audio.add_hash,
 				track_code: audio.track_code
-			}
+			})
 		});
 	};
 
 	const deleteAudio = async (audio: TAudio, restore = false) => {
 		return await $fetch<{ success: boolean }>("/api/vk/audio/delete", {
 			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+			body: createAudioBody(audio, {
 				delete_hash: audio.delete_hash,
 				track_code: audio.track_code,
 				restore
-			}
+			})
 		});
 	};
 
@@ -35,16 +33,14 @@ export const useAudioActions = () => {
 	}) => {
 		return await $fetch<TAudio>("/api/vk/audio/edit", {
 			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+			body: createAudioBody(audio, {
 				edit_hash: audio.edit_hash,
 				title: params.title || audio.title,
 				performer: params.performer || audio.performer,
 				privacy: params.privacy ?? 0,
 				lyrics: params.lyrics,
 				genre: params.genre
-			}
+			})
 		});
 	};
 
@@ -71,44 +67,16 @@ export const useAudioActions = () => {
 		});
 	};
 
-	const addSongToPlaylist = async (audio: TAudio, playlist: TPlaylist) => {
-		return await $fetch<{ success: boolean }>("/api/vk/playlists/add-song", {
-			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
-				playlist_id: playlist.playlist_id,
-				playlist_owner_id: playlist.owner_id
-			}
-		});
-	};
-
-	const removeSongFromPlaylist = async (audio: TAudio, playlist: TPlaylist) => {
-		return await $fetch<{ success: boolean }>("/api/vk/playlists/remove-song", {
-			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
-				playlist_id: playlist.playlist_id,
-				playlist_owner_id: playlist.owner_id
-			}
-		});
-	};
-
 	const downloadAudio = async (audio: TAudio) => {
 		const response = await $fetch<{ success: boolean; downloadId?: string }>("/api/vk/audio/download", {
 			method: "POST",
-			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+			body: createAudioBody(audio, {
 				full_id: audio.full_id
-			}
+			})
 		});
 
-		if (response.success && import.meta.client) {
-			const { useDownloadsStore } = await import("~/stores/downloads");
-			const downloadsStore = useDownloadsStore();
-			await downloadsStore.fetchQueue();
+		if (response.success) {
+			await refreshDownloadsQueue();
 		}
 
 		return response;
@@ -156,8 +124,6 @@ export const useAudioActions = () => {
 		editAudio,
 		getLyrics,
 		reorderAudio,
-		addSongToPlaylist,
-		removeSongFromPlaylist,
 		downloadAudio,
 		shareAudio,
 		getSimilarTracks

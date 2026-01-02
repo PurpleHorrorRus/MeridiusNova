@@ -38,15 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
 import { useHotkeys } from "~/composables/useHotkeys";
 import HotkeyInput from "~/components/Settings/HotkeyInput.vue";
 
 const { getString } = useStrings();
-const settingsStore = useSettingsStore();
+const { settings, updateSection } = useSettings();
 const { registerHotkey, unregisterHotkey, registerHotkeys, unregisterHotkeys } = useHotkeys();
-
-const settings = computed(() => settingsStore.settings);
 
 onMounted(async () => {
 	await unregisterHotkeys();
@@ -114,7 +111,7 @@ const updateHotkey = async (action: string, accelerator: string) => {
 	
 	const currentHotkeys = { ...settings.value.hotkeys } as Record<string, string>;
 	currentHotkeys[action] = accelerator;
-	await settingsStore.updateSection("hotkeys", currentHotkeys);
+	await updateSection("hotkeys", currentHotkeys);
 };
 </script>
 

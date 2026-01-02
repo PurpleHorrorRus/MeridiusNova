@@ -1,4 +1,6 @@
 import type { TPlaylist, TAudio } from "~~/server/utils/types";
+import { createAudioBody } from "~/utils/audio-api";
+import { refreshDownloadsQueue } from "~/utils/downloads";
 
 export const usePlaylistActions = () => {
 	const createPlaylist = async (params: {
@@ -61,8 +63,7 @@ export const usePlaylistActions = () => {
 		return await $fetch("/api/vk/playlists/add-song", {
 			method: "POST",
 			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+				...createAudioBody(audio),
 				playlist_id: playlist.playlist_id,
 				playlist_owner_id: playlist.owner_id
 			}
@@ -73,8 +74,7 @@ export const usePlaylistActions = () => {
 		return await $fetch("/api/vk/playlists/remove-song", {
 			method: "POST",
 			body: {
-				audio_id: audio.id,
-				audio_owner_id: audio.owner_id,
+				...createAudioBody(audio),
 				playlist_id: playlist.playlist_id,
 				playlist_owner_id: playlist.owner_id
 			}
@@ -102,10 +102,8 @@ export const usePlaylistActions = () => {
 			}
 		});
 
-		if (response.success && import.meta.client) {
-			const { useDownloadsStore } = await import("~/stores/downloads");
-			const downloadsStore = useDownloadsStore();
-			await downloadsStore.fetchQueue();
+		if (response.success) {
+			await refreshDownloadsQueue();
 		}
 
 		return response;

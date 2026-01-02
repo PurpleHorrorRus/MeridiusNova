@@ -7,6 +7,7 @@ import { usePlayerStore } from "~/stores/player";
 import { useSongsContext } from "~/composables/useSongsContext";
 import { useSearch } from "~/composables/useSearch";
 import { useVkStore } from "~/stores/vk";
+import { isSearchPage, isUserLibraryPage } from "~/utils/route";
 import { inject, triggerRef } from "vue";
 import type { Ref, ComputedRef } from "vue";
 
@@ -40,7 +41,7 @@ export const useUpdateTrack = () => {
 					// Обновляем в результатах поиска
 					// Удаляем из исходных данных ТОЛЬКО если shouldRemoveFromList === true
 					// Иначе только обновляем (не удаляем)
-					if (route.path.startsWith('/search')) {
+					if (isSearchPage(route.path)) {
 						const { results } = useSearch();
 						if (results?.value) {
 							// Обновляем в categories
@@ -85,7 +86,7 @@ export const useUpdateTrack = () => {
 					// 1. /collection - использует useFetch для /api/vk/audio/${user_id}/-1
 					// 2. /playlist/${user_id}/-1 - использует useFetch для /api/vk/audio/${user_id}/-1
 					// Получаем прямой доступ к data через provide/inject (inject вызван на верхнем уровне composable)
-					if (route.path.startsWith('/collection') || route.path.match(/\/playlist\/\d+\/-1$/)) {
+					if (isUserLibraryPage(route.path)) {
 						const injectedData = route.path.startsWith('/collection') ? collectionData : playlistData;
 						
 					// Обновляем в data.value.audios

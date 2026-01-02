@@ -8,7 +8,7 @@ export const isMobileCheck = (): boolean => {
 };
 
 export const useIsMobile = () => {
-	const windowWidth = ref(0);
+	const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
 
 	const isMobile = computed(() => {
 		if (typeof window === "undefined") {
@@ -17,19 +17,22 @@ export const useIsMobile = () => {
 		return windowWidth.value <= MOBILE_BREAKPOINT;
 	});
 
+	const handleResize = () => {
+		if (typeof window !== "undefined") {
+			windowWidth.value = window.innerWidth;
+		}
+	};
+
 	onMounted(() => {
 		if (typeof window !== "undefined") {
 			windowWidth.value = window.innerWidth;
-
-			const handleResize = () => {
-				windowWidth.value = window.innerWidth;
-			};
-
 			window.addEventListener("resize", handleResize);
+		}
+	});
 
-			onUnmounted(() => {
-				window.removeEventListener("resize", handleResize);
-			});
+	onUnmounted(() => {
+		if (typeof window !== "undefined") {
+			window.removeEventListener("resize", handleResize);
 		}
 	});
 

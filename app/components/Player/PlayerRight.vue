@@ -27,7 +27,7 @@
 				@click="handleAdd"
 				:title="t('player.addToLibrary')"
 			>
-				<Icon name="mdi:plus" size="20" />
+				<Icon name="mdi:heart-outline" size="20" />
 			</button>
 
 			<button
@@ -36,7 +36,7 @@
 				@click="handleDelete"
 				:title="deleteTitle"
 			>
-				<Icon name="mdi:close" size="20" />
+				<Icon name="mdi:heart" size="20" />
 			</button>
 
 			<button
@@ -58,70 +58,63 @@
 			</button>
 		</div>
 
-		<div class="volume-wrapper" @wheel="handleVolumeWheel">
-			<button @click="toggleMute" class="btn-mute">
+		<div class="volume-wrapper" @wheel="volumeSlider.handleVolumeWheel">
+			<button @click="volumeSlider.toggleMute" class="btn-mute">
 				<Icon 
 					v-if="!showVolumePercent"
-					:name="muted ? 'mdi:volume-mute' : (volume === 0 ? 'mdi:volume-off' : (volume < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
+					:name="volumeSlider.muted.value ? 'mdi:volume-mute' : (volumeSlider.volume.value === 0 ? 'mdi:volume-off' : (volumeSlider.volume.value < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
 					size="20" 
 				/>
 				<span v-else class="volume-percent">{{ volumePercent }}%</span>
 			</button>
 			<div 
 				class="volume-slider"
-				@mousedown="handleVolumeSliderMouseDown"
+				:ref="volumeSlider.volumeSliderRef"
+				@mousedown="volumeSlider.handleVolumeSliderMouseDown"
 			>
 				<input
+					:ref="volumeSlider.volumeRangeInputRef"
 					type="range"
 					min="0"
 					max="1000"
 					step="1"
-					:value="volume * 1000"
-					@input="handleVolumeChange"
+					:value="volumeSlider.volume.value * 1000"
+					@input="volumeSlider.handleVolumeChange"
 					class="volume-range"
 				/>
-				<div class="volume-fill" :style="{ width: `${volume * 100}%` }"></div>
+				<div class="volume-fill" :style="{ width: `${volumeSlider.volume.value * 100}%` }"></div>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from "vue";
+import { ref, computed, watch, onUnmounted, watch as watchVue } from "vue";
 import { useAudio } from "~/composables/useAudio";
-import { useAudioActions } from "~/composables/useAudioActions";
 import { useSongProps } from "~/composables/useSongProps";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
 import { usePlaylist } from "~/composables/usePlaylist";
 import { usePlaylistStore } from "~/stores/playlist";
-import { useVkStore } from "~/stores/vk";
 import { useStrings } from "~/composables/useStrings";
-import { useUpdateTrack } from "~/composables/useUpdateTrack";
-import { useRoute } from "vue-router";
-import { useSettingsStore } from "~/stores/settings";
+import { useSongDelete } from "~/composables/useSongDelete";
+import { useSongAdd } from "~/composables/useSongAdd";
+import { useVolumeSlider } from "~/composables/useVolumeSlider";
 
 const {
 	currentSong,
-	volume,
-	muted,
 	playbackRate,
-	setVolume,
-	toggleMute,
 	setPlaybackRate
 } = useAudio();
 
-const { addAudio, deleteAudio } = useAudioActions();
+const volumeSlider = useVolumeSlider();
+
 const { generateSongProps } = useSongProps();
-const { removeSongFromPlaylist } = usePlaylistActions();
-const vkStore = useVkStore();
 const { getString } = useStrings();
 const t = getString;
 const playlistStore = usePlaylistStore();
-const { updateTrackInAllPlaces } = useUpdateTrack();
+const { handleDelete: deleteSong, getDeleteTitle, canDelete: canDeleteSong } = useSongDelete();
+const { handleAdd: addSong } = useSongAdd();
 
 const {
-	hasNext,
-	hasPrevious,
 	repeat,
 	current,
 	playing
@@ -134,7 +127,7 @@ const showVolumePercent = ref(false);
 let volumePercentTimeout: NodeJS.Timeout | null = null;
 
 const volumePercent = computed(() => {
-	return Math.round(volume.value * 100);
+	return Math.round(volumeSlider.volume.value * 100);
 });
 
 const showVolumePercentHandler = () => {
@@ -150,7 +143,7 @@ const showVolumePercentHandler = () => {
 	}, 1000);
 };
 
-watch(volume, () => {
+watch(volumeSlider.volume, () => {
 	showVolumePercentHandler();
 });
 
@@ -173,26 +166,19 @@ const currentPlaylist = computed(() => {
 });
 
 const canDelete = computed(() => {
-	if (songProps.value.canDelete) {
-		return true;
+	if (!currentSong.value) {
+		return false;
 	}
-	
-	const playlist = currentPlaylist.value;
-	if (playlist && playlist.playlist_id >= 0 && playlist.owner_id === vkStore.user_id) {
-		return true;
-	}
-	
-	return false;
+
+	return canDeleteSong(currentSong.value, songProps.value);
 });
 
 const deleteTitle = computed(() => {
-	const playlist = currentPlaylist.value;
-	
-	if (playlist && playlist.playlist_id >= 0 && playlist.owner_id === vkStore.user_id) {
-		return t("player.removeFromPlaylist") || "Удалить из плейлиста";
+	if (!currentSong.value) {
+		return "";
 	}
-	
-	return t("player.removeFromLibrary") || "Удалить из библиотеки";
+
+	return getDeleteTitle(currentSong.value);
 });
 
 const toggleRepeat = () => {
@@ -228,107 +214,13 @@ const speedRates = computed(() => {
 	return rates;
 });
 
-const handleVolumeChange = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	const newVolume = Number(target.value) / 1000;
-	setVolume(newVolume);
-};
-
-const handleVolumeSliderMouseDown = (event: MouseEvent) => {
-	const clickedElement = event.target as HTMLElement;
-	
-	if (clickedElement.tagName === "INPUT") {
-		const inputElement = clickedElement as HTMLInputElement;
-		if (inputElement.type === "range") {
-			event.stopPropagation();
-			return;
-		}
-	}
-
-	event.preventDefault();
-	event.stopPropagation();
-
-	const slider = event.currentTarget as HTMLElement;
-	const rangeInput = slider.querySelector("input[type=\"range\"]") as HTMLInputElement;
-	
-	if (!rangeInput) {
-		return;
-	}
-
-	const getOffsetX = (mouseEvent: MouseEvent): number => {
-		const currentSliderRect = slider.getBoundingClientRect();
-		return mouseEvent.clientX - currentSliderRect.left;
-	};
-
-	const offsetX = getOffsetX(event);
-	const width = slider.clientWidth;
-	const percentage = Math.max(0, Math.min(1, offsetX / width));
-	const newValue = Math.round(percentage * 1000);
-	const newVolume = newValue / 1000;
-	
-	rangeInput.value = String(newValue);
-	setVolume(newVolume);
-
-	const handleMouseMove = (moveEvent: MouseEvent) => {
-		const moveOffsetX = getOffsetX(moveEvent);
-		const moveWidth = slider.clientWidth;
-		const movePercentage = Math.max(0, Math.min(1, moveOffsetX / moveWidth));
-		const moveValue = Math.round(movePercentage * 1000);
-		const moveVolume = moveValue / 1000;
-		
-		rangeInput.value = String(moveValue);
-		setVolume(moveVolume);
-	};
-
-	const handleMouseUp = () => {
-		document.removeEventListener("mousemove", handleMouseMove);
-		document.removeEventListener("mouseup", handleMouseUp);
-	};
-
-	document.addEventListener("mousemove", handleMouseMove);
-	document.addEventListener("mouseup", handleMouseUp);
-};
-
-const handleVolumeWheel = (event: WheelEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-
-	const settingsStore = useSettingsStore();
-	const hasWheelStep = settingsStore.settings
-		&& settingsStore.settings.player
-		&& settingsStore.settings.player.step
-		&& settingsStore.settings.player.step.wheel;
-	const wheelStepValue = hasWheelStep
-		? settingsStore.settings.player.step.wheel
-		: 1;
-	const wheelStep = wheelStepValue / 100;
-	const delta = event.deltaY > 0 ? -wheelStep : wheelStep;
-	const newVolume = Math.max(0, Math.min(1, volume.value + delta));
-
-	setVolume(newVolume);
-};
 
 const handleAdd = async () => {
 	if (!currentSong.value) {
 		return;
 	}
 
-	const audioForApi = currentSong.value.owner_id !== vkStore.user_id
-		? currentSong.value
-		: { ...currentSong.value, owner_id: (currentSong.value as any).original_owner_id || currentSong.value.owner_id, full_id: `${(currentSong.value as any).original_owner_id || currentSong.value.owner_id}_${currentSong.value.id}` };
-
-	const updatedSong = await addAudio(audioForApi).catch(console.error);
-	
-	if (updatedSong) {
-		const updatedTrack = {
-			...currentSong.value,
-			addedSong: updatedSong,
-			can_add: updatedSong.can_add,
-			can_delete: updatedSong.can_delete
-		};
-		
-		updateTrackInAllPlaces(currentSong.value.id, () => updatedTrack, false);
-	}
+	await addSong(currentSong.value);
 };
 
 const handleDelete = async () => {
@@ -336,57 +228,7 @@ const handleDelete = async () => {
 		return;
 	}
 
-	const playlist = currentPlaylist.value;
-	
-	const isInLibrary = Boolean(currentSong.value.addedSong) || currentSong.value.owner_id === vkStore.user_id;
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& playlist.owner_id === vkStore.user_id
-		&& !isInLibrary
-		&& !currentSong.value.addedSong;
-	
-	let result;
-	
-	if (shouldRemoveFromPlaylist) {
-		result = await removeSongFromPlaylist(currentSong.value, playlist).catch(console.error);
-		
-		if (result?.success) {
-			if (playlist.size !== undefined) {
-				playlist.size = Math.max(0, (playlist.size || 0) - 1);
-			}
-		}
-	} else if (isInLibrary) {
-		const songToDelete = currentSong.value.addedSong || currentSong.value;
-		
-		result = await deleteAudio(songToDelete).catch(console.error);
-		
-		if (result?.success) {
-			const route = useRoute();
-			const isUserLibraryPage = route.path.startsWith("/collection")
-				|| route.path.match(/\/playlist\/\d+\/-1$/);
-			
-			if (isUserLibraryPage) {
-				updateTrackInAllPlaces(currentSong.value.id, () => null, true);
-			} else {
-				updateTrackInAllPlaces(currentSong.value.id, (track) => {
-					const { addedSong, ...trackWithoutAddedSong } = track;
-					return {
-						...trackWithoutAddedSong,
-						can_add: true,
-						can_delete: false
-					};
-				}, false);
-			}
-		}
-	}
-	
-	if (result?.success) {
-		playlistStore.removeSongByFullId(currentSong.value.full_id);
-		
-		if (playlistStore.currentSong && playlistStore.currentSong.full_id === currentSong.value.full_id) {
-			playlistStore.next();
-		}
-	}
+	await deleteSong(currentSong.value);
 };
 
 onUnmounted(() => {

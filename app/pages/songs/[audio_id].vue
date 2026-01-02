@@ -26,6 +26,7 @@
 import { ref, onMounted } from "vue";
 import type { TAudio } from "~~/server/utils/types";
 import { useAudioActions } from "~/composables/useAudioActions";
+import { createAudioFromIds } from "~/utils/audio";
 import Song from "~/components/Song/Song.vue";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
 
@@ -44,11 +45,7 @@ onMounted(async () => {
 		return;
 	}
 
-	const audio: TAudio = {
-		id: audioId,
-		owner_id: audioOwnerId,
-		full_id: `${audioOwnerId}_${audioId}`
-	} as TAudio;
+	const audio = createAudioFromIds(audioId, audioOwnerId);
 
 	const result = await getSimilarTracks(audio).catch(() => ({ audios: [] }));
 	tracks.value = result.audios || [];

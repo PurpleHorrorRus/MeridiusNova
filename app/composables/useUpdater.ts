@@ -1,7 +1,5 @@
-import { useSettingsStore } from "~/stores/settings";
-
 export const useUpdater = () => {
-	const settingsStore = useSettingsStore();
+	const { settings, updateSection } = useSettings();
 	const checking = ref(false);
 	const updateAvailable = ref(false);
 	const updateError = ref<string | null>(null);
@@ -37,11 +35,11 @@ export const useUpdater = () => {
 	};
 
 	const getUpdateChannel = (): "production" | "beta" | "development" => {
-		return settingsStore.settings.general.updateChannel || "production";
+		return settings.value.general.updateChannel || "production";
 	};
 
 	const setUpdateChannel = async (channel: "production" | "beta" | "development") => {
-		await settingsStore.updateSection("general", { updateChannel: channel });
+		await updateSection("general", { updateChannel: channel });
 	};
 
 	const checkForUpdates = async (): Promise<boolean> => {

@@ -1,4 +1,5 @@
 import { BaseRequest } from "~~/server/utils/base";
+import { requireAuth } from "~~/server/utils/auth-check";
 import type { EventHandlerRequest, H3Event } from "h3";
 
 type TUserInfo = {
@@ -18,7 +19,7 @@ class UserRequests extends BaseRequest {
 	}
 
 	public async getUserInfo(): Promise<TUserInfo | null> {
-		if (!this.event.context.user.id) {
+		if (!this.event.context.user?.id) {
 			return null;
 		}
 
@@ -53,6 +54,8 @@ class UserRequests extends BaseRequest {
 }
 
 export default defineEventHandler(async (event) => {
+	requireAuth(event);
+	
 	const userRequests = new UserRequests(event);
 	return await userRequests.getUserInfo();
 });

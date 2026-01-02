@@ -56,6 +56,7 @@
 import Downloads from "./Downloads/Downloads.vue";
 import { useUpdater } from "~/composables/useUpdater";
 import { useModal } from "~/composables/useModal";
+import { useEventListener } from "~/composables/useEventListener";
 
 const { getString } = useStrings();
 const { openSettings } = useModal();
@@ -94,13 +95,7 @@ if (typeof window !== "undefined") {
 		windowWidth.value = window.innerWidth;
 	};
 
-	onMounted(() => {
-		window.addEventListener("resize", handleResize);
-	});
-
-	onUnmounted(() => {
-		window.removeEventListener("resize", handleResize);
-	});
+	useEventListener(window, "resize", handleResize);
 }
 
 const handleSearchKeydown = (event: KeyboardEvent) => {
@@ -139,11 +134,10 @@ const handleClose = async () => {
 	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 	if (isTauri && import.meta.client) {
-		const { useSettingsStore } = await import("~/stores/settings");
-		const settingsStore = useSettingsStore();
-		await settingsStore.load();
+		const { settings, load } = useSettings();
+		await load();
 
-		if (settingsStore.settings.window.hideOnClose) {
+		if (settings.value.window.hideOnClose) {
 			return appWindow.value?.hide();
 		}
 	}

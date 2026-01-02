@@ -50,7 +50,8 @@ export const useHotkeysStore = defineStore("hotkeys", {
 		async handleAction(action: string): Promise<void> {
 			const playerStore = await import("./player").then(m => m.usePlayerStore());
 			const playlistStore = await import("./playlist").then(m => m.usePlaylistStore());
-			const settingsStore = await import("./settings").then(m => m.useSettingsStore());
+			const { useSettings } = await import("~/composables/useSettings");
+			const { settings } = useSettings();
 
 			switch (action) {
 				case "playpause":
@@ -63,13 +64,13 @@ export const useHotkeysStore = defineStore("hotkeys", {
 					await playlistStore().previous();
 					break;
 				case "volup": {
-					const step = settingsStore().settings.player.step.hotkey / 100;
+					const step = settings.value.player.step.hotkey / 100;
 					const newVolume = Math.min(1, playerStore().volume + step);
 					playerStore().setVolume(newVolume);
 					break;
 				}
 				case "voldown": {
-					const step = settingsStore().settings.player.step.hotkey / 100;
+					const step = settings.value.player.step.hotkey / 100;
 					const newVolume = Math.max(0, playerStore().volume - step);
 					playerStore().setVolume(newVolume);
 					break;
@@ -78,13 +79,13 @@ export const useHotkeysStore = defineStore("hotkeys", {
 					playerStore().toggleMute();
 					break;
 				case "rateup": {
-					const step = settingsStore().settings.player.playbackRateStep.hotkey;
+					const step = settings.value.player.playbackRateStep.hotkey;
 					const newRate = Math.min(2, playerStore().playbackRate + step);
 					playerStore().setPlaybackRate(newRate);
 					break;
 				}
 				case "ratedown": {
-					const step = settingsStore().settings.player.playbackRateStep.hotkey;
+					const step = settings.value.player.playbackRateStep.hotkey;
 					const newRate = Math.max(0.5, playerStore().playbackRate - step);
 					playerStore().setPlaybackRate(newRate);
 					break;
