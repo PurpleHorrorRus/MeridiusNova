@@ -174,6 +174,14 @@ fn restart_app(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    {
+        use std::env;
+        unsafe {
+            let _ = env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-breakpad --disable-client-side-phishing-detection --disable-component-update --disable-default-apps --disable-dev-shm-usage --disable-extensions --disable-features=TranslateUI --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-sync --disable-translate --disable-web-resources --metrics-recording-only --no-first-run --no-pings --no-default-browser-check --safebrowsing-disable-auto-update --enable-automation --password-store=basic --use-mock-keychain --disable-features=RendererCodeIntegrity --aggressive-cache-discard --memory-pressure-off");
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
@@ -275,6 +283,7 @@ pub fn run() {
             };
 
             let parsed_url = Url::parse(&url).expect("Failed to parse URL");
+            #[allow(unused_variables)]
             let window = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",

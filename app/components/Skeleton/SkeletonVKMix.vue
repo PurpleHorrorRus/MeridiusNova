@@ -20,6 +20,18 @@
 	padding: 24px;
 	background: var(--bg-secondary, #181818);
 	border-radius: 12px;
+
+	@media (max-width: 768px) {
+		gap: 16px;
+		padding: 16px;
+		border-radius: 8px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 12px;
+		padding: 12px;
+		border-radius: 6px;
+	}
 }
 
 .skeleton-vkmix-cover {
@@ -35,6 +47,18 @@
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
 	flex-shrink: 0;
+
+	@media (max-width: 768px) {
+		width: 100px;
+		height: 100px;
+		border-radius: 6px;
+	}
+
+	@media (max-width: 480px) {
+		width: 80px;
+		height: 80px;
+		border-radius: 4px;
+	}
 }
 
 .skeleton-vkmix-info {
@@ -42,6 +66,10 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+
+	@media (max-width: 480px) {
+		gap: 8px;
+	}
 }
 
 .skeleton-vkmix-title {
@@ -56,6 +84,15 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 20px;
+	}
+
+	@media (max-width: 480px) {
+		height: 18px;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-vkmix-description {
@@ -70,6 +107,11 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 480px) {
+		height: 14px;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

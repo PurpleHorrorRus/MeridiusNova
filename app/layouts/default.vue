@@ -4,8 +4,14 @@
 			<Titlebar />
 		</header>
 
-		<div class="layout-body">
-			<Sidebar />
+	<div class="layout-body">
+		<ClientOnly>
+			<Sidebar v-if="!isMobile" />
+			<MobileSidebar v-else />
+			<template #fallback>
+				<Sidebar />
+			</template>
+		</ClientOnly>
 
 			<main ref="mainContainerRef" class="layout-main">
 				<slot />
@@ -21,6 +27,8 @@
 <script setup lang="ts">
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const mainContainerRef = ref<HTMLElement | null>(null);
+
+const { isMobile } = useIsMobile();
 
 const gridStyle = computed(() => {
 	if (isTauri) {
@@ -54,6 +62,14 @@ const gridStyle = computed(() => {
 	display: flex;
 	height: 100%;
 	overflow: hidden;
+
+	@media (max-width: 600px) {
+		:deep(.mobile-sidebar.mobile-only-bottom-nav) {
+			flex: 0 0 0;
+			min-width: 0;
+			width: 0;
+		}
+	}
 }
 
 .layout-main {
@@ -63,5 +79,10 @@ const gridStyle = computed(() => {
 	overflow-x: hidden;
 	background: var(--bg-primary, #121212);
 	padding-bottom: 108px; // ~76px высота плеера + 32px отступы
+	
+	/* Adjust padding for mobile bottom navigation */
+	@media (max-width: 768px) {
+		padding-bottom: 60px; // Height of bottom navigation
+	}
 }
 </style>

@@ -17,6 +17,16 @@
 	gap: 12px;
 	min-width: 180px;
 	flex-shrink: 0;
+
+	@media (max-width: 768px) {
+		min-width: 150px;
+		gap: 10px;
+	}
+
+	@media (max-width: 480px) {
+		min-width: 120px;
+		gap: 8px;
+	}
 }
 
 .skeleton-playlist-cover {
@@ -31,6 +41,18 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		width: 150px;
+		height: 150px;
+		border-radius: 6px;
+	}
+
+	@media (max-width: 480px) {
+		width: 120px;
+		height: 120px;
+		border-radius: 4px;
+	}
 }
 
 .skeleton-playlist-title {
@@ -45,6 +67,11 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 480px) {
+		height: 14px;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-playlist-subtitle {
@@ -59,6 +86,11 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 480px) {
+		height: 12px;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

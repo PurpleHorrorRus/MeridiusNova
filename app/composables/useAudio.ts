@@ -27,24 +27,33 @@ export const useAudio = () => {
 	};
 
 	const playFromPlaylist = async (song: TAudio, playlist: TPlaylist) => {
+		// Устанавливаем очередь треков из плейлиста
+		const songs = playlist.list || [];
+		playlistStore.setSongs(songs);
+		
 		playlistStore.setCurrent(playlist);
 		playlistStore.setPlaying(playlist);
-		const index = playlist.list?.findIndex((s: TAudio) => s.full_id === song.full_id) || -1;
+		
+		// Находим индекс трека в отфильтрованной очереди
+		const filteredSongs = playlistStore.playingSongs;
+		const songIndex = filteredSongs.findIndex((s: TAudio) => s.full_id === song.full_id);
+		const index = songIndex >= 0 ? songIndex : 0;
 
-		if (index >= 0) {
-			playlistStore.setCurrentIndex(index);
-		}
+		playlistStore.setCurrentIndex(index);
+
+		// Используем трек из очереди, который уже имеет все данные
+		const songToPlay = filteredSongs[index] || song;
 
 		// Добавляем информацию о плейлисте в трек
 		const songWithFrom = {
-			...song,
+			...songToPlay,
 			from: playlist
 		};
 
 		await play(songWithFrom);
 	};
 
-	const playNext = async () => {
+	const playNext = async () => {		
 		// Проверяем, является ли текущий плейлист VK Mix
 		const isVkMix = playlistStore.playing && (playlistStore.playing.playlist_id === -9 || String(playlistStore.playing.owner_id) === "vkmix");
 		
@@ -99,19 +108,27 @@ export const useAudio = () => {
 					await playerStore.play({ ...nextSong, clear: true, manual: true });
 				}
 			}
-		} else if (playlistStore.hasNext) {
+		} else if (playlistStore.playingSongs.length > 0) {
+			// Сохраняем текущий индекс и трек перед переключением
+			const currentIndexBefore = playlistStore.currentIndex;
+			const currentSongBefore = playlistStore.currentSong;
+			
+			// Переключаемся на следующий трек
 			playlistStore.next();
+			
 			const nextSong = playlistStore.currentSong;
+			const currentIndexAfter = playlistStore.currentIndex;
 
-			if (nextSong) {
+			// Проверяем, что индекс изменился
+			if (nextSong && currentIndexAfter !== currentIndexBefore && currentIndexAfter >= 0) {
 				// Помечаем трек как из очереди, если он не из текущего плейлиста
 				const playing = playlistStore.playing;
 				const current = playlistStore.current;
-				const songWithFrom = {
+
+				await playerStore.play({ ...{
 					...nextSong,
 					from: (current && playing && current.raw_id === playing.raw_id) ? playing : "queue"
-				};
-				await playerStore.play({ ...songWithFrom, clear: true, manual: true });
+				}, clear: true, manual: true });
 			}
 		}
 	};

@@ -5,6 +5,7 @@ import { Normalizer } from "./player/nodes/normalizer";
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
+import { isMobileCheck } from "~/composables/useIsMobile";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlayerState } from "~~/server/utils/types";
@@ -103,23 +104,28 @@ export const usePlayerStore = defineStore("player", {
 				: null;
 		},
 
-		async initPlayer() {
-			if (this.created) {
-				return false;
-			}
+	async initPlayer() {
+		if (this.created) {
+			return false;
+		}
 
+		if (import.meta.client) {
+			const isMobile = isMobileCheck();
+			this.volume = isMobile ? 1.0 : (this.volume || 0.5);
+		} else {
 			this.volume = this.volume || 0.5;
+		}
 
-			if (import.meta.client) {
-				const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-				this.audioContext = new AudioContext();
-				this.audioContext.suspend();
-			}
+		if (import.meta.client) {
+			const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+			this.audioContext = new AudioContext();
+			this.audioContext.suspend();
+		}
 
-			this.created = true;
+		this.created = true;
 
-			return true;
-		},
+		return true;
+	},
 
 		resetController(index: number): boolean {
 			const controllerData = controllers[index];
@@ -214,6 +220,7 @@ export const usePlayerStore = defineStore("player", {
 				for (let i = currentIndex + 1; i < actualSongs.length; i++) {
 					const potentialSong = actualSongs[i];
 					if (potentialSong && !potentialSong.is_restriction) {
+						playlistStore.setCurrentIndex(i);
 						return potentialSong;
 					}
 				}
@@ -252,9 +259,9 @@ export const usePlayerStore = defineStore("player", {
 				return false;
 			}
 
-			// If current song is same and paused -> resume
+			// If current song is same and paused -> resume (но не при manual переключении)
 			const isSameSong = this.song?.full_id === song.full_id;
-			if (isSameSong && this.paused) {
+			if (isSameSong && this.paused && !song.manual) {
 				return this.resume();
 			}
 
@@ -274,9 +281,16 @@ export const usePlayerStore = defineStore("player", {
 
 			// Sync playlist index
 			const playlistStore = usePlaylistStore();
-			const songIndex = playlistStore.playingSongs.findIndex((s: TAudio) => s.full_id === song.full_id);
-			if (songIndex >= 0) {
-				playlistStore.setCurrentIndex(songIndex);
+			// При manual переключении не синхронизируем индекс, так как он уже установлен в next()
+			// Синхронизируем только если индекс не установлен или трек не найден по текущему индексу
+			if (!song.manual || playlistStore.currentIndex < 0) {
+				const currentSong = playlistStore.currentSong;
+				if (!currentSong || currentSong.full_id !== song.full_id) {
+					const songIndex = playlistStore.playingSongs.findIndex((s: TAudio) => s.full_id === song.full_id);
+					if (songIndex >= 0) {
+						playlistStore.setCurrentIndex(songIndex);
+					}
+				}
 			}
 
 			if (!this.audioContext) {
@@ -484,17 +498,37 @@ export const usePlayerStore = defineStore("player", {
 					this.currentTime = controllerData.controller?.currentTime || 0;
 
 					if (navigator.mediaSession) {
-						navigator.mediaSession.setPositionState({
-							duration: controllerData.controller?.duration || 0,
-							playbackRate: controllerData.controller?.playbackRate || 1,
-							position: controllerData.controller?.currentTime || 0
-						});
+						const duration = this.duration || controllerData.controller?.duration || 0;
+						const position = controllerData.controller?.currentTime || 0;
+						const playbackRate = controllerData.controller?.playbackRate || 1;
+
+						if (duration > 0 && !isNaN(duration) && isFinite(duration) && !isNaN(position) && isFinite(position)) {
+							navigator.mediaSession.setPositionState({
+								duration: duration,
+								playbackRate: playbackRate,
+								position: position
+							});
+						}
 					}
 				}
 			};
 
 			controllerData.loadedMetadataHandler = () => {
-				this.duration = controllerData.controller?.duration ?? 0;
+				const duration = controllerData.controller?.duration ?? 0;
+				this.duration = duration;
+
+				if (navigator.mediaSession && duration > 0 && !isNaN(duration) && isFinite(duration)) {
+					const position = controllerData.controller?.currentTime || 0;
+					const playbackRate = controllerData.controller?.playbackRate || 1;
+
+					if (!isNaN(position) && isFinite(position)) {
+						navigator.mediaSession.setPositionState({
+							duration: duration,
+							playbackRate: playbackRate,
+							position: position
+						});
+					}
+				}
 			};
 
 			controllerData.controller!.addEventListener("ended", controllerData.endedHandler);
@@ -579,6 +613,19 @@ export const usePlayerStore = defineStore("player", {
 				this.currentTime = time;
 				current.crossfadeInstance?.onSeek();
 				current.normalizerInstance?.onSeek();
+
+				if (navigator.mediaSession) {
+					const duration = this.duration || current.controller.duration || 0;
+					const playbackRate = current.controller.playbackRate || 1;
+
+					if (duration > 0 && !isNaN(duration) && isFinite(duration) && !isNaN(time) && isFinite(time)) {
+						navigator.mediaSession.setPositionState({
+							duration: duration,
+							playbackRate: playbackRate,
+							position: time
+						});
+					}
+				}
 			}
 		},
 
@@ -597,15 +644,14 @@ export const usePlayerStore = defineStore("player", {
 				return;
 			}
 
-			const currentIndex = playlistStore.currentIndex;
-
-			if (currentIndex > 0) {
-				playlistStore.setCurrentIndex(currentIndex - 1);
+			// Всегда пытаемся переключиться, если есть треки в плейлисте
+			// Метод previous() сам обработает repeat и shuffle
+			if (playlistStore.playingSongs.length > 0) {
+				await playlistStore.previous();
 				const prevSong = playlistStore.currentSong;
 
 				if (prevSong) {
 					await this.play({ ...prevSong, clear: true, manual: true });
-					return;
 				}
 			}
 		},
@@ -615,23 +661,33 @@ export const usePlayerStore = defineStore("player", {
 			return Number(Math.max(0, Math.min(1, calculated)).toFixed(3));
 		},
 
-		setVolume(volume: number) {
+	setVolume(volume: number) {
+		if (import.meta.client) {
+			const isMobile = isMobileCheck();
+			if (isMobile) {
+				this.volume = 1.0;
+			} else {
+				this.volume = Math.max(0, Math.min(1, volume));
+			}
+		} else {
 			this.volume = Math.max(0, Math.min(1, volume));
-			if (!this.muted) this.previousVolume = this.volume;
+		}
 
-			const settingsStore = useSettingsStore();
-			const volumeDivider = settingsStore.settings.player.volumeDivider;
-			const calculatedVolume = this.calculateVolume(this.volume, volumeDivider);
+		if (!this.muted) this.previousVolume = this.volume;
 
-			const update = (c: ControllerData | null) => {
-				if (c?.controller) {
-					c.controller.volume = this.muted ? 0 : calculatedVolume;
-				}
-			};
+		const settingsStore = useSettingsStore();
+		const volumeDivider = settingsStore.settings.player.volumeDivider;
+		const calculatedVolume = this.calculateVolume(this.volume, volumeDivider);
 
-			update(this.getCurrentController());
-			update(this.getOpposedController());
-		},
+		const update = (c: ControllerData | null) => {
+			if (c?.controller) {
+				c.controller.volume = this.muted ? 0 : calculatedVolume;
+			}
+		};
+
+		update(this.getCurrentController());
+		update(this.getOpposedController());
+	},
 
 		toggleMute() {
 			this.muted = !this.muted;

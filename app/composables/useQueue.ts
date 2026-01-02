@@ -35,7 +35,7 @@ export const useQueue = () => {
 			playingPlaylist: playlistStore.playing?.raw_id,
 			stackTrace: new Error().stack
 		});
-		
+
 		// Устанавливаем плейлист, если передан
 		if (playlist) {
 			// setSongs автоматически фильтрует restricted треки, поэтому используем оригинальный список
@@ -46,7 +46,7 @@ export const useQueue = () => {
 
 		// Устанавливаем очередь треков (setSongs автоматически фильтрует restricted треки)
 		playlistStore.setSongs(songs);
-		
+
 		console.log("[SET_QUEUE] After setSongs", {
 			newQueueLength: playlistStore.playingSongs.length
 		});
@@ -86,13 +86,20 @@ export const useQueue = () => {
 			if (playlist) {
 				playlistStore.setCurrent({ ...playlist, list: songs });
 			}
+
 			playlistStore.setCurrentIndex(existingIndex);
 
 			// Используем трек из очереди, который уже имеет все данные (включая URL)
 			const songFromQueue = currentSongs[existingIndex];
-			if (songFromQueue) {
-				await playerStore.play({ ...songFromQueue, from: playlist, manual: true } as TSongWithFrom);
+
+			if (songFromQueue) {				
+				await playerStore.play({
+					...songFromQueue,
+					from: playlist,
+					manual: true
+				} as TSongWithFrom);
 			}
+
 			return;
 		}
 

@@ -27,6 +27,16 @@ const getRandomWidth = () => {
 	flex-direction: column;
 	gap: 12px;
 	padding: 20px;
+
+	@media (max-width: 768px) {
+		gap: 10px;
+		padding: 16px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 8px;
+		padding: 12px;
+	}
 }
 
 .skeleton-item {
@@ -44,6 +54,11 @@ const getRandomWidth = () => {
 	background-size: 200% 100%;
 	border-radius: 4px;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 480px) {
+		height: 16px;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

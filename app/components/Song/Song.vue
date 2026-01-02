@@ -62,6 +62,7 @@ import SongActions from "~/components/SongActions.vue";
 import SongContextMenu from "~/components/SongContextMenu.vue";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
+import type { TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;
@@ -181,27 +182,90 @@ const handlePlayFromContext = async () => {
 		
 		// Используем трек из очереди, который уже имеет все данные (включая URL)
 		const songFromQueue = currentSongs[existingIndex];
+
 		if (songFromQueue) {
-			await play({ ...songFromQueue, from: "queue", manual: true } as TAudio & { from?: string; manual?: boolean });
+			await play({
+				...songFromQueue,
+				from: "queue",
+				manual: true
+			} as TAudio & { from?: string; manual?: boolean });
 		}
+
 		return;
 	}
 	
-	// Ищем треки из контекста страницы
+	// Ищем треки из контекста страницы или плейлиста
 	let contextSongs: TAudio[] = [];
+	const currentPlaylist = current.value;
+	const playingPlaylist = playing.value;
 	
-	if (songsContext?.value && songsContext.value.length > 0) {
+	// Приоритет 1: контекст страницы
+	if (songsContext?.value && songsContext.value.length > 0) {		
 		contextSongs = songsContext.value;
-	} else {
-		// Если контекста нет, используем только текущий трек
+	}
+	// Приоритет 2: current плейлист с треками
+	else if (currentPlaylist?.list && currentPlaylist.list.length > 0) {
+		contextSongs = currentPlaylist.list;
+		
+	}
+	// Приоритет 3: playing плейлист с треками
+	else if (playingPlaylist?.list && playingPlaylist.list.length > 0) {
+		contextSongs = playingPlaylist.list;
+
+	}
+	// Приоритет 4: если есть current плейлист, но нет list, загружаем его
+	else if (currentPlaylist && currentPlaylist.owner_id && currentPlaylist.playlist_id) {
+
+		const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
+		await playFromPlaylistFn(props.audio, currentPlaylist);
+		return;
+	}
+	// Приоритет 5: если есть playing плейлист, но нет list, загружаем его
+	else if (playingPlaylist && playingPlaylist.owner_id && playingPlaylist.playlist_id) {
+
+		const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
+		await playFromPlaylistFn(props.audio, playingPlaylist);
+		return;
+	}
+	// Приоритет 6: проверяем route - может быть мы на странице плейлиста
+	else {
+		const route = useRoute();
+		const ownerId = route.params.owner_id ? Number(route.params.owner_id) : null;
+		const playlistId = route.params.playlist_id ? Number(route.params.playlist_id) : null;
+		
+		if (ownerId !== null && playlistId !== null && playlistId !== -1) {
+			// Мы на странице плейлиста, загружаем его
+			const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
+
+			await playFromPlaylistFn(props.audio, {
+				owner_id: ownerId,
+				playlist_id: playlistId,
+				raw_id: `${ownerId}_${playlistId}`,
+				title: "",
+				cover_url: "",
+				description: "",
+				size: 0,
+				listens: 0,
+				last_updated: 0,
+				explicit: false,
+				followed: false,
+				official: false,
+				restricted: false,
+				access_hash: route.query.access_hash as string || "",
+				follow_hash: "",
+				edit_hash: "",
+				list: []
+			});
+
+			return;
+		}
+		
+		// Приоритет 7: только текущий трек (fallback)
 		contextSongs = [props.audio];
 	}
 	
-	// Если есть current плейлист (например, поиск), используем его
-	const currentPlaylist = current.value;
-	
 	// Используем универсальный метод для воспроизведения из очереди
-	await playFromQueue(props.audio, contextSongs, currentPlaylist || undefined);
+	await playFromQueue(props.audio, contextSongs, currentPlaylist || playingPlaylist || undefined);
 };
 
 const handleContextMenu = (event: MouseEvent) => {

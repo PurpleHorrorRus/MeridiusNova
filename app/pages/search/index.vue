@@ -341,7 +341,7 @@ const allSearchAudios = computed<TAudio[]>(() => {
 	return allAudios.filter(audio => !audio.is_restriction);
 });
 
-// Предоставляем контекст треков для компонентов Song
+// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(allSearchAudios);
 
 // Создаем виртуальный плейлист для поиска

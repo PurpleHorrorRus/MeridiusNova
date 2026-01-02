@@ -61,7 +61,7 @@
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
 import type { TParsedPayload } from "~~/server/api/vk/audio/types";
-import type { TPlaylist } from "~~/server/utils/types";
+import { type TPlaylist } from "~~/server/utils/types";
 import { provideSongsContext } from "~/composables/useSongsContext";
 
 const route = useRoute();
@@ -145,7 +145,7 @@ const audios = computed(() => {
 	return [];
 });
 
-// Предоставляем контекст треков для компонентов Song
+// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(audios);
 
 // Предоставляем доступ к data для обновлений
@@ -259,6 +259,14 @@ const handleFollow = async (playlist: TPlaylist) => {
 	display: flex;
 	flex-direction: column;
 	padding: 0 32px 32px;
+
+	@media (max-width: 768px) {
+		padding: 0 16px 16px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 0 12px 12px;
+	}
 }
 
 .playlist-tracks-header {
@@ -277,6 +285,23 @@ const handleFollow = async (playlist: TPlaylist) => {
 	background: var(--bg-primary, #121212);
 	z-index: 10;
 	align-items: center;
+
+	@media (max-width: 768px) {
+		gap: 12px;
+		padding: 8px 12px;
+		font-size: 11px;
+	}
+
+	@media (max-width: 480px) {
+		grid-template-columns: 1fr 60px;
+		gap: 8px;
+		padding: 8px;
+		font-size: 10px;
+
+		.tracks-header-album {
+			display: none;
+		}
+	}
 }
 
 .tracks-header-title {
@@ -293,15 +318,35 @@ const handleFollow = async (playlist: TPlaylist) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+
+	@media (max-width: 480px) {
+		grid-column: 2;
+	}
 }
 
 .loading {
 	padding: 32px;
+
+	@media (max-width: 768px) {
+		padding: 16px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 12px;
+	}
 }
 
 .error {
 	text-align: center;
 	padding: 40px;
+
+	@media (max-width: 768px) {
+		padding: 20px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 16px;
+	}
 }
 
 .load-more {
@@ -316,6 +361,18 @@ const handleFollow = async (playlist: TPlaylist) => {
 	flex-direction: column;
 	gap: 20px;
 	margin-bottom: 24px;
+
+	@media (max-width: 768px) {
+		padding: 16px;
+		gap: 16px;
+		margin-bottom: 16px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 12px;
+		gap: 12px;
+		margin-bottom: 12px;
+	}
 }
 
 .user-playlists-header {
@@ -358,6 +415,14 @@ const handleFollow = async (playlist: TPlaylist) => {
 	color: var(--text, #fff);
 	margin: 0;
 	letter-spacing: -0.5px;
+
+	@media (max-width: 768px) {
+		font-size: 24px;
+	}
+
+	@media (max-width: 480px) {
+		font-size: 20px;
+	}
 }
 
 .playlists-grid {

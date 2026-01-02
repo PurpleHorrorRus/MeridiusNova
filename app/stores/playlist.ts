@@ -35,7 +35,22 @@ export const usePlaylistStore = defineStore("playlist", {
 				return state.playingSongs.length > 0;
 			}
 
-			return state.currentIndex < state.playingSongs.length - 1;
+			// Если индекс не установлен, но есть треки в плейлисте, есть следующий
+			if (state.currentIndex < 0 && state.playingSongs.length > 0) {
+				return true;
+			}
+
+			// Проверяем, есть ли доступные (не-restricted) треки после текущего
+			if (state.currentIndex >= 0 && state.currentIndex < state.playingSongs.length - 1) {
+				// Проверяем, есть ли хотя бы один не-restricted трек после текущего
+				for (let i = state.currentIndex + 1; i < state.playingSongs.length; i++) {
+					if (!state.playingSongs[i]?.is_restriction) {
+						return true;
+					}
+				}
+			}
+
+			return false;
 		},
 
 		hasPrevious: (state) => {
@@ -44,7 +59,22 @@ export const usePlaylistStore = defineStore("playlist", {
 				return state.playingSongs.length > 0;
 			}
 
-			return state.currentIndex > 0;
+			// Если индекс не установлен или равен 0, нет предыдущего
+			if (state.currentIndex <= 0) {
+				return false;
+			}
+
+			// Проверяем, есть ли доступные (не-restricted) треки до текущего
+			if (state.currentIndex > 0) {
+				// Проверяем, есть ли хотя бы один не-restricted трек до текущего
+				for (let i = state.currentIndex - 1; i >= 0; i--) {
+					if (!state.playingSongs[i]?.is_restriction) {
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 	},
 
@@ -58,6 +88,11 @@ export const usePlaylistStore = defineStore("playlist", {
 		this.playing = playlist;
 		// Очищаем оригинальные треки при смене плейлиста
 		this.originalSongs = [];
+		// Обновляем список треков в плейлисте из playingSongs, если они уже установлены
+		// Это гарантирует синхронизацию, но не перезаписывает очередь
+		if (this.playingSongs.length > 0) {
+			this.playing.list = [...this.playingSongs];
+		}
 		// playingSongs обновляется через setSongs для гарантии правильного обновления очереди
 	},
 
@@ -82,10 +117,9 @@ export const usePlaylistStore = defineStore("playlist", {
 		this.playingSongs = [...filteredSongs];
 		this.originalSongs = [];
 		
-		// Обновляем список треков в плейлисте для синхронизации
-		if (this.playing) {
-			this.playing.list = [...this.playingSongs];
-		}
+		// НЕ обновляем playing.list здесь, так как это может привести к потере данных
+		// playing.list должен обновляться только при установке плейлиста через setPlaying
+		
 		// currentIndex сбрасываем только если он выходит за границы нового массива
 		if (this.currentIndex >= this.playingSongs.length) {
 			this.currentIndex = -1;
@@ -167,36 +201,84 @@ export const usePlaylistStore = defineStore("playlist", {
 				return;
 			}
 
-			let newIndex: number;
-			
-			if (this.repeat) {
-				newIndex = (this.currentIndex + 1) % this.playingSongs.length;
-			} else if (this.currentIndex < this.playingSongs.length - 1) {
-				newIndex = this.currentIndex + 1;
-			} else if (this.shuffle) {
-				newIndex = Math.floor(Math.random() * this.playingSongs.length);
-			} else {
+			// Если индекс не установлен, устанавливаем на первый доступный трек
+			if (this.currentIndex < 0) {
+				const firstNonRestricted = this.playingSongs.findIndex((s: TAudio) => !s.is_restriction);
+
+				if (firstNonRestricted >= 0) {
+					this.currentIndex = firstNonRestricted;
+				}
+
 				return;
 			}
 
-			// Пропускаем restricted треки
-			let attempts = 0;
-			while (attempts < this.playingSongs.length && this.playingSongs[newIndex]?.is_restriction) {
-				if (this.repeat) {
-					newIndex = (newIndex + 1) % this.playingSongs.length;
-				} else if (newIndex < this.playingSongs.length - 1) {
-					newIndex++;
-				} else {
-					// Если дошли до конца и все restricted, начинаем с начала
-					newIndex = 0;
-				}
-				attempts++;
+			const currentIndex = this.currentIndex;
+			
+			// Получаем список доступных (не-restricted) индексов
+			const availableIndices = this.playingSongs
+				.map((s: TAudio, idx: number) => !s.is_restriction ? idx : -1)
+				.filter((idx: number) => idx >= 0);
+
+			if (availableIndices.length === 0) {
+				return;
 			}
 
-			// Если нашли не-restricted трек, переключаемся на него
-			if (!this.playingSongs[newIndex]?.is_restriction) {
-				this.currentIndex = newIndex;
+			// Если только один доступный трек и не включен repeat, не переключаемся
+			if (availableIndices.length === 1 && !this.repeat) {
+				return;
 			}
+
+			let newIndex: number;
+
+			if (this.shuffle) {
+				// При shuffle выбираем случайный доступный трек, но не текущий
+				const otherIndices = availableIndices.filter((idx: number) => idx !== currentIndex);
+				
+				if (otherIndices.length === 0) {
+					// Если все треки кроме текущего restricted, и repeat выключен, не переключаемся
+					if (!this.repeat) {
+						return;
+					}
+					// При repeat можем перезапустить тот же трек
+					newIndex = currentIndex;
+				} else {
+					const randomIndex = Math.floor(Math.random() * otherIndices.length);
+					const selectedIndex = otherIndices[randomIndex];
+					if (selectedIndex !== undefined) {
+						newIndex = selectedIndex;
+					} else {
+						newIndex = currentIndex;
+					}
+				}
+			} else if (this.repeat) {
+				// При repeat переходим на следующий доступный трек по кругу
+				const currentIndexInAvailable = availableIndices.indexOf(currentIndex);
+				if (currentIndexInAvailable >= 0) {
+					const nextIndexInAvailable = (currentIndexInAvailable + 1) % availableIndices.length;
+					const selectedIndex = availableIndices[nextIndexInAvailable];
+					if (selectedIndex !== undefined) {
+						newIndex = selectedIndex;
+					} else {
+						newIndex = currentIndex;
+					}
+				} else {
+					// Текущий индекс не в списке доступных (не должно быть), используем первый доступный
+					newIndex = availableIndices[0] ?? currentIndex;
+				}
+			} else {
+				// Обычный режим: ищем следующий доступный трек после текущего
+				const nextAvailable = availableIndices.find((idx: number) => idx > currentIndex);
+				
+				if (nextAvailable === undefined) {
+					// Нет следующего доступного трека
+					return;
+				}
+				
+				newIndex = nextAvailable;
+			}
+
+			// Устанавливаем новый индекс
+			this.currentIndex = newIndex;
 		},
 
 		async previous(): Promise<void> {

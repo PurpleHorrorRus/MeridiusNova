@@ -41,7 +41,7 @@
 					<UserPlaylist
 						v-for="playlist in userPlaylistsCategory.playlists"
 						:key="`user-${playlist.owner_id}-${playlist.playlist_id}`"
-						:playlist="playlist"
+						:playlist="toMutablePlaylist(playlist as ReadonlyPlaylistLike)"
 					/>
 				</div>
 			</div>
@@ -345,7 +345,7 @@ const exploreCollections = computed(() => {
 
 
 // Собираем все треки со страницы для контекста
-const allSongs = computed<TAudio[]>(() => {
+const allSongs = computed(() => {
 	const songs: TAudio[] = [];
 	
 	// Releases
@@ -366,7 +366,7 @@ const allSongs = computed<TAudio[]>(() => {
 	return songs;
 });
 
-// Предоставляем контекст треков для компонентов Song
+// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(allSongs);
 
 const userPlaylistsSectionRef = ref<HTMLElement | null>(null);

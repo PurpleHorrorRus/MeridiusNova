@@ -8,7 +8,8 @@ export default defineNuxtConfig({
 		"pinia-plugin-persistedstate/nuxt",
 		"@nuxt/icon",
 		"nuxt-auth-utils",
-		"@nuxt/image"
+		"@nuxt/image",
+		"@vite-pwa/nuxt"
 	],
 	css: ["~/assets/css/variables.scss"],
 
@@ -31,6 +32,10 @@ export default defineNuxtConfig({
 		esbuild: {
 			charset: "utf8"
 		}
+	},
+
+	devServer: {
+		host: "0.0.0.0"
 	},
 
 	runtimeConfig: {

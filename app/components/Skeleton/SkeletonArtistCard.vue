@@ -15,6 +15,14 @@
 	flex-direction: column;
 	align-items: center;
 	gap: 12px;
+
+	@media (max-width: 768px) {
+		gap: 10px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 8px;
+	}
 }
 
 .skeleton-artist-cover {
@@ -29,6 +37,16 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		width: 120px;
+		height: 120px;
+	}
+
+	@media (max-width: 480px) {
+		width: 100px;
+		height: 100px;
+	}
 }
 
 .skeleton-artist-name {
@@ -43,6 +61,12 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 480px) {
+		height: 14px;
+		width: 70px;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

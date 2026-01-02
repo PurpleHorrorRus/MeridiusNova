@@ -51,7 +51,7 @@ export const usePlaylist = () => {
 			currentPlaylist: playlistStore.current?.raw_id,
 			playingPlaylist: playlistStore.playing?.raw_id
 		});
-		
+
 		// ПЕРВЫМ ДЕЛОМ проверяем, не находится ли трек уже в очереди воспроизведения
 		// Это предотвращает очистку очереди при переключении треков из очереди
 		const currentSongs = playlistStore.playingSongs;
@@ -73,7 +73,7 @@ export const usePlaylist = () => {
 		if (song.manual && song.from && typeof song.from === "object") {
 			return false;
 		}
-		
+
 		const current = playlistStore.current;
 		const playing = playlistStore.playing;
 
@@ -83,14 +83,14 @@ export const usePlaylist = () => {
 		}
 
 		const songFrom = song.from;
-		
+
 		// Если трек из VK Mix, не обновляем
 		if (songFrom && typeof songFrom === "string") {
 			if (/queue|vkmix/.test(songFrom)) {
 				return false;
 			}
 		}
-		
+
 		// Если трек имеет from как объект плейлиста и это VK Mix, не обновляем
 		if (songFrom && typeof songFrom === "object") {
 			const isVkMix = songFrom.playlist_id === -9 || String(songFrom.owner_id) === "vkmix";
@@ -117,17 +117,19 @@ export const usePlaylist = () => {
 				songFromType: typeof songFrom,
 				songFromValue: songFrom
 			});
-			
+
 			// Если трек имеет from как объект плейлиста, используем его
 			if (songFrom && typeof songFrom === "object") {
 				console.log("[UPDATE_PLAYLIST] Setting queue from playlist object", {
 					playlistId: songFrom.raw_id,
 					listLength: songFrom.list?.length || 0
 				});
+
 				if (songFrom.list && songFrom.list.length > 0) {
 					const songIndex = songFrom.list.findIndex((s: TAudio) => s.full_id === song.full_id);
 					setQueue(songFrom.list, songFrom, songIndex >= 0 ? songIndex : undefined);
 				}
+
 				return true;
 			}
 
@@ -240,8 +242,11 @@ export const usePlaylist = () => {
 	};
 
 	const playFromPlaylist = async (song: TAudio, playlist: TPlaylist) => {
+		console.log(321);
+
 		// Если переключаемся на плейлист, который не является VK Mix, очищаем vkMixSectionId
 		const isVkMix = playlist.playlist_id === -9 || String(playlist.owner_id) === "vkmix";
+
 		if (!isVkMix) {
 			playlistStore.setVkMixSectionId(null);
 		}

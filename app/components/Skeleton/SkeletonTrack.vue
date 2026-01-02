@@ -20,6 +20,18 @@
 	gap: 16px;
 	align-items: center;
 	padding: 8px 16px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: 36px 1fr 1fr 50px;
+		gap: 12px;
+		padding: 8px 12px;
+	}
+
+	@media (max-width: 480px) {
+		grid-template-columns: 32px 1fr 40px;
+		gap: 8px;
+		padding: 6px 8px;
+	}
 }
 
 .skeleton-track-cover {
@@ -34,12 +46,28 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		width: 36px;
+		height: 36px;
+		border-radius: 3px;
+	}
+
+	@media (max-width: 480px) {
+		width: 32px;
+		height: 32px;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-track-info {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
+
+	@media (max-width: 480px) {
+		gap: 4px;
+	}
 }
 
 .skeleton-track-title {
@@ -54,6 +82,15 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 14px;
+	}
+
+	@media (max-width: 480px) {
+		height: 13px;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-track-artist {
@@ -68,6 +105,15 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 12px;
+	}
+
+	@media (max-width: 480px) {
+		height: 11px;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-track-duration {
@@ -83,6 +129,18 @@
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
 	justify-self: end;
+
+	@media (max-width: 768px) {
+		height: 12px;
+		width: 35px;
+	}
+
+	@media (max-width: 480px) {
+		height: 11px;
+		width: 30px;
+		border-radius: 3px;
+		grid-column: 3;
+	}
 }
 
 @keyframes shimmer {

@@ -1,5 +1,5 @@
 <template>
-	<div class="sidebar">
+	<div class="mobile-sidebar" :class="{ 'mobile-only-bottom-nav': showBottomNavigation }">
 		<!-- Mobile bottom navigation bar -->
 		<div v-if="showBottomNavigation" class="mobile-bottom-nav">
 			<NuxtLink
@@ -10,13 +10,18 @@
 				:class="{ active: isActive(item.path) }"
 			>
 				<Icon :name="item.icon" size="24" />
-				<span class="bottom-nav-text">{{ item.label }}</span>
+				<ClientOnly>
+					<span class="bottom-nav-text">{{ item.label }}</span>
+					<template #fallback>
+						<span class="bottom-nav-text"></span>
+					</template>
+				</ClientOnly>
 			</NuxtLink>
 		</div>
 
-		<!-- Desktop sidebar -->
+		<!-- Desktop sidebar content -->
 		<div v-else class="desktop-sidebar">
-			<div v-if="!showSearchInTitlebar" class="sidebar-search">
+			<div v-if="!showSearchInTitlebar" class="mobile-sidebar-search">
 				<div class="search-input-wrapper">
 					<Icon name="mdi:magnify" size="20" class="search-icon" />
 					<input
@@ -36,7 +41,7 @@
 				</div>
 			</div>
 
-			<nav class="sidebar-nav">
+			<nav class="mobile-sidebar-nav">
 				<NuxtLink
 					v-for="item in navigationItems"
 					:key="item.path"
@@ -45,23 +50,20 @@
 					:class="{ active: isActive(item.path) }"
 				>
 					<Icon :name="item.icon" size="24" />
-					<span class="nav-item-text">{{ item.label }}</span>
+					<ClientOnly>
+						<span class="nav-item-text">{{ item.label }}</span>
+						<template #fallback>
+							<span class="nav-item-text"></span>
+						</template>
+					</ClientOnly>
 				</NuxtLink>
 			</nav>
 
-			<button
-				@click="openSettings"
-				class="sidebar-settings-button"
-			>
-				<Icon name="mdi:cog" size="24" />
-				<span class="sidebar-settings-text">{{ getString("navigation.settings") }}</span>
-			</button>
-
-			<div v-if="user" class="sidebar-user-section">
+			<div class="mobile-sidebar-user-section">
 				<div
-					v-if="accounts.length > 1"
+					v-if="user && accounts.length > 1"
 					@click="showAccountMenu = !showAccountMenu"
-					class="sidebar-user"
+					class="mobile-sidebar-user"
 				>
 					<img
 						v-if="user.photo_max || user.photo_200"
@@ -79,8 +81,8 @@
 					<Icon name="mdi:chevron-down" size="20" class="user-chevron" />
 				</div>
 				<div
-					v-else
-					class="sidebar-user"
+					v-else-if="user"
+					class="mobile-sidebar-user"
 				>
 					<img
 						v-if="user.photo_max || user.photo_200"
@@ -103,7 +105,7 @@
 						:key="account.id"
 						@click="switchAccount(account)"
 						class="account-menu-item"
-						:class="{ active: account.id === user.id }"
+						:class="{ active: account.id === (user ? user.id : null) }"
 					>
 						<img
 							v-if="account.photo_100 || account.photo_max"
@@ -140,7 +142,7 @@ const searchQuery = ref("");
 const showAccountMenu = ref(false);
 const accounts = ref<any[]>([]);
 
-const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
+const windowWidth = ref(0);
 
 const showSearchInTitlebar = computed(() => {
 	return windowWidth.value <= 600;
@@ -150,25 +152,29 @@ const showBottomNavigation = computed(() => {
 	return windowWidth.value <= 600;
 });
 
-if (typeof window !== "undefined") {
-	const handleResize = () => {
+onMounted(() => {
+	if (typeof window !== "undefined") {
 		windowWidth.value = window.innerWidth;
-	};
 
-	onMounted(() => {
+		const handleResize = () => {
+			windowWidth.value = window.innerWidth;
+		};
+
 		window.addEventListener("resize", handleResize);
-	});
 
-	onUnmounted(() => {
-		window.removeEventListener("resize", handleResize);
-	});
-}
+		onUnmounted(() => {
+			window.removeEventListener("resize", handleResize);
+		});
+	}
+});
 
-const navigationItems = computed(() => [
-	{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
-	{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
-	{ path: "/queue", label: "Очередь", icon: "mdi:playlist-play" }
-]);
+const navigationItems = computed(() => {
+	return [
+		{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
+		{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
+		{ path: "/queue", label: "Очередь", icon: "mdi:playlist-play" }
+	];
+});
 
 const isActive = (path: string): boolean => {
 	if (path === "/general") {
@@ -244,7 +250,7 @@ const switchAccount = async (account: any) => {
 </script>
 
 <style scoped lang="scss">
-.sidebar {
+.mobile-sidebar {
 	display: flex;
 	flex-direction: column;
 	width: 240px;
@@ -290,6 +296,7 @@ const switchAccount = async (account: any) => {
 	background: var(--bg-sidebar, #1a1a1a);
 	border-top: 1px solid var(--border, #2a2a2a);
 	z-index: 1000;
+	width: 100%;
 }
 
 .bottom-nav-item {
@@ -330,7 +337,7 @@ const switchAccount = async (account: any) => {
 /* Mobile specific styles for better responsiveness */
 @media (max-width: 600px) {
 	/* Adjust sidebar to fit mobile bottom nav */
-	.sidebar {
+	.mobile-sidebar {
 		width: 100%;
 		height: calc(100% - 60px);
 		position: fixed;
@@ -338,6 +345,24 @@ const switchAccount = async (account: any) => {
 		left: 0;
 		z-index: 999;
 		padding-bottom: 60px;
+	}
+
+	/* Hide sidebar container when only bottom nav is shown, but keep bottom nav visible */
+	.mobile-sidebar.mobile-only-bottom-nav {
+		width: 0;
+		min-width: 0;
+		height: 0;
+		position: static;
+		overflow: visible;
+		padding: 0;
+		border: none;
+		background: transparent;
+	}
+
+	.mobile-sidebar.mobile-only-bottom-nav .mobile-bottom-nav {
+		position: fixed;
+		width: 100%;
+		height: 60px;
 	}
 	
 	/* Ensure mobile bottom nav is always visible */
@@ -369,7 +394,7 @@ const switchAccount = async (account: any) => {
 	}
 	
 	/* Adjust user section for mobile */
-	.sidebar-user {
+	.mobile-sidebar-user {
 		&-info {
 			display: none;
 		}
@@ -385,20 +410,8 @@ const switchAccount = async (account: any) => {
 	}
 	
 	/* Adjust search for mobile */
-	.sidebar-search {
+	.mobile-sidebar-search {
 		display: none;
-	}
-	
-	/* Adjust settings button */
-	.sidebar-settings-button {
-		&-text {
-			display: none;
-		}
-		
-		:deep(svg) {
-			width: 24px;
-			height: 24px;
-		}
 	}
 	
 	/* Adjust account menu for mobile */
@@ -417,44 +430,7 @@ const switchAccount = async (account: any) => {
 	}
 }
 
-.sidebar-header {
-	padding: 20px;
-	border-bottom: 1px solid var(--border, #2a2a2a);
-
-	@media (max-width: 1000px) {
-		padding: 16px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 12px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 12px;
-		display: flex;
-		justify-content: center;
-	}
-}
-
-.sidebar-logo {
-	font-size: 20px;
-	font-weight: 700;
-	color: var(--text, #fff);
-
-	@media (max-width: 1000px) {
-		font-size: 18px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 16px;
-	}
-
-	@media (max-width: 600px) {
-		font-size: 14px;
-	}
-}
-
-.sidebar-search {
+.mobile-sidebar-search {
 	position: relative;
 	padding: 10px 20px;
 	border-bottom: 1px solid var(--border, #2a2a2a);
@@ -549,7 +525,7 @@ const switchAccount = async (account: any) => {
 }
 
 
-.sidebar-nav {
+.mobile-sidebar-nav {
 	display: flex;
 	flex-direction: column;
 	padding: 10px 0;
@@ -654,11 +630,11 @@ const switchAccount = async (account: any) => {
 	}
 }
 
-.sidebar-user-section {
+.mobile-sidebar-user-section {
 	position: relative;
 }
 
-.sidebar-user {
+.mobile-sidebar-user {
 	display: flex;
 	align-items: center;
 	gap: 12px;
@@ -696,7 +672,7 @@ const switchAccount = async (account: any) => {
 	transition: transform 0.2s;
 	margin-left: auto;
 
-	.sidebar-user:hover & {
+	.mobile-sidebar-user:hover & {
 		color: var(--text, #fff);
 	}
 }
@@ -850,110 +826,5 @@ const switchAccount = async (account: any) => {
 	@media (max-width: 800px) {
 		font-size: 10px;
 	}
-}
-
-.sidebar-settings-button {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 20px;
-	color: var(--text-secondary, #b3b3b3);
-	background: transparent;
-	border: none;
-	border-top: 1px solid var(--border, #2a2a2a);
-	cursor: pointer;
-	transition: all 0.2s;
-	text-align: left;
-	width: 100%;
-
-	@media (max-width: 1000px) {
-		padding: 10px 16px;
-		gap: 10px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 8px 12px;
-		gap: 8px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 10px;
-		justify-content: center;
-		gap: 0;
-	}
-
-	&:hover {
-		background: var(--hover, #2a2a2a);
-		color: var(--text, #fff);
-	}
-}
-
-.sidebar-settings-text {
-	font-size: 14px;
-	font-weight: 500;
-
-	@media (max-width: 1000px) {
-		font-size: 13px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 12px;
-	}
-
-	@media (max-width: 600px) {
-		display: none;
-	}
-}
-
-@media (max-width: 600px) {
-	.sidebar-settings-button {
-		:deep(svg) {
-			width: 24px;
-			height: 24px;
-		}
-	}
-}
-
-/* Mobile bottom navigation styles */
-.mobile-bottom-nav {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
-	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	height: 60px;
-	background: var(--bg-sidebar, #1a1a1a);
-	border-top: 1px solid var(--border, #2a2a2a);
-	z-index: 1000;
-}
-
-.bottom-nav-item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 4px;
-	color: var(--text-secondary, #b3b3b3);
-	text-decoration: none;
-	padding: 8px 0;
-	transition: all 0.2s;
-	flex: 1;
-	text-align: center;
-	
-	&.active {
-		color: var(--secondary, #e9003f);
-	}
-	
-	&:hover {
-		color: var(--text, #fff);
-		background: var(--hover, #2a2a2a);
-	}
-}
-
-.bottom-nav-text {
-	font-size: 12px;
-	font-weight: 500;
 }
 </style>
