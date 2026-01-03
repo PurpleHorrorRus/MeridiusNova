@@ -18,7 +18,8 @@ ARG NUXT_COOKIE_KEY
 ARG DISCORD_CLIENT_ID
 ARG DISCORD_CLIENT_SECRET
 
-RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
+RUN EXTERNAL_SERVER=true && \
+    NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
     NUXT_COOKIE_KEY="$(echo -e "$NUXT_COOKIE_KEY")" \
     DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
     DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
@@ -32,7 +33,6 @@ COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/package*.json ./
 
 ENV NODE_ENV=production
-ENV EXTERNAL_SERVER=true
 
 RUN npm install --only=production --ignore-scripts && \
     npm cache clean --force
