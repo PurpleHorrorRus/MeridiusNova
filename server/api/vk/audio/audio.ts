@@ -312,8 +312,8 @@ export class AudioRequests extends BaseRequest implements IRequest {
 								}
 							};
 
-							await cacheManager.saveMetadata(audio.full_id, metadata).catch((error) => {
-								console.error(`[enrichAlbums] Failed to cache metadata for ${audio.full_id}:`, error);
+							await cacheManager.saveMetadata(audio.full_id, metadata).catch(() => {
+								// Ignore background caching errors
 							});
 						}
 					});

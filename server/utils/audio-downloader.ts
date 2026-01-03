@@ -4,7 +4,8 @@ import crypto from "crypto";
 import filenamify from "filenamify";
 import ffmpeg from "fluent-ffmpeg";
 import { Parser as M3U8Parser } from "m3u8-parser";
-import Promise from "bluebird";
+import Bluebird from "bluebird";
+// @ts-ignore - нет типов для node-fetch-retry
 import fetch from "node-fetch-retry";
 import type { TAudio } from "../api/vk/audio/types";
 
@@ -109,7 +110,8 @@ export class AudioDownloader {
 			if (!this.key && segment.key) {
 				segment.key.uri = this.normalizeUri(segment.key.uri, this.root);
 				const keyResponse = await fetch(segment.key.uri, fetchOptions);
-				this.key = await keyResponse.buffer();
+				const keyArrayBuffer = await keyResponse.arrayBuffer();
+				this.key = Buffer.from(keyArrayBuffer);
 			}
 
 			const segmentUriFile = segment.uri.split("/").pop() || "";
@@ -131,17 +133,20 @@ export class AudioDownloader {
 		const result = await (async () => {
 			if (chunk.method === "AES-128") {
 				const response = await fetch(chunk.url, fetchOptions);
-				const cipheredData = await response.buffer();
+				const cipheredArrayBuffer = await response.arrayBuffer();
+				const cipheredData = Buffer.from(cipheredArrayBuffer);
 				const iv = cipheredData.slice(0, 16);
+				const encryptedData = cipheredData.slice(16);
 				const decipher = crypto.createDecipheriv("aes-128-cbc", this.key!, iv);
 
 				return Buffer.concat([
-					decipher.update(cipheredData),
+					decipher.update(encryptedData),
 					decipher.final()
 				]);
 			} else {
 				const response = await fetch(chunk.url, fetchOptions);
-				return await response.buffer();
+				const arrayBuffer = await response.arrayBuffer();
+				return Buffer.from(arrayBuffer);
 			}
 		})().catch(async (err: NodeJS.ErrnoException) => {
 			if (err.code === "ECONNRESET" || err.code === "ETIMEDOUT") {
@@ -154,12 +159,16 @@ export class AudioDownloader {
 	}
 
 	private async downloadCover(): Promise<string> {
-		if (!this.audio.coverUrl_p && !this.audio.album?.thumb) {
+		const albumThumb = typeof this.audio.album === "object" && this.audio.album !== null && !Array.isArray(this.audio.album) && "thumb" in this.audio.album
+			? this.audio.album.thumb
+			: undefined;
+
+		if (!this.audio.coverUrl_p && !albumThumb) {
 			return "";
 		}
 
-		const cover = this.audio.album?.thumb
-			? (this.audio.album.thumb.photo_1200 || this.audio.album.thumb.photo_600)
+		const cover = albumThumb
+			? (albumThumb.photo_1200 || albumThumb.photo_600)
 			: this.audio.coverUrl_p;
 
 		if (!cover) {
@@ -188,7 +197,7 @@ export class AudioDownloader {
 	}
 
 	private async downloadM3U8(): Promise<string | Buffer> {
-		const [chunks, cover] = await Promise.all([
+		const [chunks, cover] = await Bluebird.all([
 			this.parse(this.audio.url),
 			this.downloadCover()
 		]);
@@ -198,7 +207,7 @@ export class AudioDownloader {
 		}
 
 		let downloaded = 0;
-		await Promise.map(chunks, async (chunk) => {
+		await Bluebird.map(chunks, async (chunk) => {
 			const data = await this.decrypt(chunk);
 
 			if (data) {
@@ -274,7 +283,8 @@ export class AudioDownloader {
 		const contentLength = response.headers.get("content-length");
 		const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
 
-		const buffer = await response.buffer();
+		const arrayBuffer = await response.arrayBuffer();
+		const buffer = Buffer.from(arrayBuffer);
 
 		if (totalBytes > 0) {
 			this.params.onProgress(100);

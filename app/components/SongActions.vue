@@ -37,7 +37,7 @@
 		</button>
 
 		<button
-			v-if="canDownload && isTauri.value"
+			v-if="canDownload"
 			class="action-button"
 			@click="handleDownload"
 			title="Скачать"
@@ -86,6 +86,7 @@ const songsContext = useSongsContext();
 const { handleDelete: deleteSong, getDeleteTitle, canDelete: canDeleteSong } = useSongDelete();
 const { handleAdd: addSong } = useSongAdd();
 const { isTauri } = useIsTauri();
+const { settings } = useSettings();
 
 // Получаем актуальный трек из songsContext для реактивности
 const audio = computed(() => {
@@ -122,7 +123,7 @@ const hasLyrics = computed(() => {
 });
 
 const canDownload = computed(() => {
-	return !audio.value.is_restriction;
+	return !audio.value.is_restriction && settings.value.download.enable;
 });
 
 const canShare = computed(() => {

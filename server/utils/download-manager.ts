@@ -30,6 +30,7 @@ export interface IPlaylistDownload extends IDownloadProgress {
 	total: number;
 	currentAudio?: TAudio;
 	folderPath?: string;
+	zipPath?: string;
 }
 
 export interface IFFmpegDownload extends IDownloadProgress {

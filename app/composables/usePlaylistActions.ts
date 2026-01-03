@@ -94,8 +94,14 @@ export const usePlaylistActions = () => {
 	};
 
 	const downloadPlaylist = async (playlist: TPlaylist) => {
+		const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+		const clientType = isTauri ? "tauri" : "browser";
+
 		const response = await authenticatedFetch<{ success: boolean; downloadId?: string }>("/api/vk/playlists/download", {
 			method: "POST",
+			headers: {
+				"X-Client-Type": clientType
+			},
 			body: {
 				playlist_id: playlist.playlist_id,
 				owner_id: playlist.owner_id,

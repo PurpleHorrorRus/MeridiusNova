@@ -423,8 +423,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				const cacheEnabled = await cacheManager.isEnabled();
 
 				if (cacheEnabled) {
-					await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch((error) => {
-						console.error(`[getPlaylist] Failed to cache playlist ${owner_id}_${params.playlist_id}:`, error);
+					await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch(() => {
+						// Ignore background caching errors
 					});
 				}
 			}
@@ -442,8 +442,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			const cacheEnabled = await cacheManager.isEnabled();
 
 			if (cacheEnabled) {
-				await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch((error) => {
-					console.error(`[getPlaylist] Failed to cache playlist ${owner_id}_${params.playlist_id}:`, error);
+				await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch(() => {
+					// Ignore background caching errors
 				});
 			}
 		}

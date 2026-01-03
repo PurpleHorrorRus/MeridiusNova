@@ -31,7 +31,6 @@ async function getSettings(): Promise<Partial<TSettings> | null> {
 	);
 
 	if (error) {
-		console.error("[CacheManager] Failed to read settings:", error);
 		return null;
 	}
 
@@ -42,7 +41,15 @@ function getDefaultCachePath(): string {
 	return path.resolve(os.homedir(), ".meridius", "cache");
 }
 
+function isExternalServer(): boolean {
+	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+}
+
 async function getCacheBasePath(): Promise<string> {
+	if (isExternalServer()) {
+		return getDefaultCachePath();
+	}
+
 	const settings = await getSettings();
 	const cachePath = settings?.cache?.path;
 
@@ -85,7 +92,6 @@ async function ensureCacheDir(cachePath: string): Promise<void> {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to create cache directory ${cachePath}:`, error);
 			throw error;
 		}
 	}
@@ -140,7 +146,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to read metadata for ${fullId}:`, error);
 			return null;
 		}
 
@@ -158,7 +163,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to save metadata for ${fullId}:`, error);
 			throw error;
 		}
 	}
@@ -204,7 +208,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to read segment ${segmentName} for ${fullId}:`, error);
 			return null;
 		}
 
@@ -216,7 +219,6 @@ export class CacheManager {
 		await ensureTrackDir(trackPath);
 
 		const segmentPath = path.resolve(getSegmentsPath(trackPath), segmentName);
-		console.log(`[CacheManager] Saving segment ${segmentName} for ${fullId} to ${segmentPath}, size: ${data.length}`);
 
 		const [error] = await fs.writeFile(segmentPath, data).then(
 			() => [null] as const,
@@ -224,11 +226,8 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to save segment ${segmentName} for ${fullId}:`, error);
 			throw error;
 		}
-
-		console.log(`[CacheManager] Successfully saved segment ${segmentName} for ${fullId}`);
 		await this.updateAccess(fullId);
 	}
 
@@ -253,7 +252,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to read key ${keyName} for ${fullId}:`, error);
 			return null;
 		}
 
@@ -271,18 +269,15 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to save key ${keyName} for ${fullId}:`, error);
 			throw error;
 		}
 	}
 
 	public async cacheM3U8(fullId: string, m3u8Content: string): Promise<void> {
 		const trackPath = await this.getCachePath(fullId);
-		console.log(`[CacheManager] Caching m3u8 for ${fullId} to ${trackPath}`);
 		await ensureTrackDir(trackPath);
 
 		const m3u8Path = getM3U8Path(trackPath);
-		console.log(`[CacheManager] Writing m3u8 to ${m3u8Path}, content length: ${m3u8Content.length}`);
 
 		const [error] = await fs.writeFile(m3u8Path, m3u8Content, "utf-8").then(
 			() => [null] as const,
@@ -290,11 +285,8 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to save m3u8 for ${fullId}:`, error);
 			throw error;
 		}
-
-		console.log(`[CacheManager] Successfully cached m3u8 for ${fullId}`);
 	}
 
 	public async getM3U8(fullId: string): Promise<string | null> {
@@ -311,7 +303,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to read m3u8 for ${fullId}:`, error);
 			return null;
 		}
 
@@ -374,7 +365,6 @@ export class CacheManager {
 			);
 
 			if (error) {
-				console.error(`[CacheManager] Failed to delete cache for ${fullId}:`, error);
 				throw error;
 			}
 		}
@@ -396,7 +386,7 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to update access for ${fullId}:`, error);
+			// Ignore access update errors
 		}
 	}
 
@@ -440,7 +430,6 @@ export class CacheManager {
 		);
 
 		if (error || !entries) {
-			console.error("[CacheManager] Failed to calculate cache size:", error);
 			return { size: 0, tracks: 0 };
 		}
 
@@ -485,7 +474,6 @@ export class CacheManager {
 		);
 
 		if (error || !entries) {
-			console.error("[CacheManager] Failed to cleanup cache:", error);
 			throw error || new Error("Failed to read cache directory");
 		}
 
@@ -555,7 +543,6 @@ export class CacheManager {
 			);
 
 			if (removeError) {
-				console.error("[CacheManager] Failed to clear cache:", removeError);
 				throw removeError;
 			}
 
@@ -581,7 +568,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to read playlist cache for ${ownerId}_${playlistId}:`, error);
 			return null;
 		}
 
@@ -600,7 +586,6 @@ export class CacheManager {
 		);
 
 		if (error) {
-			console.error(`[CacheManager] Failed to save playlist cache for ${ownerId}_${playlistId}:`, error);
 			throw error;
 		}
 	}

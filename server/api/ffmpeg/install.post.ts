@@ -27,7 +27,15 @@ export default defineEventHandler(async (event) => {
 	const os = await import("os");
 	const path = await import("path");
 
+	const isExternalServer = (): boolean => {
+		return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+	};
+
 	const getFFmpegDir = (): string => {
+		if (isExternalServer()) {
+			return path.join(os.homedir(), ".meridius", "ffmpeg");
+		}
+
 		const platform = process.platform;
 		const homeDir = os.homedir();
 

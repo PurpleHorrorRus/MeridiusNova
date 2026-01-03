@@ -1,17 +1,22 @@
-import Promise from "bluebird";
+import Bluebird from "bluebird";
 import fs from "fs-extra";
 import filenamify from "filenamify";
 import os from "os";
 import path from "path";
+import AdmZip from "adm-zip";
 
 import { getAudioRequestsInstance } from "../audio/audio";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 import { AudioDownloader } from "~~/server/utils/audio-downloader";
 import { downloadManager } from "~~/server/utils/download-manager";
+import { getAudioUrls } from "../audio/url.get";
 
 import type { TAudio } from "../audio/types";
 import type { IPlaylistDownload } from "~~/server/utils/download-manager";
-import type { TPlaylist } from "~~/server/utils/types";
+
+const isExternalServer = (): boolean => {
+	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+};
 
 const getSettings = async (): Promise<{ downloadPath: string; template: string; ffmpegPath: string; concurrency: number }> => {
 	const settingsFile = path.resolve(os.homedir(), ".meridius", "settings.json");
@@ -20,7 +25,9 @@ const getSettings = async (): Promise<{ downloadPath: string; template: string; 
 	let ffmpegPath = "";
 	let concurrency = 2;
 
-	if (fs.pathExistsSync(settingsFile)) {
+	if (isExternalServer()) {
+		downloadPath = os.tmpdir();
+	} else if (fs.pathExistsSync(settingsFile)) {
 		const settings = await fs.readJson(settingsFile) as any;
 		if (settings.download?.path) {
 			downloadPath = settings.download.path;
@@ -37,12 +44,18 @@ const getSettings = async (): Promise<{ downloadPath: string; template: string; 
 		}
 	}
 
-	const ffmpegDir = path.join(os.homedir(), ".ffmpeg");
-	const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-	ffmpegPath = path.join(ffmpegDir, ffmpegExe);
+	if (isExternalServer()) {
+		const ffmpegDir = path.join(os.homedir(), ".meridius", "ffmpeg");
+		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
+	} else {
+		const ffmpegDir = path.join(os.homedir(), ".ffmpeg");
+		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
 
-	if (!fs.existsSync(ffmpegPath)) {
-		ffmpegPath = process.env.FFMPEG_BINARY || "";
+		if (!fs.existsSync(ffmpegPath)) {
+			ffmpegPath = process.env.FFMPEG_BINARY || "";
+		}
 	}
 
 	return { downloadPath, template, ffmpegPath, concurrency };
@@ -69,6 +82,9 @@ export default defineEventHandler(async (event) => {
 			message: "playlist_id and owner_id are required"
 		});
 	}
+
+	const clientType = getHeader(event, "x-client-type") || "browser";
+	const isBrowser = clientType === "browser";
 
 	const { downloadPath, template, ffmpegPath, concurrency } = await getSettings();
 
@@ -118,7 +134,9 @@ export default defineEventHandler(async (event) => {
 		downloadManager.updateDownload(downloadId, { status: "preparing", percent: 0 });
 
 		const playlistFolder = filenamify(`${playlist.title}_${playlist.owner_id}_${playlist.playlist_id}`);
-		const outputPath = path.resolve(downloadPath, playlistFolder);
+		const outputPath = isExternalServer()
+			? path.resolve(os.tmpdir(), `meridius_playlist_${downloadId}`, playlistFolder)
+			: path.resolve(downloadPath, playlistFolder);
 
 		if (!fs.existsSync(outputPath)) {
 			fs.mkdirsSync(outputPath);
@@ -159,15 +177,45 @@ export default defineEventHandler(async (event) => {
 			return;
 		}
 
+		const audiosWithoutUrl = audios.filter(audio => !audio.url || !audio.url.trim());
+		const fullIdsToFetch = audiosWithoutUrl.map(audio => audio.full_id);
+
+		if (fullIdsToFetch.length > 0) {
+			const [urlError, urlResult] = await getAudioUrls(event, fullIdsToFetch, false).then(
+				(result) => [null, result] as const,
+				(error: Error) => [error, null] as const
+			);
+
+			if (urlError) {
+				console.error(`Failed to get audio URLs:`, urlError.message || urlError);
+			} else if (urlResult) {
+				for (const audio of audiosWithoutUrl) {
+					if (urlResult[audio.full_id]) {
+						audio.url = urlResult[audio.full_id];
+					}
+				}
+			}
+		}
+
+		const audiosWithUrl = audios.filter(audio => audio.url && audio.url.trim());
+
+		if (audiosWithUrl.length === 0) {
+			downloadManager.updateDownload(downloadId, {
+				status: "failed",
+				error: "No audios with valid URLs found in playlist"
+			});
+			return;
+		}
+
 		downloadManager.updateDownload(downloadId, {
-			total: audios.length,
+			total: audiosWithUrl.length,
 			status: "downloading",
 			percent: 0
 		});
 
 		let downloaded = 0;
 
-		await Promise.map(audios, async (audio, index) => {
+		await Bluebird.map(audiosWithUrl, async (audio, index) => {
 			if (downloadManager.getDownload(downloadId)?.status === "failed") {
 				return;
 			}
@@ -187,10 +235,10 @@ export default defineEventHandler(async (event) => {
 				chunks: chunksPath,
 				delete: false,
 				concurrency: 5,
-				metadata: [["track", `${index + 1}/${audios.length}`]],
+				metadata: [["track", `${index + 1}/${audiosWithUrl.length}`]],
 				onProgress: (percent: number) => {
-					const basePercent = (downloaded / audios.length) * 100;
-					const currentPercent = (percent / audios.length);
+					const basePercent = (downloaded / audiosWithUrl.length) * 100;
+					const currentPercent = (percent / audiosWithUrl.length);
 					downloadManager.updateDownload(downloadId, {
 						percent: Math.min(99, basePercent + currentPercent)
 					});
@@ -206,18 +254,50 @@ export default defineEventHandler(async (event) => {
 				downloaded++;
 				downloadManager.updateDownload(downloadId, {
 					downloaded,
-					percent: (downloaded / audios.length) * 100
+					percent: (downloaded / audiosWithUrl.length) * 100
 				});
 			}).catch((error: Error) => {
-				console.error(`Failed to download audio ${audio.full_id}:`, error);
+				console.error(`Failed to download audio ${audio.full_id}:`, error.message || error);
+				downloaded++;
+				downloadManager.updateDownload(downloadId, {
+					downloaded,
+					percent: (downloaded / audiosWithUrl.length) * 100
+				});
 			});
 		}, { concurrency });
+
+		let zipPath: string | undefined;
+
+		if (isBrowser) {
+			downloadManager.updateDownload(downloadId, {
+				status: "processing",
+				percent: 99
+			});
+
+			const zipFilename = `${playlistFolder}.zip`;
+			const zipDir = path.resolve(os.tmpdir(), `meridius_playlist_${downloadId}`);
+			zipPath = path.resolve(zipDir, zipFilename);
+			const zip = new AdmZip();
+
+			const files = await fs.readdir(outputPath);
+			for (const file of files) {
+				const filePath = path.join(outputPath, file);
+				const stat = await fs.stat(filePath);
+				if (stat.isFile()) {
+					zip.addLocalFile(filePath, playlistFolder);
+				}
+			}
+
+			await fs.ensureDir(zipDir);
+			zip.writeZip(zipPath);
+		}
 
 		downloadManager.updateDownload(downloadId, {
 			status: "completed",
 			percent: 100,
 			currentAudio: undefined,
-			folderPath: outputPath
+			folderPath: outputPath,
+			zipPath
 		});
 	});
 

@@ -36,11 +36,9 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
 			const isLastAttempt = attempt === retries - 1;
 
 			if (isLastAttempt) {
-				console.error(`[downloadAndCacheTrack] Failed to download segment ${segmentName} for ${fullId} after ${retries} attempts:`, error);
 				throw error;
 			}
 
-			console.warn(`[downloadAndCacheTrack] Attempt ${attempt + 1}/${retries} failed for segment ${segmentName}, retrying...`);
 			await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
 			continue;
 		}
@@ -49,10 +47,8 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
 			const isLastAttempt = attempt === retries - 1;
 			if (isLastAttempt) {
 				const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
-				console.error(`[downloadAndCacheTrack] Failed to download segment ${segmentName} for ${fullId} after ${retries} attempts:`, error);
 				throw error;
 			}
-			console.warn(`[downloadAndCacheTrack] Attempt ${attempt + 1}/${retries} failed for segment ${segmentName}, retrying...`);
 			await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
 			continue;
 		}
@@ -65,10 +61,8 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
 		if (bufferError) {
 			const isLastAttempt = attempt === retries - 1;
 			if (isLastAttempt) {
-				console.error(`[downloadAndCacheTrack] Failed to get buffer for segment ${segmentName} for ${fullId} after ${retries} attempts:`, bufferError);
 				throw bufferError;
 			}
-			console.warn(`[downloadAndCacheTrack] Attempt ${attempt + 1}/${retries} failed for segment ${segmentName}, retrying...`);
 			await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
 			continue;
 		}
@@ -77,10 +71,8 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
 			const isLastAttempt = attempt === retries - 1;
 			if (isLastAttempt) {
 				const error = new Error("Empty segment data");
-				console.error(`[downloadAndCacheTrack] Failed to download segment ${segmentName} for ${fullId} after ${retries} attempts:`, error);
 				throw error;
 			}
-			console.warn(`[downloadAndCacheTrack] Attempt ${attempt + 1}/${retries} failed for segment ${segmentName}, retrying...`);
 			await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
 			continue;
 		}
@@ -93,23 +85,18 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
 		if (saveError) {
 			const isLastAttempt = attempt === retries - 1;
 			if (isLastAttempt) {
-				console.error(`[downloadAndCacheTrack] Failed to save segment ${segmentName} for ${fullId} after ${retries} attempts:`, saveError);
 				throw saveError;
 			}
-			console.warn(`[downloadAndCacheTrack] Attempt ${attempt + 1}/${retries} failed for segment ${segmentName}, retrying...`);
 			await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
 			continue;
 		}
 
-		console.log(`[downloadAndCacheTrack] Successfully cached segment ${segmentName} for ${fullId} (${segmentData.length} bytes)`);
 		return;
 	}
 }
 
 async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioRequests: AudioRequests): Promise<void> {
 	const cacheManager = CacheManager.getInstance();
-
-	console.log(`[downloadAndCacheTrack] Starting cache for ${fullId} from ${originalUrl}`);
 
 	await cacheManager.deleteTrackCache(fullId);
 
@@ -121,8 +108,6 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
 	if (exposeError || !exposedUrl) {
 		throw new Error(`Failed to expose source URL: ${exposeError?.message || "Unknown error"}`);
 	}
-
-	console.log(`[downloadAndCacheTrack] Exposed URL: ${exposedUrl}`);
 
 	const [m3u8Error, m3u8Response] = await fetch(exposedUrl, fetchOptions).then(
 		(response: FetchResponse) => [null, response] as const,
@@ -157,7 +142,6 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
 	const m3u8Content = buffer.toString("utf-8");
 
 	await cacheManager.cacheM3U8(fullId, m3u8Content);
-	console.log(`[downloadAndCacheTrack] Cached m3u8 for ${fullId}`);
 
 	const parser = new M3U8Parser();
 	parser.push(m3u8Content);
@@ -165,8 +149,6 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
 
 	const urlObj = new URL(exposedUrl);
 	const root = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname.substring(0, urlObj.pathname.lastIndexOf("/"))}`;
-
-	console.log(`[downloadAndCacheTrack] Root URL: ${root}`);
 
 	const uniqueKeys = new Set<string>();
 	for (const segment of parser.manifest.segments) {
@@ -207,10 +189,8 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
 		}
 
 		await cacheManager.saveKey(fullId, keyName, keyData);
-		console.log(`[downloadAndCacheTrack] Cached key ${keyName} for ${fullId} (${keyData.length} bytes) from ${keyUri}`);
 	}
 
-	console.log(`[downloadAndCacheTrack] Processing ${parser.manifest.segments.length} segments for ${fullId}`);
 
 	const segmentPromises: Promise<void>[] = [];
 
@@ -225,8 +205,6 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
 	}
 
 	await Promise.all(segmentPromises);
-
-	console.log(`[downloadAndCacheTrack] Completed caching ${parser.manifest.segments.length} segments for ${fullId}`);
 }
 
 export default defineEventHandler(async (event) => {
@@ -262,7 +240,6 @@ export default defineEventHandler(async (event) => {
 	const isValid = await cacheManager.validateSegment(fullId, segmentName);
 
 	if (!isValid) {
-		console.log(`[segment] Segment ${segmentName} for ${fullId} is invalid or missing, proxying to original URL`);
 
 		const m3u8Content = await cacheManager.getM3U8(fullId);
 
@@ -350,8 +327,8 @@ export default defineEventHandler(async (event) => {
 			});
 		}
 
-		cacheManager.saveSegment(fullId, segmentName, segmentData).catch((error) => {
-			console.error(`[segment] Failed to cache segment ${segmentName} for ${fullId} in background:`, error);
+		cacheManager.saveSegment(fullId, segmentName, segmentData).catch(() => {
+			// Ignore background caching errors
 		});
 
 		setHeader(event, "Content-Type", "application/octet-stream");

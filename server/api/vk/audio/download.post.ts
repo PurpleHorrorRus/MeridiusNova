@@ -7,13 +7,19 @@ import fs from "fs-extra";
 import os from "os";
 import filenamify from "filenamify";
 
+const isExternalServer = (): boolean => {
+	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+};
+
 const getSettings = async (): Promise<{ downloadPath: string; template: string; ffmpegPath: string }> => {
 	const settingsFile = path.resolve(os.homedir(), ".meridius", "settings.json");
 	let downloadPath = path.join(os.homedir(), "Music");
 	let template = "{{ performer }} - {{ title }}";
 	let ffmpegPath = "";
 
-	if (fs.pathExistsSync(settingsFile)) {
+	if (isExternalServer()) {
+		downloadPath = os.tmpdir();
+	} else if (fs.pathExistsSync(settingsFile)) {
 		const settings = await fs.readJson(settingsFile) as any;
 		if (settings.download?.path) {
 			downloadPath = settings.download.path;
@@ -23,12 +29,18 @@ const getSettings = async (): Promise<{ downloadPath: string; template: string; 
 		}
 	}
 
-	const ffmpegDir = path.join(os.homedir(), ".ffmpeg");
-	const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-	ffmpegPath = path.join(ffmpegDir, ffmpegExe);
+	if (isExternalServer()) {
+		const ffmpegDir = path.join(os.homedir(), ".meridius", "ffmpeg");
+		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
+	} else {
+		const ffmpegDir = path.join(os.homedir(), ".ffmpeg");
+		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
 
-	if (!fs.existsSync(ffmpegPath)) {
-		ffmpegPath = process.env.FFMPEG_BINARY || "";
+		if (!fs.existsSync(ffmpegPath)) {
+			ffmpegPath = process.env.FFMPEG_BINARY || "";
+		}
 	}
 
 	return { downloadPath, template, ffmpegPath };
@@ -134,7 +146,7 @@ export default defineEventHandler(async (event) => {
 			output: outputPath,
 			name,
 			chunks: chunksPath,
-			delete: false,
+			delete: isExternalServer(),
 			concurrency: 5,
 			metadata: [],
 			onProgress: (percent: number) => {
@@ -151,8 +163,17 @@ export default defineEventHandler(async (event) => {
 			}
 		});
 
-		await downloader.download().then(() => {
-			const filePath = path.join(outputPath, `${name}.mp3`);
+		await downloader.download().then((result) => {
+			let filePath: string;
+
+			if (isExternalServer()) {
+				const tmpFilePath = path.join(os.tmpdir(), `${downloadId}_${name}.mp3`);
+				fs.writeFileSync(tmpFilePath, result as Buffer);
+				filePath = tmpFilePath;
+			} else {
+				filePath = path.join(outputPath, `${name}.mp3`);
+			}
+
 			downloadManager.updateDownload(downloadId, {
 				status: "completed",
 				percent: 100,

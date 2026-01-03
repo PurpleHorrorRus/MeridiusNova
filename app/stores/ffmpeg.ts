@@ -53,15 +53,15 @@ export const useFFmpegStore = defineStore("ffmpeg", {
 					}
 				}
 			} else {
-				const path = await import("path");
-				const fs = await import("fs-extra");
-				const os = await import("os");
+				const response = await $fetch<{ exists: boolean; path: string | null }>("/api/ffmpeg/check").catch(() => null);
 
-				const homeDir = os.homedir();
-				const ffmpegPath = process.env.FFMPEG_BINARY || path.join(homeDir, ".ffmpeg", "ffmpeg");
-
-				this.path = ffmpegPath;
-				this.exist = fs.existsSync(ffmpegPath);
+				if (response) {
+					this.exist = response.exists;
+					this.path = response.path || "";
+				} else {
+					this.exist = false;
+					this.path = "";
+				}
 			}
 
 			return this.exist;
@@ -107,7 +107,6 @@ export const useFFmpegStore = defineStore("ffmpeg", {
 					if (download.status === "completed") {
 						this.downloading = false;
 						this.progress = { percent: 100, speed: 0 };
-						this.path = response.path;
 						await this.check();
 					} else if (download.status === "failed") {
 						this.downloading = false;

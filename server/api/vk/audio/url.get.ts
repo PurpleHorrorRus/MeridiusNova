@@ -76,43 +76,29 @@ async function downloadAndCacheTrack(fullId: string, exposedUrl: string): Promis
 }
 
 function startBackgroundCaching(fullId: string, exposedUrl: string): void {
-	downloadAndCacheTrack(fullId, exposedUrl).catch((error) => {
-		console.error(`[url.get] Failed to cache track ${fullId} in background:`, error);
+	downloadAndCacheTrack(fullId, exposedUrl).catch(() => {
+		// Ignore background caching errors
 	});
 }
 
-export default defineEventHandler(async (event) => {
-	const token = getCookie(event, "token");
-
-	if (!token) {
-		throw createError({
-			statusCode: 401,
-			statusMessage: "Unauthorized - authentication required. Please ensure cookies are being sent with the request."
-		});
-	}
-
-	const query = getQuery<{ ids: string }>(event);
-
-	if (!query.ids) {
+export const getAudioUrls = async (event: any, fullIds: string[], useCache: boolean = true): Promise<Record<string, string>> => {
+	if (!fullIds || fullIds.length === 0) {
 		throw createError({
 			statusCode: 400,
-			statusMessage: "Parameter 'ids' is required"
+			statusMessage: "Parameter 'fullIds' is required"
 		});
 	}
 
 	const cacheManager = CacheManager.getInstance();
 	const cacheEnabled = await cacheManager.isEnabled();
 	const baseUrl = getRequestURL(event);
-	const protocol = baseUrl.protocol;
-	const host = baseUrl.host;
 
-	const ids = query.ids.split(",").map(id => id.trim());
 	const result: Record<string, string> = {};
 	const idsToFetch: string[] = [];
 
-	// Проверяем кэш для каждого ID
-	for (const fullId of ids) {
-		if (cacheEnabled) {
+	// Проверяем кэш для каждого ID (только если useCache = true)
+	for (const fullId of fullIds) {
+		if (useCache && cacheEnabled) {
 			const cachedM3U8 = await cacheManager.getM3U8(fullId);
 			const isM3U8Cached = cachedM3U8 !== null && cachedM3U8.trim().startsWith("#EXTM3U");
 
@@ -121,7 +107,7 @@ export default defineEventHandler(async (event) => {
 
 				if (isTrackValid) {
 					const timestamp = Date.now();
-					result[fullId] = `${protocol}//${host}/api/cache/m3u8?full_id=${encodeURIComponent(fullId)}&t=${timestamp}`;
+					result[fullId] = `${baseUrl.protocol}//${baseUrl.host}/api/cache/m3u8?full_id=${encodeURIComponent(fullId)}&t=${timestamp}`;
 					continue;
 				}
 			}
@@ -158,7 +144,7 @@ export default defineEventHandler(async (event) => {
 			urlLower.includes(".m3u8") ||
 			urlLower.includes("m3u8");
 
-		if (isM3U8Url && cacheEnabled) {
+		if (isM3U8Url && cacheEnabled && useCache) {
 			const cachedM3U8 = await cacheManager.getM3U8(audio.full_id);
 			const isM3U8Cached = cachedM3U8 !== null && cachedM3U8.trim().startsWith("#EXTM3U");
 
@@ -167,7 +153,7 @@ export default defineEventHandler(async (event) => {
 
 				if (isTrackValid) {
 					const timestamp = Date.now();
-					result[audio.full_id] = `${protocol}//${host}/api/cache/m3u8?full_id=${encodeURIComponent(audio.full_id)}&t=${timestamp}`;
+					result[audio.full_id] = `${getRequestURL(event).protocol}//${getRequestURL(event).host}/api/cache/m3u8?full_id=${encodeURIComponent(audio.full_id)}&t=${timestamp}`;
 					continue;
 				}
 			}
@@ -180,4 +166,27 @@ export default defineEventHandler(async (event) => {
 	}
 
 	return result;
+};
+
+export default defineEventHandler(async (event) => {
+	const token = getCookie(event, "token");
+
+	if (!token) {
+		throw createError({
+			statusCode: 401,
+			statusMessage: "Unauthorized - authentication required. Please ensure cookies are being sent with the request."
+		});
+	}
+
+	const query = getQuery<{ ids: string }>(event);
+
+	if (!query.ids) {
+		throw createError({
+			statusCode: 400,
+			statusMessage: "Parameter 'ids' is required"
+		});
+	}
+
+	const ids = query.ids.split(",").map(id => id.trim());
+	return await getAudioUrls(event, ids);
 });

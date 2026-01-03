@@ -15,7 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="settings.cache.enable" class="settings-item">
+				<div v-if="settings.cache.enable && !isExternalServer && isTauri" class="settings-item">
 					<label class="settings-label">{{ getString("settings.cache.path") }}</label>
 					<div class="settings-input-group">
 						<input
@@ -23,11 +23,13 @@
 							type="text"
 							class="settings-input"
 							:placeholder="getString('settings.cache.pathPlaceholder')"
-							readonly
+							:readonly="isTauri"
+							@input="updateCachePath"
 						/>
 						<button
 							@click="chooseCachePath"
 							class="settings-button"
+							:disabled="!isTauri"
 						>
 							{{ getString("settings.cache.choose") }}
 						</button>
@@ -102,8 +104,10 @@
 <script setup lang="ts">
 const { getString } = useStrings();
 const { settings, updateSection } = useSettings();
+const config = useRuntimeConfig();
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+const isExternalServer = computed(() => config.public.externalServer === true);
 const cacheStats = ref<{ size: number; tracks: number; sizeMB: number; maxSize: number; maxSizeMB: number } | null>(null);
 const clearing = ref(false);
 
@@ -131,7 +135,11 @@ const updateCacheEnable = (event: Event) => {
 };
 
 const chooseCachePath = async () => {
-	if (isTauri && import.meta.client) {
+	if (!isTauri || !import.meta.client) {
+		return;
+	}
+
+	try {
 		const { open } = await import("@tauri-apps/plugin-dialog");
 		const selected = await open({
 			directory: true,
@@ -139,8 +147,17 @@ const chooseCachePath = async () => {
 		});
 
 		if (selected && typeof selected === "string") {
-			updateSection("cache", { path: selected });
-		}
+		updateSection("cache", { path: selected });
+	}
+} catch (error) {
+	// Ignore cache path selection errors
+}
+};
+
+const updateCachePath = (event: Event) => {
+	if (!isTauri) {
+		const target = event.target as HTMLInputElement;
+		updateSection("cache", { path: target.value });
 	}
 };
 
@@ -164,7 +181,6 @@ const loadCacheStats = async () => {
 			cacheStats.value = null;
 		}
 	} catch (error) {
-		console.error("Failed to load cache stats:", error);
 		cacheStats.value = null;
 	}
 };
@@ -184,7 +200,7 @@ const clearCache = async () => {
 
 		await loadCacheStats();
 	} catch (error) {
-		console.error("Failed to clear cache:", error);
+		// Ignore cache clearing errors
 	} finally {
 		clearing.value = false;
 	}

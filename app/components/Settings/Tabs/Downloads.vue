@@ -39,7 +39,7 @@
 					</label>
 				</div>
 
-				<div class="settings-item">
+				<div v-if="isTauri" class="settings-item">
 					<label class="settings-label">{{ getString("settings.downloads.folder") }}</label>
 					<div class="settings-input-group">
 						<input
@@ -87,6 +87,7 @@ import { useFFmpegStore } from "~/stores/ffmpeg";
 
 const ffmpegStore = useFFmpegStore();
 const { settings, updateSection } = useSettings();
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
@@ -111,8 +112,6 @@ const updateDownloadEnable = (event: Event) => {
 };
 
 const chooseDownloadPath = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
 	if (isTauri && import.meta.client) {
 		const { open } = await import("@tauri-apps/plugin-dialog");
 		const selected = await open({
@@ -133,7 +132,7 @@ const chooseDownloadPath = async () => {
 
 const updateTemplate = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { template: target.value });
+	updateSection("download", { template: target.value });
 };
 </script>
 

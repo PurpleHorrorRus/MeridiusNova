@@ -53,6 +53,10 @@ export default defineNuxtConfig({
 				secure: false,
 				sameSite: "lax"
 			}
+		},
+
+		public: {
+			externalServer: process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1"
 		}
 	}
 });

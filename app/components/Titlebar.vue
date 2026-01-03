@@ -1,13 +1,13 @@
 <template>
-	<div id="titlebar">
-		<div id="titlebar-left" @mousedown="handleMouseDown">
+	<div id="titlebar" @mousedown="handleMouseDown">
+		<div id="titlebar-left">
 			<span id="titlebar-left__logo">
 				Meridius
 			</span>
 		</div>
 
-		<div v-if="showSearch" id="titlebar-center" @mousedown.stop>
-			<div class="titlebar-search">
+		<div v-if="showSearch" id="titlebar-center">
+			<div class="titlebar-search" @mousedown.stop>
 				<div class="search-input-wrapper">
 					<Icon name="mdi:magnify" size="16" class="search-icon" />
 					<input
@@ -112,8 +112,16 @@ const clearSearch = () => {
 };
 
 const handleMouseDown = (event: MouseEvent) => {
-	return event.button === 0
-		&& appWindow.value?.startDragging();
+	if (event.button !== 0 || !appWindow.value) {
+		return;
+	}
+
+	const target = event.target as HTMLElement;
+	const isInteractiveElement = target.closest("button, input, a, .titlebar-right__button, .titlebar-update-notification, .titlebar-search");
+
+	if (!isInteractiveElement) {
+		appWindow.value.startDragging();
+	}
 };
 
 const handleMinimize = () => {

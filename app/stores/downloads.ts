@@ -73,9 +73,10 @@ export const useDownloadsStore = defineStore("downloads", {
 				this.startPolling(1000);
 			} else if (!hasActiveDownloads && this.pollingInterval) {
 				this.stopPolling();
+				this.handleBrowserDownloads();
+			} else {
+				this.handleBrowserDownloads();
 			}
-
-			this.handleBrowserDownloads();
 		},
 
 		handleBrowserDownloads(): void {
@@ -96,6 +97,18 @@ export const useDownloadsStore = defineStore("downloads", {
 			completedAudioDownloads.forEach(download => {
 				if (download.filePath && !this.browserDownloaded.has(download.downloadId)) {
 					this.downloadFileInBrowser(download.downloadId, download.audio.title || "audio");
+					this.browserDownloaded.add(download.downloadId);
+				}
+			});
+
+			const completedPlaylistDownloads = Array.from(this.downloads.values()).filter(d =>
+				d.status === "completed" && d.type === "playlist"
+			) as Array<Extract<TDownload, { type: "playlist" }>>;
+
+			completedPlaylistDownloads.forEach(download => {
+				if (download.zipPath && !this.browserDownloaded.has(download.downloadId)) {
+					const playlistTitle = download.playlist.title || "playlist";
+					this.downloadFileInBrowser(download.downloadId, `${playlistTitle}.zip`);
 					this.browserDownloaded.add(download.downloadId);
 				}
 			});
@@ -137,7 +150,10 @@ export const useDownloadsStore = defineStore("downloads", {
 			const url = window.URL.createObjectURL(blob);
 			const link = document.createElement("a");
 			link.href = url;
-			link.download = filename.endsWith(".mp3") ? filename : `${filename}.mp3`;
+			const downloadFilename = filename.endsWith(".mp3") || filename.endsWith(".zip")
+				? filename
+				: `${filename}.mp3`;
+			link.download = downloadFilename;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
