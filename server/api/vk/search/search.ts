@@ -259,7 +259,8 @@ class SearchRequests extends BaseRequest implements IRequest {
 			return undefined;
 		}
 
-		const url = (() => {
+		// Синхронная обработка, так как new URL может выбросить исключение синхронно
+		const parsedUrl = (() => {
 			try {
 				return new URL(link, "https://vk.com");
 			} catch {
@@ -267,8 +268,8 @@ class SearchRequests extends BaseRequest implements IRequest {
 			}
 		})();
 
-		if (url) {
-			const typeParam = url.searchParams.get("type");
+		if (parsedUrl) {
+			const typeParam = parsedUrl.searchParams.get("type");
 			return typeParam || undefined;
 		}
 
@@ -341,7 +342,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 				const categoryData = await this.loadCategoryBySectionId(category.sectionId).catch(() => null);
 
 				if (categoryData) {
-					category.audios = categoryData.audios.filter(audio => audio.owner_id !== userId);
+					category.audios = categoryData.audios.filter(audioItem => audioItem.owner_id !== userId);
 					category.more = categoryData.more;
 
 					if (category.more && this.validateMore(category.more)) {
@@ -350,7 +351,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 							if (!nextData) {
 								return category;
 							}
-							const filteredNextAudios = nextData.audios.filter(audio => audio.owner_id !== userId);
+							const filteredNextAudios = nextData.audios.filter(audioItem => audioItem.owner_id !== userId);
 							return {
 								...category,
 								audios: [...(category.audios || []), ...filteredNextAudios],
@@ -533,7 +534,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 		// Для обратной совместимости оставляем старые поля
 		const list = data?.playlists?.[0]?.list || data?.playlist?.list || [];
 		const allAudios = await audioRequests.parseAudios(list, params);
-		const audios = allAudios.filter(audio => audio.owner_id !== userId);
+		const audios = allAudios.filter(audioItem => audioItem.owner_id !== userId);
 		const artists = this.builderArtists(html);
 		const playlists = await this.builderPlaylists(html);
 		const collections = playlistsRequests.buildCollections(html);
@@ -690,7 +691,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 		const response = await this.getDataWithMore(audioRequests, more, params);
 
 		const userId = this.event.context.user.id;
-		const filteredAudios = response.list.filter(audio => audio.owner_id !== userId);
+		const filteredAudios = response.list.filter(audioItem => audioItem.owner_id !== userId);
 
 		return {
 			audios: filteredAudios,

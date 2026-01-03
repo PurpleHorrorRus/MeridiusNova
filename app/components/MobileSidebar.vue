@@ -167,8 +167,7 @@ onMounted(() => {
 const navigationItems = computed(() => {
 	return [
 		{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
-		{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
-		{ path: "/queue", label: "Очередь", icon: "mdi:playlist-play" }
+		{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" }
 	];
 });
 
@@ -218,7 +217,7 @@ const getAccountName = (account: any): string => {
 };
 
 const switchAccount = async (account: any) => {
-	const accountIndex = settings.value.vk.accounts.findIndex(acc => acc.user === account.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === account.id);
 	if (accountIndex >= 0) {
 		updateSection("vk", { active: accountIndex });
 		showAccountMenu.value = false;
@@ -273,7 +272,7 @@ const switchAccount = async (account: any) => {
 	height: 60px;
 	background: var(--bg-sidebar, #1a1a1a);
 	border-top: 1px solid var(--border, #2a2a2a);
-	z-index: 1000;
+	z-index: 1001;
 	width: 100%;
 }
 
@@ -353,7 +352,7 @@ const switchAccount = async (account: any) => {
 	
 	/* Ensure mobile bottom nav is always visible */
 	.mobile-bottom-nav {
-		z-index: 1000;
+		z-index: 1001;
 	}
 	
 	/* Make navigation items more compact on mobile */

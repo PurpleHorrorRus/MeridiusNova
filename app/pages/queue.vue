@@ -50,28 +50,12 @@ const clearQueue = () => {
 };
 
 const playFromQueue = async (audio: TAudio, index: number) => {
-	console.log("[QUEUE] playFromQueue called", {
-		audioId: audio.full_id,
-		index,
-		currentIndex: playlistStore.currentIndex,
-		queueLength: playlistStore.playingSongs.length,
-		currentPlaylist: playlistStore.current?.raw_id,
-		playingPlaylist: playlistStore.playing?.raw_id
-	});
-	
 	playlistStore.setCurrentIndex(index);
 	// Используем трек из очереди, который уже имеет все данные (включая URL)
 	const songFromQueue = playlistStore.playingSongs[index];
 	if (songFromQueue) {
-		console.log("[QUEUE] Playing song from queue", {
-			songId: songFromQueue.full_id,
-			from: "queue",
-			manual: true
-		});
 		// Помечаем трек как из очереди, чтобы updatePlaylist не перезагружал плейлист
 		await play({ ...songFromQueue, from: "queue", manual: true });
-	} else {
-		console.warn("[QUEUE] Song not found in queue at index", index);
 	}
 };
 </script>

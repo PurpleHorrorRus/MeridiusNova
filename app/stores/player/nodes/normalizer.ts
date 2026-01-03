@@ -166,7 +166,7 @@ export class Normalizer {
 			}
 		}
 
-		return peaks.filter(value => value > 0);
+		return peaks.filter(peak => peak > 0);
 	}
 
 	private async calculateGain(data: ArrayBuffer): Promise<{

@@ -105,7 +105,8 @@ const defaultSettings: TSettings = {
 			enable: false,
 			material: "none",
 			opacity: 0.5
-		}
+		},
+		sidebarPlaylistsExpanded: false
 	},
 
 	optimization: {
@@ -119,7 +120,8 @@ const defaultSettings: TSettings = {
 
 	equalizer: {
 		enable: false,
-		levels: new Array(18).fill(0)
+		levels: new Array(18).fill(0),
+		spectrumVisualization: false
 	},
 
 

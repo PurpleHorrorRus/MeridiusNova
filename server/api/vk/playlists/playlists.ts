@@ -17,7 +17,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		const catalogResponse = response as TRawResponse<TGetCatalogSectionPayload>;
 		const playlists = catalogResponse.payload[1][1]?.playlists || [];
 
-		return playlists.map(playlist => this.getPlaylistInfo(playlist)) as K[];
+		return playlists.map(playlistItem => this.getPlaylistInfo(playlistItem)) as K[];
 	}
 
 	public getPlaylistInfo(playlist: any): TPlaylist {
@@ -75,7 +75,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	public async get(params: { owner_id?: number; offset?: number; access_hash?: string } = {}): Promise<{ count: number; playlists: TPlaylist[] }> {
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
 
 		const startTime = Date.now();
 		const requestForm = {
@@ -304,7 +311,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		offset?: number;
 		_triedFromList?: boolean;
 	}): Promise<TPlaylist> {
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
 
 		// Пробуем использовать новый API
 		const access_key = params.access_hash || "";
@@ -378,9 +392,10 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					if (audioIdsList.length > 0) {
 						const rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
 
-						// Парсим треки
+						// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
 						playlist.list = await audioRequests.parseAudios(rawAudios, {
-							count: params.count
+							count: params.count,
+							withUrls: false
 						});
 					}
 				}
@@ -408,7 +423,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
 
 		const requestForm = {
 			access_hash: params.access_hash || "",
@@ -416,7 +438,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			al: 1,
 			claim: 0,
 			context: "",
-			from_id: this.event.context.user.id,
+			from_id: owner_id,
 			is_loading_all: 1,
 			is_preload: 0,
 			offset: 0,
@@ -560,8 +582,10 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				const needSplice = offset > 0 || payload.list.length > count;
 				const list = needSplice ? payload.list.slice(offset, offset + count) : payload.list;
 
+				// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
 				playlist.list = await getAudioRequestsInstance(this.event).parseAudios(list, {
-					count: params.count
+					count: params.count,
+					withUrls: false
 				});
 			}
 		}
@@ -625,6 +649,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getNewHash();
 
 		const response = await this.request({
@@ -669,7 +700,16 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const Audios = playlist.list?.map(audio => audio.full_id).join(",") || "";
+		const owner_id = playlist.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
+		const Audios = playlist.list?.map(audioItem => audioItem.full_id).join(",") || "";
 
 		return await this.request({
 			act: "save_playlist",
@@ -679,7 +719,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			description: params.description ?? playlist.description,
 			hash: playlist.edit_hash,
 			no_discover: params.no_discover ? 1 : 0,
-			owner_id: playlist.owner_id || this.event.context.user.id,
+			owner_id,
 			playlist_id: params.playlist_id
 		} as any);
 	}
@@ -692,13 +732,22 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		const owner_id = playlist.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		await this.request({
 			act: "delete_playlist",
 			al: 1,
 			hash: playlist.edit_hash,
-			page_owner_id: playlist.owner_id || this.event.context.user.id,
+			page_owner_id: owner_id,
 			playlist_id: playlist.playlist_id,
-			playlist_owner_id: playlist.owner_id || this.event.context.user.id
+			playlist_owner_id: owner_id
 		} as any);
 
 		return true;
@@ -725,6 +774,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		playlist_id: number;
 		prev_playlist_id: number;
 	}): Promise<boolean> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getReorderHash();
 
 		await this.request({
@@ -747,6 +803,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getSaveHash(audio);
 
 		return await this.request({
@@ -766,6 +829,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			throw createError({
 				statusCode: 400,
 				message: "You must to specify audio and playlist"
+			});
+		}
+
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
 			});
 		}
 
@@ -792,6 +862,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			throw createError({
 				statusCode: 400,
 				message: "You must to specify playlist_id"
+			});
+		}
+
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
 			});
 		}
 
@@ -829,6 +906,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getSaveHash(audio: any): Promise<string> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const response = await this.request({
 			act: "more_playlists_add",
 			al: 1,
@@ -863,6 +947,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getUploadCoverURL(): Promise<string> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const response = await this.mainPage();
 		const urlMatch = response.match(/\"url\":\"(.*?)\"/);
 		

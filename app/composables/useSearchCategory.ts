@@ -5,7 +5,7 @@ export const useSearchCategory = (categoryId: string) => {
 	const searchStore = useSearchStore();
 
 	const category = computed(() => {
-		return searchStore.results?.categories?.find(c => c.id === categoryId);
+		return searchStore.results?.categories?.find(categoryItem => categoryItem.id === categoryId);
 	});
 
 	const loading = computed(() => searchStore.loading);

@@ -182,7 +182,12 @@
 			"levels": "Equalizer Levels",
 			"graph": "Graph",
 			"export": "Export",
-			"import": "Import"
+			"import": "Import",
+			"spectrum": {
+				"visualization": "Spectrum visualization",
+				"enable": "Enable spectrum visualization",
+				"disable": "Disable spectrum visualization"
+			}
 		},
 		"hotkeys": {
 			"title": "Hotkeys",
@@ -207,14 +212,28 @@
 	"playlist": {
 		"tracks": "tracks",
 		"duration": "Duration",
-		"updated": "Updated"
+		"updated": "Updated",
+		"tracksHeader": {
+			"title": "Title",
+			"album": "Album"
+		}
 	},
 	"collection": {
+		"type": "Collection",
+		"user": "User {{ id }}",
 		"tabs": {
 			"music": "Music",
 			"playlists": "Playlists",
-			"albums": "Albums"
+			"albums": "Albums",
+			"wall": "Wall"
 		}
+	},
+	"library": {
+		"hidden": "User library is hidden"
+	},
+	"wall": {
+		"pinned": "Pinned",
+		"remains": "{{ count }} tracks remaining"
 	},
 	"search": {
 		"placeholder": "Search music...",
@@ -241,6 +260,21 @@
 			"processing": "Processing",
 			"completed": "Completed",
 			"failed": "Failed"
+		}
+	},
+	"queue": {
+		"source": {
+			"playlist": "Playlist",
+			"myMusic": "My Music",
+			"userPlaylist": "User Playlist",
+			"wall": "Wall",
+			"feed": "Feed",
+			"updates": "Updates",
+			"general": "General",
+			"artist": "Artist",
+			"popular": "Popular",
+			"search": "Search",
+			"vkMix": "VK Mix"
 		}
 	}
 }

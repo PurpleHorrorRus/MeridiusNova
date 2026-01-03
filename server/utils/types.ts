@@ -228,6 +228,7 @@ export type TPlaylist = {
 	subtitle?: string;
 	list?: TAudio[];
 	more?: TMore | null;
+	link?: string;
 };
 
 import type { TAudio as TAudioFromAudio } from "../api/vk/audio/types";
@@ -514,6 +515,7 @@ export type TSettings = {
 			material: string;
 			opacity: number;
 		};
+		sidebarPlaylistsExpanded: boolean;
 	};
 	optimization: {
 		fetchRestriction: number;
@@ -526,6 +528,7 @@ export type TSettings = {
 	equalizer: {
 		enable: boolean;
 		levels: number[];
+		spectrumVisualization: boolean;
 	};
 	vk: {
 		active: number;

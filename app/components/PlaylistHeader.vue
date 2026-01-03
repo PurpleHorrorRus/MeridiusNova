@@ -28,10 +28,10 @@
 					</div>
 
 					<div class="playlist-header-actions">
-						<button @click="handlePlayPause" class="playlist-header-play-button" :disabled="isLoading">
-							<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="24" :class="{ 'loading-icon': isLoading }" />
-							<span>{{ isLoading ? 'Загрузка...' : (isPlaying ? 'Пауза' : 'Воспроизвести') }}</span>
-						</button>
+					<button @click.stop="handlePlayPause" class="playlist-header-play-button" :disabled="isLoading">
+						<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="24" :class="{ 'loading-icon': isLoading }" />
+						<span>{{ isLoading ? 'Загрузка...' : (isPlaying ? 'Пауза' : 'Воспроизвести') }}</span>
+					</button>
 
 						<button
 							v-if="playlist.follow_hash"
@@ -121,7 +121,7 @@ const vkStore = useVkStore();
 const showActionsMenu = ref(false);
 
 const canEdit = computed(() => {
-	return props.playlist.owner_id === vkStore.user_id || props.playlist.permissions?.edit;
+	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.edit;
 });
 
 const canShare = computed(() => {
@@ -133,7 +133,7 @@ const canDownload = computed(() => {
 });
 
 const canDelete = computed(() => {
-	return props.playlist.owner_id === vkStore.user_id || props.playlist.permissions?.delete;
+	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.delete;
 });
 
 const handleClickOutside = (event: MouseEvent) => {
@@ -177,7 +177,6 @@ const formatListens = (listens: number): string => {
 };
 
 const handlePlayPause = async () => {
-	emit("play", props.playlist);
 	await handlePlayPauseBase();
 };
 
@@ -413,6 +412,10 @@ const handleDelete = async () => {
 	font-weight: 700;
 	cursor: pointer;
 	transition: all 0.2s;
+
+	:deep(svg) {
+		pointer-events: none;
+	}
 
 	&:hover:not(:disabled) {
 		background: var(--primary-hover, #ff1a5c);

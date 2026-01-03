@@ -170,7 +170,7 @@ export const useDownloadsStore = defineStore("downloads", {
 		},
 
 		getQueuedDownloads(): TDownload[] {
-			return Array.from(this.downloads.values()).filter(d => d.status === "queued");
+			return Array.from(this.downloads.values()).filter(downloadItem => downloadItem.status === "queued");
 		},
 
 		getActiveDownloads(): TDownload[] {

@@ -11,7 +11,7 @@ export interface ModalCustomProps {
 	title?: string;
 }
 
-type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | null;
+type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | "songActions" | null;
 
 interface ModalState {
 	isOpen: boolean;

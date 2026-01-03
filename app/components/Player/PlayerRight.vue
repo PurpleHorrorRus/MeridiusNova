@@ -56,6 +56,16 @@
 			>
 				<Icon name="mdi:shuffle" size="20" />
 			</button>
+
+			<button
+				class="btn-player-control btn-queue"
+				:class="{ active: isQueueDrawerOpen }"
+				@click="openQueueDrawer"
+				:title="t('player.queue') || 'Очередь воспроизведения'"
+			>
+				<Icon name="mdi:playlist-music" size="20" />
+				<span v-if="playlistStore.playingSongs.length > 0" class="queue-badge">{{ queueTracksCountText }}</span>
+			</button>
 		</div>
 
 		<div class="volume-wrapper" @wheel="volumeSlider.handleVolumeWheel">
@@ -98,12 +108,15 @@ import { useStrings } from "~/composables/useStrings";
 import { useSongDelete } from "~/composables/useSongDelete";
 import { useSongAdd } from "~/composables/useSongAdd";
 import { useVolumeSlider } from "~/composables/useVolumeSlider";
+import { useQueueDrawer } from "~/composables/useQueueDrawer";
 
 const {
 	currentSong,
 	playbackRate,
 	setPlaybackRate
 } = useAudio();
+
+const { openQueueDrawer, isQueueDrawerOpen } = useQueueDrawer();
 
 const volumeSlider = useVolumeSlider();
 
@@ -148,6 +161,11 @@ watch(volumeSlider.volume, () => {
 });
 
 const shuffle = computed(() => playlistStore.shuffle);
+
+const queueTracksCountText = computed(() => {
+	const count = playlistStore.playingSongs.length;
+	return count > 99 ? "99+" : String(count);
+});
 
 const songProps = computed(() => {
 	const song = currentSong.value;
@@ -245,29 +263,29 @@ onUnmounted(() => {
 	align-items: center;
 	justify-content: flex-end;
 	gap: 16px;
-	width: 300px;
+	width: 400px;
 
 	@media (max-width: 800px) {
 		display: none;
 	}
 
 	@media (max-width: 1400px) {
-		width: 300px;
+		width: 400px;
 		gap: 12px;
 	}
 
 	@media (max-width: 1200px) {
-		width: 280px;
+		width: 380px;
 		gap: 10px;
 	}
 
 	@media (max-width: 1000px) {
-		width: 160px;
+		width: 260px;
 		gap: 8px;
 	}
 
 	@media (min-width: 801px) and (max-width: 1000px) {
-		width: 280px;
+		width: 380px;
 		gap: 10px;
 	}
 }
@@ -325,6 +343,43 @@ onUnmounted(() => {
 	&.active {
 		color: var(--secondary, #e9003f);
 		background: rgba(233, 0, 63, 0.15);
+	}
+}
+
+.btn-queue {
+	position: relative;
+}
+
+.queue-badge {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	background: var(--secondary, #e9003f);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 2px 5px;
+	border-radius: 10px;
+	min-width: 18px;
+	height: 18px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+	@media (max-width: 1200px) {
+		font-size: 9px;
+		padding: 1px 4px;
+		min-width: 16px;
+		height: 16px;
+	}
+
+	@media (max-width: 1000px) {
+		font-size: 8px;
+		padding: 1px 3px;
+		min-width: 14px;
+		height: 14px;
 	}
 }
 
@@ -402,7 +457,7 @@ onUnmounted(() => {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	width: 140px;
+	width: 240px;
 }
 
 .btn-mute {
@@ -465,6 +520,7 @@ onUnmounted(() => {
 
 .volume-slider {
 	flex: 1;
+	min-width: 150px;
 	height: 4px;
 	position: relative;
 	background: rgba(255, 255, 255, 0.1);

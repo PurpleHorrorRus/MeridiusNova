@@ -223,7 +223,7 @@ export class Http {
 			}) as T;
 		}
 
-		return this.parseResponse<T>(text);
+		return await this.parseResponse<T>(text);
 	}
 
 	public async login(): Promise<TWebTokenResponse["data"] | false> {
@@ -249,30 +249,20 @@ export class Http {
 		return response.data;
 	}
 
-	protected parseResponse<T extends string | Record<string, any> | any[]>(text: string): T {
-		const parseJson = (str: string): T | null => {
-			try {
-				return JSON.parse(str) as T;
-			} catch {
-				return null;
-			}
+	protected async parseResponse<T extends string | Record<string, any> | any[]>(text: string): Promise<T> {
+		const parseJson = async (str: string): Promise<T | null> => {
+			return await Promise.resolve(JSON.parse(str) as T).catch(() => null);
 		};
 
-		const parsed = parseJson(text);
+		const parsed = await parseJson(text);
 		if (parsed !== null) {
 			return parsed;
 		}
 
-		const decoded = (() => {
-			try {
-				return atob(text);
-			} catch {
-				return null;
-			}
-		})();
+		const decoded = await Promise.resolve(atob(text)).catch(() => null);
 
 		if (decoded) {
-			const decodedParsed = parseJson(decoded);
+			const decodedParsed = await parseJson(decoded);
 			if (decodedParsed !== null) {
 				return decodedParsed;
 			}

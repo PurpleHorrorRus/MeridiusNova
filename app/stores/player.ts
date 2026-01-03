@@ -154,6 +154,14 @@ export const usePlayerStore = defineStore("player", {
 					controllerData.hls.destroy();
 				}
 
+				// Disconnect equalizer for this controller
+				if (controllerData.sourceNode && import.meta.client) {
+					import("~/stores/equalizer").then(({ useEqualizerStore }) => {
+						const equalizerStore = useEqualizerStore();
+						equalizerStore.disconnect(controllerData.sourceNode!);
+					});
+				}
+
 				if (controllerData.sourceNode) {
 					controllerData.sourceNode.disconnect();
 				}
@@ -255,16 +263,19 @@ export const usePlayerStore = defineStore("player", {
 
 		async play(song: TAudio & { crossfade?: boolean; clear?: boolean; manual?: boolean }) {
 			if (!song || song.is_restriction) {
+				console.log("[PLAYER.PLAY] Rejected", { reason: !song ? "no song" : "restriction" });
 				return false;
 			}
 
 			// If current song is same and paused -> resume (но не при manual переключении)
 			const isSameSong = this.song?.full_id === song.full_id;
 			if (isSameSong && this.paused && !song.manual) {
+				console.log("[PLAYER.PLAY] Resuming same song");
 				return this.resume();
 			}
 
 			if (this.loading) {
+				console.log("[PLAYER.PLAY] Already loading, rejected");
 				return false;
 			}
 
@@ -286,28 +297,71 @@ export const usePlayerStore = defineStore("player", {
 
 			// Sync playlist index
 			const playlistStore = usePlaylistStore();
+			console.log("[PLAYER.PLAY] Before index sync", {
+				manual: song.manual,
+				currentIndex: playlistStore.currentIndex,
+				currentSongId: playlistStore.currentSong?.full_id,
+				playingSongId: song.full_id,
+				queueLength: playlistStore.playingSongs.length
+			});
+			
 			// При manual переключении не синхронизируем индекс, так как он уже установлен в next()
 			// Синхронизируем только если индекс не установлен или трек не найден по текущему индексу
 			if (!song.manual || playlistStore.currentIndex < 0) {
 				const currentSong = playlistStore.currentSong;
 				if (!currentSong || currentSong.full_id !== song.full_id) {
 					const songIndex = playlistStore.playingSongs.findIndex((s: TAudio) => s.full_id === song.full_id);
+					console.log("[PLAYER.PLAY] Syncing index", {
+						songIndex,
+						currentSongId: currentSong?.full_id,
+						playingSongId: song.full_id
+					});
 					if (songIndex >= 0) {
 						playlistStore.setCurrentIndex(songIndex);
 					}
+				} else {
+					console.log("[PLAYER.PLAY] Index already correct");
 				}
+			} else {
+				console.log("[PLAYER.PLAY] Skipping index sync (manual)");
 			}
+			
+			console.log("[PLAYER.PLAY] After index sync", {
+				currentIndex: playlistStore.currentIndex,
+				currentSongId: playlistStore.currentSong?.full_id
+			});
 
 			if (!this.audioContext) {
 				await this.initPlayer();
 			}
 
 			if (!song.url) {
-				// Fetch URL if missing (simplified here, assuming caller provides or we might need fetch logic)
-				// In old project: dispatch("requests/FETCH_URL", song)
-				this.error = "URL not available";
-				this.loading = false;
-				return false;
+				// Fetch URL if missing using new endpoint
+				const { authenticatedFetch } = await import("~/utils/api");
+				const audioWithUrl = await authenticatedFetch<TAudio[]>(`/api/vk/audio/url`, {
+					params: {
+						ids: `${song.owner_id}_${song.id}`
+					}
+				}).catch((error: Error) => {
+					console.error("Failed to fetch audio URL:", error);
+					this.error = "Failed to fetch audio URL";
+					this.loading = false;
+					return null;
+				});
+
+				if (!audioWithUrl) {
+					return false;
+				}
+
+				if (audioWithUrl && audioWithUrl.length > 0 && audioWithUrl[0]?.url) {
+					song.url = audioWithUrl[0]?.url;
+					// Update the song object with the fetched URL
+					this.song = { ...song };
+				} else {
+					this.error = "Failed to fetch audio URL";
+					this.loading = false;
+					return false;
+				}
 			}
 
 			if (this.audioContext) {
@@ -377,13 +431,12 @@ export const usePlayerStore = defineStore("player", {
 				return;
 			}
 
-			controllerData.gainNode = this.audioContext.createGain();
-			controllerData.gainNode.connect(this.audioContext.destination);
+		controllerData.gainNode = this.audioContext.createGain();
+		controllerData.gainNode.connect(this.audioContext.destination);
 
-			controllerData.sourceNode = this.audioContext.createMediaElementSource(controllerData.controller!);
-			controllerData.sourceNode.connect(controllerData.gainNode);
+		controllerData.sourceNode = this.audioContext.createMediaElementSource(controllerData.controller!);
 
-			// Setup HLS first as Normalizer needs it
+		// Setup HLS first as Normalizer needs it
 			if (Hls.isSupported()) {
 				controllerData.hls = new Hls({
 					maxBufferLength: 10,
@@ -398,6 +451,19 @@ export const usePlayerStore = defineStore("player", {
 				controllerData.hls.loadSource(song.url);
 			} else {
 				controllerData.controller!.src = song.url;
+			}
+
+			// Equalizer setup - must be before crossfade to work correctly
+			if (import.meta.client) {
+				const { useEqualizerStore } = await import("~/stores/equalizer");
+				const equalizerStore = useEqualizerStore();
+				
+				if (equalizerStore.enabled && controllerData.sourceNode && controllerData.gainNode && this.audioContext) {
+					equalizerStore.connect(controllerData.sourceNode, this.audioContext, controllerData.gainNode);
+				} else if (controllerData.sourceNode && controllerData.gainNode) {
+					// If equalizer is disabled, connect sourceNode directly to gainNode
+					controllerData.sourceNode.connect(controllerData.gainNode);
+				}
 			}
 
 			// Crossfade setup
@@ -565,10 +631,11 @@ export const usePlayerStore = defineStore("player", {
 		},
 
 		pause() {
+			this.paused = true;
+
 			const current = this.getCurrentController();
 			if (current?.controller) {
 				current.controller.pause();
-				this.paused = true;
 			}
 
 			const opposed = this.getOpposedController();
@@ -587,6 +654,8 @@ export const usePlayerStore = defineStore("player", {
 		},
 
 		resume() {
+			this.paused = false;
+
 			if (contextTimeout) clearTimeout(contextTimeout);
 
 			if (this.audioContext && this.audioContext.state === "suspended") {
@@ -596,7 +665,6 @@ export const usePlayerStore = defineStore("player", {
 			const current = this.getCurrentController();
 			if (current?.controller) {
 				current.controller.play();
-				this.paused = false;
 			}
 
 			const opposed = this.getOpposedController();
@@ -609,7 +677,11 @@ export const usePlayerStore = defineStore("player", {
 		},
 
 		toggle() {
-			this.paused ? this.resume() : this.pause();
+			if (this.paused) {
+				this.resume();
+			} else {
+				this.pause();
+			}
 		},
 
 		seek(time: number) {

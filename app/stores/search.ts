@@ -69,7 +69,7 @@ export const useSearchStore = defineStore("search", {
 				return;
 			}
 
-			const category = this.results.categories.find(c => c.id === categoryId);
+			const category = this.results.categories.find(categoryItem => categoryItem.id === categoryId);
 			if (!category) {
 				return;
 			}
@@ -85,7 +85,7 @@ export const useSearchStore = defineStore("search", {
 
 				if (updatedCategory) {
 					// Обновляем категорию в массиве
-					const categoryIndex = this.results.categories.findIndex(c => c.id === categoryId);
+					const categoryIndex = this.results.categories.findIndex(categoryItem => categoryItem.id === categoryId);
 					if (categoryIndex >= 0) {
 						this.results.categories[categoryIndex] = updatedCategory;
 					}

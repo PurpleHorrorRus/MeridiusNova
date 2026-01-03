@@ -48,54 +48,57 @@ export const useHotkeysStore = defineStore("hotkeys", {
 		},
 
 		async handleAction(action: string): Promise<void> {
-			const playerStore = await import("./player").then(m => m.usePlayerStore());
-			const playlistStore = await import("./playlist").then(m => m.usePlaylistStore());
+			const {
+				playNext,
+				playPrevious,
+				toggle,
+				setVolume,
+				setPlaybackRate,
+				toggleMute,
+				volume,
+				playbackRate,
+			} = useAudio();
+
 			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 
 			switch (action) {
 				case "playpause":
-					playerStore().toggle();
+					toggle();
 					break;
 				case "playnext":
-					playlistStore().next();
+					playNext();
 					break;
 				case "playprev":
-					await playlistStore().previous();
+					playPrevious();
 					break;
 				case "volup": {
 					const step = settings.value.player.step.hotkey / 100;
-					const newVolume = Math.min(1, playerStore().volume + step);
-					playerStore().setVolume(newVolume);
+					const newVolume = Math.min(1, volume.value + step);
+					setVolume(newVolume);
 					break;
 				}
 				case "voldown": {
 					const step = settings.value.player.step.hotkey / 100;
-					const newVolume = Math.max(0, playerStore().volume - step);
-					playerStore().setVolume(newVolume);
+					const newVolume = Math.max(0, volume.value - step);
+					setVolume(newVolume);
 					break;
 				}
 				case "volmute":
-					playerStore().toggleMute();
+					toggleMute();
 					break;
 				case "rateup": {
 					const step = settings.value.player.playbackRateStep.hotkey;
-					const newRate = Math.min(2, playerStore().playbackRate + step);
-					playerStore().setPlaybackRate(newRate);
+					const newRate = Math.min(2, playbackRate.value + step);
+					setPlaybackRate(newRate);
 					break;
 				}
 				case "ratedown": {
 					const step = settings.value.player.playbackRateStep.hotkey;
-					const newRate = Math.max(0.5, playerStore().playbackRate - step);
-					playerStore().setPlaybackRate(newRate);
+					const newRate = Math.max(0.5, playbackRate.value - step);
+					setPlaybackRate(newRate);
 					break;
 				}
-				case "nextplaylist":
-					playlistStore().nextPlaylist();
-					break;
-				case "prevplaylist":
-					playlistStore().prevPlaylist();
-					break;
 			}
 		}
 	}

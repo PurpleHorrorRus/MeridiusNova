@@ -72,13 +72,13 @@ const handlePlayPause = async () => {
 <style scoped lang="scss">
 .playlist-card {
 	cursor: pointer;
-	transition: all 0.3s ease;
+	transition: all 0.2s ease;
 	padding: 8px;
-	border-radius: 12px;
+	border-radius: 8px;
 	background: transparent;
 
 	&:hover {
-		transform: translateY(-6px);
+		transform: translateY(-4px);
 		background: var(--bg-secondary, #181818);
 
 		.playlist-card-cover {
@@ -107,19 +107,11 @@ const handlePlayPause = async () => {
 		width: 100%;
 		background: var(--bg-secondary, #181818);
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		transition: box-shadow 0.3s ease, transform 0.3s ease;
-
-		:deep(img) {
-			transition: transform 0.3s ease;
-		}
+		transition: box-shadow 0.2s ease;
 
 		@media (max-width: 480px) {
 			margin-bottom: 10px;
 		}
-	}
-
-	&:hover &-cover :deep(img) {
-		transform: scale(1.05);
 	}
 
 	&-overlay {
@@ -128,14 +120,13 @@ const handlePlayPause = async () => {
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6));
+		background: rgba(0, 0, 0, 0.5);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		opacity: 0;
-		transition: opacity 0.3s ease;
+		transition: opacity 0.2s ease;
 		z-index: 1;
-		backdrop-filter: blur(2px);
 	}
 
 	&-play-button {

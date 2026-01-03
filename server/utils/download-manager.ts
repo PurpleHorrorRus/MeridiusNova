@@ -73,26 +73,26 @@ class DownloadManager {
 	}
 
 	public getQueuedDownloads(): TDownload[] {
-		return Array.from(this.downloads.values()).filter(d => d.status === "queued");
+		return Array.from(this.downloads.values()).filter(downloadItem => downloadItem.status === "queued");
 	}
 
 	public getActiveDownloads(): TDownload[] {
-		return Array.from(this.downloads.values()).filter(d =>
-			d.status === "preparing" || d.status === "downloading" || d.status === "processing"
+		return Array.from(this.downloads.values()).filter(downloadItem =>
+			downloadItem.status === "preparing" || downloadItem.status === "downloading" || downloadItem.status === "processing"
 		);
 	}
 
 	public clearQueue(): void {
 		const queued = this.getQueuedDownloads();
-		queued.forEach(download => {
-			this.removeDownload(download.downloadId);
+		queued.forEach(downloadItem => {
+			this.removeDownload(downloadItem.downloadId);
 		});
 	}
 
 	public clearCompleted(): void {
-		const completed = Array.from(this.downloads.values()).filter(d => d.status === "completed" || d.status === "failed");
-		completed.forEach(download => {
-			this.removeDownload(download.downloadId);
+		const completed = Array.from(this.downloads.values()).filter(downloadItem => downloadItem.status === "completed" || downloadItem.status === "failed");
+		completed.forEach(downloadItem => {
+			this.removeDownload(downloadItem.downloadId);
 		});
 	}
 

@@ -1,6 +1,9 @@
 import { getPlaylistsRequestsInstance } from "../playlists";
+import { requireAuth } from "~~/server/utils/auth-check";
 
 export default defineEventHandler(async (event) => {
+	requireAuth(event);
+
 	const playlistsRequests = getPlaylistsRequestsInstance(event);
 	const owner_id = Number(getRouterParam(event, "owner_id"));
 	const playlist_id = Number(getRouterParam(event, "playlist_id"));

@@ -28,8 +28,8 @@ export const useAudio = () => {
 		const songs = playlist.list || [];
 		playlistStore.setSongs(songs);
 		
-		playlistStore.setCurrent(playlist);
-		playlistStore.setPlaying(playlist);
+		await playlistStore.setCurrent(playlist);
+		await playlistStore.setPlaying(playlist);
 		
 		// Находим индекс трека в отфильтрованной очереди
 		const filteredSongs = playlistStore.playingSongs;
@@ -39,15 +39,11 @@ export const useAudio = () => {
 		playlistStore.setCurrentIndex(index);
 
 		// Используем трек из очереди, который уже имеет все данные
-		const songToPlay = filteredSongs[index] || song;
-
 		// Добавляем информацию о плейлисте в трек
-		const songWithFrom = {
-			...songToPlay,
-			from: playlist
-		};
-
-		await play(songWithFrom);
+		await play({
+			...(filteredSongs[index] || song),
+			from: playlist.raw_id
+		} as TAudio & { from?: string });
 	};
 
 	const playNext = async () => {		
@@ -67,11 +63,12 @@ export const useAudio = () => {
 				
 				// Если плейлист еще не установлен, устанавливаем его
 				if (!playlistStore.playing || (playlistStore.playing.playlist_id !== -9 && String(playlistStore.playing.owner_id) !== "vkmix")) {
+					const { getString } = useStrings();
 					playlistStore.setPlaying({
 						owner_id: 0,
 						playlist_id: -9,
 						raw_id: "vkmix_-9",
-						title: "VK Mix",
+						title: getString("queue.source.vkMix"),
 						cover_url: "",
 						description: "",
 						size: 0,

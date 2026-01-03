@@ -35,14 +35,12 @@
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
 import type { TPlaylist } from "~~/server/utils/types";
+import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
 
 const route = useRoute();
 const vkStore = useVkStore();
 
-const ownerId = computed(() => {
-	const ownerIdParam = route.query.owner_id as string;
-	return ownerIdParam ? Number(ownerIdParam) : vkStore.user_id || 0;
-});
+const ownerId = computed(() => Number(route.params.owner_id));
 
 const { data, pending, error } = useFetch<{ count: number; playlists: TPlaylist[] }>(
 	() => `/api/vk/playlists`,
@@ -57,8 +55,7 @@ const { data, pending, error } = useFetch<{ count: number; playlists: TPlaylist[
 
 const playlists = computed(() => {
 	const playlistsData = data.value?.playlists || [];
-	// Filter out "my music" playlist (playlist_id === -1)
-	return playlistsData.filter(p => p.playlist_id !== -1);
+	return playlistsData.filter(playlist => playlist.playlist_id !== -1);
 });
 
 const totalCount = computed(() => data.value?.count || 0);
@@ -87,7 +84,7 @@ const loadMore = async () => {
 	});
 
 	if (result && data.value) {
-		const newPlaylists = result.playlists.filter(p => p.playlist_id !== -1);
+		const newPlaylists = result.playlists.filter(playlist => playlist.playlist_id !== -1);
 		data.value.playlists.push(...newPlaylists);
 		data.value.count = result.count;
 	}
@@ -95,22 +92,22 @@ const loadMore = async () => {
 	isLoadingMore.value = false;
 };
 
-useScrollLoad(() => {
-	if (!hasMore.value) {
-		return;
+useIntersectionObserver(
+	loadMoreRef,
+	(entries) => {
+		if (entries[0]?.isIntersecting) {
+			if (!hasMore.value || isLoadingMore.value) {
+				return;
+			}
+			loadMore();
+		}
+	},
+	{
+		threshold: 0.1,
+		rootMargin: "200px",
+		enabled: computed(() => hasMore.value && !isLoadingMore.value)
 	}
-
-	if (isLoadingMore.value) {
-		return;
-	}
-
-	loadMore();
-}, {
-	threshold: 200,
-	enabled: computed(() => {
-		return !isLoadingMore.value;
-	})
-});
+);
 </script>
 
 <style scoped lang="scss">
@@ -124,18 +121,43 @@ useScrollLoad(() => {
 .error {
 	text-align: center;
 	padding: 40px;
+
+	@media (max-width: 768px) {
+		padding: 30px 20px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 20px 16px;
+	}
 }
 
 .playlists-content {
 	display: flex;
 	flex-direction: column;
 	gap: 20px;
+
+	@media (max-width: 768px) {
+		gap: 16px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 12px;
+	}
 }
 
 .empty-state {
 	text-align: center;
 	padding: 40px;
 	color: var(--text-secondary, #b3b3b3);
+
+	@media (max-width: 768px) {
+		padding: 30px 20px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 20px 16px;
+		font-size: 14px;
+	}
 }
 
 .playlists-grid {
@@ -143,11 +165,31 @@ useScrollLoad(() => {
 	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 	gap: 20px;
 	padding: 0 32px 32px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		gap: 16px;
+		padding: 0 16px 16px;
+	}
+
+	@media (max-width: 480px) {
+		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+		gap: 12px;
+		padding: 0 12px 12px;
+	}
 }
 
 .load-more {
 	text-align: center;
 	padding: 20px;
+
+	@media (max-width: 768px) {
+		padding: 16px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 12px;
+	}
 
 	button {
 		padding: 10px 20px;
@@ -157,6 +199,12 @@ useScrollLoad(() => {
 		border-radius: 4px;
 		cursor: pointer;
 		transition: background 0.2s;
+		font-size: 14px;
+
+		@media (max-width: 480px) {
+			padding: 8px 16px;
+			font-size: 12px;
+		}
 
 		&:hover:not(:disabled) {
 			background: var(--secondary-hover, #c70033);

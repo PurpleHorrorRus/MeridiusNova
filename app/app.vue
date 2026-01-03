@@ -13,14 +13,41 @@ import { useAuthInit } from "~/composables/useAuthInit";
 const authInit = useAuthInit();
 const route = useRoute();
 
+const getRedirectPath = (): string | null => {
+	if (typeof window === "undefined") {
+		return null;
+	}
+
+	const savedRedirect = sessionStorage.getItem("authRedirect");
+	if (savedRedirect) {
+		sessionStorage.removeItem("authRedirect");
+		return savedRedirect;
+	}
+
+	return null;
+};
+
 onMounted(async () => {
-	return await authInit.initialize()
-		? navigateTo("/general")
-		: navigateTo("/auth");
+	if (await authInit.initialize()) {
+		const savedRedirect = getRedirectPath();
+		if (savedRedirect) {
+			if (route.fullPath !== savedRedirect) {
+				await navigateTo(savedRedirect);
+			}
+		} else if (route.path === "/" || route.path === "/auth") {
+			await navigateTo("/general");
+		}
+	} else {
+		if (route.path !== "/auth") {
+			sessionStorage.setItem("authRedirect", route.fullPath);
+		}
+		await navigateTo("/auth");
+	}
 });
 
 watch(() => authInit.loggedIn, (loggedIn) => {
 	if (!loggedIn && route.path !== "/auth") {
+		sessionStorage.setItem("authRedirect", route.fullPath);
 		navigateTo("/auth");
 	}
 });

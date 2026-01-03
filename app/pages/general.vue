@@ -239,19 +239,18 @@ const handleRefresh = async () => {
 // Find recommendations (type === "recommendations" with popup param)
 const recommendations = computed(() => {
 	if (!general.value || general.value.length === 0) return null;
-	return general.value.find(c => {
-		if (c.type !== "recommendations") return false;
-		if (!c.params) return false;
+	return general.value.find(category => {
+		if (category.type !== "recommendations") return false;
+		if (!category.params) return false;
 		
 		// Проверяем, является ли params URLSearchParams или обычным объектом
-		if (c.params instanceof URLSearchParams) {
-			return c.params.get("popup")?.includes("recoms");
+		if (category.params instanceof URLSearchParams) {
+			return category.params.get("popup")?.includes("recoms");
 		}
 		
 		// Если params - это объект после сериализации
-		if (typeof c.params === "object" && c.params !== null && "popup" in c.params) {
-			const popup = c.params.popup;
-			return popup && String(popup).includes("recoms");
+		if (typeof category.params === "object" && category.params !== null && "popup" in category.params) {
+			return category.params.popup && String(category.params.popup).includes("recoms");
 		}
 		
 		return false;
@@ -281,7 +280,7 @@ const userPlaylistsCategory = computed(() => {
 // Find vibes
 const vibes = computed(() => {
 	if (!general.value || general.value.length === 0) return null;
-	return general.value.find(c => c.type === "vibes");
+	return general.value.find(category => category.type === "vibes");
 });
 
 // Filter general collections (exclude recommendations, vibes, and first user playlists)
@@ -291,18 +290,17 @@ const generalCollections = computed(() => {
 	let filtered = [...general.value];
 	
 	// Remove recommendations
-	const recIndex = filtered.findIndex(c => {
-		if (c.type !== "recommendations" || !c.params) return false;
+	const recIndex = filtered.findIndex(category => {
+		if (category.type !== "recommendations" || !category.params) return false;
 		
 		// Проверяем, является ли params URLSearchParams или обычным объектом
-		if (c.params instanceof URLSearchParams) {
-			return c.params.get("popup")?.includes("recoms");
+		if (category.params instanceof URLSearchParams) {
+			return category.params.get("popup")?.includes("recoms");
 		}
 		
 		// Если params - это объект после сериализации
-		if (typeof c.params === "object" && c.params !== null && "popup" in c.params) {
-			const popup = c.params.popup;
-			return popup && String(popup).includes("recoms");
+		if (typeof category.params === "object" && category.params !== null && "popup" in category.params) {
+			return category.params.popup && String(category.params.popup).includes("recoms");
 		}
 		
 		return false;
@@ -317,12 +315,12 @@ const generalCollections = computed(() => {
 	}
 	
 	// Remove vibes
-	const vibesIndex = filtered.findIndex(c => c.type === "vibes");
+	const vibesIndex = filtered.findIndex(category => category.type === "vibes");
 	if (vibesIndex >= 0) {
 		filtered.splice(vibesIndex, 1);
 	}
 	
-	return filtered.filter(c => c.playlists && c.playlists.length > 0);
+	return filtered.filter(category => category.playlists && category.playlists.length > 0);
 });
 
 // Explore playlists collections
@@ -385,11 +383,27 @@ onMounted(() => {
 	padding: 32px 48px;
 	min-height: 100%;
 
+	@media (max-width: 768px) {
+		padding: 20px 24px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 16px 16px;
+	}
+
 	&-content {
 		display: flex;
 		flex-direction: column;
 		gap: 48px;
 		max-width: 100%;
+
+		@media (max-width: 768px) {
+			gap: 32px;
+		}
+
+		@media (max-width: 480px) {
+			gap: 24px;
+		}
 	}
 }
 
@@ -398,12 +412,28 @@ onMounted(() => {
 	flex-direction: column;
 	gap: 24px;
 
+	@media (max-width: 768px) {
+		gap: 20px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 16px;
+	}
+
 	&-title {
 		font-size: 28px;
 		font-weight: 700;
 		margin: 0;
 		color: var(--text, #fff);
 		letter-spacing: -0.5px;
+
+		@media (max-width: 768px) {
+			font-size: 24px;
+		}
+
+		@media (max-width: 480px) {
+			font-size: 20px;
+		}
 	}
 }
 
@@ -439,6 +469,16 @@ onMounted(() => {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 	gap: 24px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 16px;
+	}
+
+	@media (max-width: 480px) {
+		grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+		gap: 12px;
+	}
 }
 
 .chart-list {

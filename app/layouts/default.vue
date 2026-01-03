@@ -21,6 +21,8 @@
 		<Player />
 
 		<Modal />
+
+		<QueueDrawer />
 	</div>
 </template>
 

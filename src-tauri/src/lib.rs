@@ -247,17 +247,89 @@ pub fn run() {
             };
 
             let url = if use_remote_server {
-                match Url::parse(&remote_url) {
-                    Ok(parsed_url) => {
-                        if parsed_url.host().is_none() {
-                            format!("http://localhost:{}", port)
-                        } else {
-                            remote_url
+                let healthcheck_url = if remote_url.ends_with('/') {
+                    format!("{}api/healthcheck", remote_url)
+                } else {
+                    format!("{}/api/healthcheck", remote_url)
+                };
+
+                let client = reqwest::blocking::Client::builder()
+                    .timeout(std::time::Duration::from_secs(3))
+                    .build();
+
+                let is_available = if let Ok(client) = client {
+                    match client.get(&healthcheck_url).header("Accept", "application/json").send() {
+                        Ok(response) => {
+                            if response.status().is_success() {
+                                match response.json::<serde_json::Value>() {
+                                    Ok(json) => {
+                                        if let Some(status) = json.get("status") {
+                                            status.as_str() == Some("ok")
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    Err(_) => false,
+                                }
+                            } else {
+                                false
+                            }
                         }
-                    },
-                    Err(_) => {
-                        format!("http://localhost:{}", port)
+                        Err(_) => false,
                     }
+                } else {
+                    false
+                };
+
+                if is_available {
+                    match Url::parse(&remote_url) {
+                        Ok(parsed_url) => {
+                            if parsed_url.host().is_none() {
+                                format!("http://localhost:{}", port)
+                            } else {
+                                remote_url
+                            }
+                        },
+                        Err(_) => {
+                            format!("http://localhost:{}", port)
+                        }
+                    }
+                } else {
+                    #[cfg(not(debug_assertions))]
+                    {
+                        if let Ok(store) = app.store(".settings.dat") {
+                            if let Some(settings_value) = store.get("settings") {
+                                if let Some(mut settings) = settings_value.as_object().cloned() {
+                                    if let Some(general) = settings.get("general").and_then(|v| v.as_object()).cloned() {
+                                        let mut general = general.clone();
+                                        if let Some(server) = general.get("server").and_then(|v| v.as_object()).cloned() {
+                                            let mut server = server.clone();
+                                            server.insert("enable".to_string(), serde_json::Value::Bool(false));
+                                            general.insert("server".to_string(), serde_json::Value::Object(server));
+                                            settings.insert("general".to_string(), serde_json::Value::Object(general));
+                                            let _ = store.set("settings", serde_json::Value::Object(settings));
+                                            let _ = store.save();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        let (_rx, child) = app
+                            .shell()
+                            .sidecar("server")
+                            .unwrap()
+                            .arg(port.to_string())
+                            .spawn()
+                            .expect("Failed to spawn server sidecar");
+
+                        app.manage(ServerState {
+                            child: std::sync::Arc::new(std::sync::Mutex::new(Some(child))),
+                        });
+
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                    }
+                    format!("http://localhost:{}", port)
                 }
             } else {
                 format!("http://localhost:{}", port)

@@ -1,46 +1,38 @@
 import { usePlayerStore } from "./player";
 
+interface EqualizerNodes {
+	frequencies: BiquadFilterNode[];
+	outputGain: GainNode;
+	equalizerGain: GainNode;
+	analyser: AnalyserNode | null;
+}
+
+let spectrumAnalyzerEnabled = false;
+
 export const useEqualizerStore = defineStore("equalizer", {
 	state: (): {
 		enabled: boolean;
 		levels: number[];
-		frequencies: BiquadFilterNode[];
-		connected: boolean;
 		audioContext: AudioContext | null;
-		sourceNode: MediaElementAudioSourceNode | null;
-		outputGain: GainNode | null;
-		equalizerGain: GainNode | null;
+		nodesMap: Map<MediaElementAudioSourceNode, EqualizerNodes>;
 	} => ({
 		enabled: false,
 		levels: new Array(18).fill(0),
-		frequencies: [],
-		connected: false,
 		audioContext: null,
-		sourceNode: null,
-		outputGain: null,
-		equalizerGain: null
+		nodesMap: new Map()
 	}),
 
 	actions: {
 		setEnabled(enabled: boolean) {
 			this.enabled = enabled;
 
-			if (this.connected && this.sourceNode && this.audioContext) {
-				const playerStore = usePlayerStore();
-				const currentController = playerStore.getCurrentController();
-				
-				// If nodes are missing, reconnect to ensure everything is set up
-				if ((!this.outputGain || !this.equalizerGain) && currentController?.gainNode) {
-					this.connect(this.sourceNode, this.audioContext, currentController.gainNode);
-					return;
-				}
+			// Update all existing equalizer instances
+			this.nodesMap.forEach((nodes) => {
+				nodes.outputGain.gain.value = enabled ? 0 : 1;
+				nodes.equalizerGain.gain.value = enabled ? 1 : 0;
+			});
 
-				if (this.outputGain && this.equalizerGain) {
-					this.outputGain.gain.value = enabled ? 0 : 1;
-					this.equalizerGain.gain.value = enabled ? 1 : 0;
-				}
-			} else if (enabled && !this.connected && import.meta.client) {
-				// Try to connect to current controller if not connected
+			if (enabled && import.meta.client) {
 				const playerStore = usePlayerStore();
 				const currentController = playerStore.getCurrentController();
 				const audioContext = this.audioContext || playerStore.audioContext;
@@ -49,25 +41,38 @@ export const useEqualizerStore = defineStore("equalizer", {
 					if (!this.audioContext) {
 						this.audioContext = audioContext;
 					}
-					this.connect(currentController.sourceNode, audioContext, currentController.gainNode);
+					const existingNodes = this.nodesMap.get(currentController.sourceNode);
+					if (!existingNodes) {
+						this.connect(currentController.sourceNode, audioContext, currentController.gainNode);
+					} else if (spectrumAnalyzerEnabled && !existingNodes.analyser) {
+						// Если анализатор должен быть создан, но его нет, переподключаем
+						this.disconnect(currentController.sourceNode);
+						this.connect(currentController.sourceNode, audioContext, currentController.gainNode);
+					}
 				}
 			}
 		},
 
 		setLevels(levels: number[]) {
 			this.levels = [...levels];
-			this.frequencies.forEach((filter, index) => {
-				if (filter && levels[index] !== undefined) {
-					filter.gain.value = levels[index];
-				}
+			// Update all existing filter chains
+			this.nodesMap.forEach((nodes) => {
+				nodes.frequencies.forEach((filter, index) => {
+					if (filter && levels[index] !== undefined) {
+						filter.gain.value = levels[index];
+					}
+				});
 			});
 		},
 
 		setLevel(index: number, value: number) {
 			this.levels[index] = value;
-			if (this.frequencies[index]) {
-				this.frequencies[index].gain.value = value;
-			}
+			// Update all existing filter chains
+			this.nodesMap.forEach((nodes) => {
+				if (nodes.frequencies[index]) {
+					nodes.frequencies[index].gain.value = value;
+				}
+			});
 		},
 
 		connect(sourceNode: MediaElementAudioSourceNode, audioContext: AudioContext, outputNode: AudioNode) {
@@ -75,127 +80,129 @@ export const useEqualizerStore = defineStore("equalizer", {
 				return;
 			}
 
-			// Disconnect from previous sourceNode if different
-			if (this.connected && this.sourceNode && this.sourceNode !== sourceNode) {
-				if (this.sourceNode) {
-					this.sourceNode.disconnect();
-				}
+			// If already connected for this sourceNode, skip
+			if (this.nodesMap.has(sourceNode)) {
+				return;
 			}
 
 			this.audioContext = audioContext;
-			this.sourceNode = sourceNode;
 
+			// Create separate filter chain for this controller
 			const frequenciesMap = [31, 63, 87, 125, 175, 250, 350, 500, 700, 1000, 1400, 2000, 2800, 4000, 5600, 8000, 11200, 16000];
+			const frequencies = frequenciesMap.map((frequency, index) => {
+				const filter = audioContext.createBiquadFilter();
+				filter.type = "peaking";
+				filter.frequency.value = frequency;
+				filter.Q.value = 1;
+				filter.gain.value = this.levels[index] || 0;
+				return filter;
+			});
 
-			if (this.frequencies.length === 0) {
-				this.frequencies = frequenciesMap.map((frequency, index) => {
-					const filter = this.audioContext!.createBiquadFilter();
-					filter.type = "peaking";
-					filter.frequency.value = frequency;
-					filter.Q.value = 1;
-					filter.gain.value = this.levels[index] || 0;
-					return filter;
-				});
+			// Connect filter chain
+			frequencies.reduce((prev, curr) => {
+				prev.connect(curr);
+				return curr;
+			});
 
-				this.frequencies.reduce((prev, curr) => {
-					prev.connect(curr);
-					return curr;
-				});
+			// Create analyser node for frequency analysis only if spectrum analyzer is enabled
+			let analyser: AnalyserNode | null = null;
+			if (spectrumAnalyzerEnabled) {
+				analyser = audioContext.createAnalyser();
+				analyser.fftSize = 2048;
+				analyser.smoothingTimeConstant = 0.1;
 			}
-
-			// Create outputGain for direct path
-			if (!this.outputGain) {
-				this.outputGain = this.audioContext.createGain();
-			}
-			this.outputGain.disconnect();
-			this.outputGain.connect(outputNode);
+			
+			// Create outputGain for direct path (when equalizer is disabled)
+			const outputGain = audioContext.createGain();
+			outputGain.gain.value = this.enabled ? 0 : 1;
 
 			// Create equalizerGain and connect to filter chain
-			if (this.frequencies.length > 0) {
-				const firstFrequency = this.frequencies[0];
-				const lastFrequency = this.frequencies[this.frequencies.length - 1];
-				
-				if (firstFrequency && lastFrequency) {
-					// Ensure filter chain is connected
-					for (let i = 0; i < this.frequencies.length - 1; i++) {
-						const current = this.frequencies[i];
-						const next = this.frequencies[i + 1];
-						if (current && next) {
-							current.disconnect();
-							current.connect(next);
-						}
-					}
-					
-					if (!this.equalizerGain) {
-						this.equalizerGain = this.audioContext.createGain();
-					}
-					
-					// Disconnect equalizerGain from any previous connections
-					this.equalizerGain.disconnect();
-					// Connect equalizerGain to first filter
-					this.equalizerGain.connect(firstFrequency);
-					
-					// Reconnect last frequency to output
-					lastFrequency.disconnect();
-					lastFrequency.connect(outputNode);
-				}
+			const firstFrequency = frequencies[0];
+			const lastFrequency = frequencies[frequencies.length - 1];
+			
+			if (!firstFrequency || !lastFrequency) {
+				return;
+			}
+
+			const equalizerGain = audioContext.createGain();
+			equalizerGain.connect(firstFrequency);
+			equalizerGain.gain.value = this.enabled ? 1 : 0;
+
+			// Connect analyser to outputNode if it exists
+			if (analyser) {
+				analyser.connect(outputNode);
+				// Connect both paths to analyser
+				// When equalizer is enabled: signal goes through equalizer -> analyser (outputGain is muted)
+				// When equalizer is disabled: signal goes through outputGain -> analyser (equalizerGain is muted)
+				outputGain.connect(analyser);
+				lastFrequency.connect(analyser);
+			} else {
+				// If no analyser, connect both paths directly to outputNode
+				outputGain.connect(outputNode);
+				lastFrequency.connect(outputNode);
 			}
 
 			// Connect sourceNode to both paths
-			if (this.sourceNode) {
-				this.sourceNode.disconnect();
-				
-				// Direct path: sourceNode -> outputGain -> outputNode
-				if (this.outputGain) {
-					this.sourceNode.connect(this.outputGain);
-				}
-				
-				// Equalizer path: sourceNode -> equalizerGain -> firstFrequency -> ... -> lastFrequency -> outputNode
-				if (this.equalizerGain) {
-					this.sourceNode.connect(this.equalizerGain);
-				}
-			}
+			sourceNode.disconnect();
+			sourceNode.connect(outputGain);
+			sourceNode.connect(equalizerGain);
 
-			// Set initial gain values based on enabled state
-			if (this.outputGain) {
-				this.outputGain.gain.value = this.enabled ? 0 : 1;
-			}
+			// Store nodes for this sourceNode
+			this.nodesMap.set(sourceNode, {
+				frequencies,
+				outputGain,
+				equalizerGain,
+				analyser
+			});
 
-			if (this.equalizerGain) {
-				this.equalizerGain.gain.value = this.enabled ? 1 : 0;
-			}
-
-			this.connected = true;
 		},
 
-		disconnect() {
-			if (!this.connected || !this.sourceNode) {
+		disconnect(sourceNode: MediaElementAudioSourceNode) {
+			const nodes = this.nodesMap.get(sourceNode);
+			if (!nodes) {
 				return;
 			}
 
 			// Disconnect from sourceNode
-			if (this.sourceNode) {
-				this.sourceNode.disconnect();
-			}
+			sourceNode.disconnect();
 
 			// Disconnect gain nodes
-			if (this.outputGain) {
-				this.outputGain.disconnect();
+			nodes.outputGain.disconnect();
+			nodes.equalizerGain.disconnect();
+
+			// Disconnect analyser
+			if (nodes.analyser) {
+				nodes.analyser.disconnect();
 			}
 
-			if (this.equalizerGain) {
-				this.equalizerGain.disconnect();
+			// Disconnect filter chain
+			const lastFrequency = nodes.frequencies[nodes.frequencies.length - 1];
+			if (lastFrequency) {
+				lastFrequency.disconnect();
 			}
 
-			if (this.frequencies.length > 0) {
-				const lastFrequency = this.frequencies[this.frequencies.length - 1];
-				if (lastFrequency) {
-					lastFrequency.disconnect();
-				}
+			// Remove from map
+			this.nodesMap.delete(sourceNode);
+		},
+
+		getAnalyserNode(): AnalyserNode | null {
+			if (!import.meta.client) {
+				return null;
 			}
 
-			this.connected = false;
-			this.sourceNode = null;
+			const playerStore = usePlayerStore();
+			const currentController = playerStore.getCurrentController();
+
+			if (!currentController?.sourceNode) {
+				return null;
+			}
+
+			const nodes = this.nodesMap.get(currentController.sourceNode);
+			return nodes?.analyser || null;
+		},
+
+		setSpectrumAnalyzerEnabled(enabled: boolean) {
+			spectrumAnalyzerEnabled = enabled;
 		}
 	}
 });

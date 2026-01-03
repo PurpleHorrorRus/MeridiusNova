@@ -349,10 +349,10 @@ const loadDevices = async () => {
 	}
 
 	const audioOutputDevices: AudioDevice[] = devices
-		.filter(device => device.kind === "audiooutput")
-		.map(device => ({
-			deviceId: device.deviceId,
-			label: device.label || `Устройство ${device.deviceId.slice(0, 8)}`
+		.filter(deviceItem => deviceItem.kind === "audiooutput")
+		.map(deviceItem => ({
+			deviceId: deviceItem.deviceId,
+			label: deviceItem.label || `Устройство ${deviceItem.deviceId.slice(0, 8)}`
 		}));
 
 	audioOutputDevices.unshift({
@@ -363,7 +363,7 @@ const loadDevices = async () => {
 	outputDevices.value = audioOutputDevices;
 	
 	const currentDevice = settings.value.player.output;
-	const index = outputDevices.value.findIndex(device => device.deviceId === currentDevice);
+	const index = outputDevices.value.findIndex(deviceItem => deviceItem.deviceId === currentDevice);
 	outputDeviceIndex.value = index >= 0 ? index : 0;
 };
 

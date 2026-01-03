@@ -1,5 +1,6 @@
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlaylist, TMore } from "~~/server/utils/types";
+import { normalizePlaylist } from "~/utils/playlist";
 
 export const usePlaylistStore = defineStore("playlist", {
 	state: () => ({
@@ -79,13 +80,99 @@ export const usePlaylistStore = defineStore("playlist", {
 	},
 
 	actions: {
-		setCurrent(playlist: TPlaylist) {
-			this.current = playlist;
-			this.loaded = playlist.list || [];
-		},
+	async setCurrent(playlist: TPlaylist) {
+		// Нормализуем плейлист (устанавливаем правильные title, description, cover_url)
+		const normalizedPlaylist = await normalizePlaylist(playlist);
+		
+		// Определяем link из текущего route, если он соответствует плейлисту
+		if (!normalizedPlaylist.link) {
+			try {
+				const route = useRoute();
+				
+				// Для поиска
+				if (normalizedPlaylist.raw_id.startsWith("search_")) {
+					const searchQuery = normalizedPlaylist.raw_id.replace("search_", "");
+					if (route.path === "/search" && route.query.q === searchQuery) {
+						normalizedPlaylist.link = `${route.path}?q=${encodeURIComponent(searchQuery)}`;
+					} else {
+						normalizedPlaylist.link = `/search?q=${encodeURIComponent(searchQuery)}`;
+					}
+				}
+				// Для обычных плейлистов
+				else if (normalizedPlaylist.owner_id !== 0 && normalizedPlaylist.playlist_id !== 0) {
+					const routeOwnerId = Number(route.params.owner_id);
+					const routePlaylistId = Number(route.params.playlist_id);
+					
+					if (routeOwnerId === normalizedPlaylist.owner_id && routePlaylistId === normalizedPlaylist.playlist_id) {
+						// Используем текущий route
+						const queryString = route.query.access_hash 
+							? `?access_hash=${route.query.access_hash}` 
+							: (normalizedPlaylist.access_hash ? `?access_hash=${normalizedPlaylist.access_hash}` : "");
+						normalizedPlaylist.link = `${route.path}${queryString}`;
+					} else {
+						// Генерируем link
+						const queryString = normalizedPlaylist.access_hash ? `?access_hash=${normalizedPlaylist.access_hash}` : "";
+						normalizedPlaylist.link = `/playlist/${normalizedPlaylist.owner_id}/${normalizedPlaylist.playlist_id}${queryString}`;
+					}
+				}
+			} catch {
+				// Если не удалось получить route, генерируем link
+				if (normalizedPlaylist.raw_id.startsWith("search_")) {
+					const searchQuery = normalizedPlaylist.raw_id.replace("search_", "");
+					normalizedPlaylist.link = `/search?q=${encodeURIComponent(searchQuery)}`;
+				} else if (normalizedPlaylist.owner_id !== 0 && normalizedPlaylist.playlist_id !== 0) {
+					const queryString = normalizedPlaylist.access_hash ? `?access_hash=${normalizedPlaylist.access_hash}` : "";
+					normalizedPlaylist.link = `/playlist/${normalizedPlaylist.owner_id}/${normalizedPlaylist.playlist_id}${queryString}`;
+				}
+			}
+		}
+		
+		// Проверяем, действительно ли плейлист изменился, чтобы избежать повторных обновлений
+		const isSamePlaylist = this.current && 
+			this.current.raw_id === normalizedPlaylist.raw_id &&
+			this.current.owner_id === normalizedPlaylist.owner_id &&
+			this.current.playlist_id === normalizedPlaylist.playlist_id;
+		
+		if (isSamePlaylist && this.current) {
+			// Обновляем только list, если он изменился, но сохраняем нормализованные поля
+			if (normalizedPlaylist.list && normalizedPlaylist.list.length !== (this.current.list?.length || 0)) {
+				this.current.list = normalizedPlaylist.list;
+				this.loaded = normalizedPlaylist.list || [];
+			}
+			// Обновляем нормализованные поля даже для того же плейлиста
+			this.current.title = normalizedPlaylist.title;
+			this.current.description = normalizedPlaylist.description;
+			this.current.link = normalizedPlaylist.link;
+			// Обновляем cover_url, если он был установлен при нормализации
+			if (normalizedPlaylist.cover_url && (!this.current.cover_url || this.current.cover_url.trim() === "")) {
+				this.current.cover_url = normalizedPlaylist.cover_url;
+			}
+			return;
+		}
+		
+		this.current = normalizedPlaylist;
+		this.loaded = normalizedPlaylist.list || [];
+	},
 
-	setPlaying(playlist: TPlaylist) {
-		this.playing = playlist;
+	async setPlaying(playlist: TPlaylist) {
+		// Берем свойства из current, если он установлен и это тот же плейлист
+		if (this.current && 
+			this.current.raw_id === playlist.raw_id &&
+			this.current.owner_id === playlist.owner_id &&
+			this.current.playlist_id === playlist.playlist_id) {
+			// Копируем нормализованные свойства из current
+			this.playing = {
+				...playlist,
+				title: this.current.title,
+				description: this.current.description,
+				link: this.current.link,
+				cover_url: this.current.cover_url
+			};
+		} else {
+			// Если current не установлен или это другой плейлист, нормализуем переданный
+			this.playing = await normalizePlaylist(playlist);
+		}
+		
 		// Очищаем оригинальные треки при смене плейлиста
 		this.originalSongs = [];
 		// Обновляем список треков в плейлисте из playingSongs, если они уже установлены
@@ -105,7 +192,7 @@ export const usePlaylistStore = defineStore("playlist", {
 		
 		// Фильтруем restricted треки при добавлении в очередь
 		const filteredSongs = Array.isArray(songs) 
-			? songs.filter(song => !song.is_restriction)
+			? songs.filter(songItem => !songItem.is_restriction)
 			: [];
 		
 		console.log("[SET_SONGS] After filtering", {
@@ -156,7 +243,7 @@ export const usePlaylistStore = defineStore("playlist", {
 
 	removeSongByFullId(fullId: string) {
 		// Удаляем из playingSongs
-		const playingIndex = this.playingSongs.findIndex(song => song.full_id === fullId);
+		const playingIndex = this.playingSongs.findIndex(songItem => songItem.full_id === fullId);
 		if (playingIndex >= 0) {
 			this.playingSongs.splice(playingIndex, 1);
 
@@ -171,7 +258,7 @@ export const usePlaylistStore = defineStore("playlist", {
 		}
 
 		// Удаляем из loaded
-		const loadedIndex = this.loaded.findIndex(song => song.full_id === fullId);
+		const loadedIndex = this.loaded.findIndex(songItem => songItem.full_id === fullId);
 		if (loadedIndex >= 0) {
 			this.loaded.splice(loadedIndex, 1);
 
@@ -183,7 +270,8 @@ export const usePlaylistStore = defineStore("playlist", {
 
 		// Обновляем originalSongs если shuffle включен
 		if (this.originalSongs.length > 0) {
-			const originalIndex = this.originalSongs.findIndex(song => song.full_id === fullId);
+			const originalIndex = this.originalSongs.findIndex(songItem => songItem.full_id === fullId);
+
 			if (originalIndex >= 0) {
 				this.originalSongs.splice(originalIndex, 1);
 			}
@@ -343,7 +431,7 @@ export const usePlaylistStore = defineStore("playlist", {
 			this.playingSongs = shuffled;
 
 			if (currentSong) {
-				const newIndex = shuffled.findIndex(song => song.full_id === currentSong.full_id);
+				const newIndex = shuffled.findIndex(songItem => songItem.full_id === currentSong.full_id);
 				if (newIndex >= 0) {
 					this.currentIndex = newIndex;
 				}

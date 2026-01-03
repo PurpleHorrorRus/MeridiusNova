@@ -15,9 +15,9 @@ const i18n: I18nFunction = (string: string, findOrVariables?: string | string[] 
 	// Новый способ: объект с переменными
 	if (typeof findOrVariables === "object" && !Array.isArray(findOrVariables) && replace === undefined) {
 		const variables = findOrVariables as I18nVariables;
-		Object.keys(variables).forEach((key) => {
-			const value = variables[key];
-			string = string.replaceAll(`{{ ${key} }}`, String(value));
+		Object.keys(variables).forEach((variableKey) => {
+			const value = variables[variableKey];
+			string = string.replaceAll(`{{ ${variableKey} }}`, String(value));
 		});
 		return string;
 	}

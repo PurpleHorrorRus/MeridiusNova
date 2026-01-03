@@ -131,18 +131,18 @@ const handleMaximize = async () => {
 };
 
 const handleClose = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-	if (isTauri && import.meta.client) {
-		const { settings, load } = useSettings();
-		await load();
-
-		if (settings.value.window.hideOnClose) {
-			return appWindow.value?.hide();
-		}
+	if (!appWindow.value || !isTauri || !import.meta.client) {
+		return;
 	}
 
-	return appWindow.value?.close();
+	const { settings, load } = useSettings();
+	await load();
+
+	if (settings.value.window.hideOnClose) {
+		return await appWindow.value.hide();
+	}
+
+	return await appWindow.value.close();
 };
 </script>
 

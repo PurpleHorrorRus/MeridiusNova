@@ -1,7 +1,33 @@
 <template>
 	<div class="page" id="discover-index">
-		<div v-if="loading" class="loading">
-			<LoadingSpinner />
+		<DiscoverNav />
+		
+		<div v-if="loading || !data" class="content">
+			<div class="section">
+				<div class="skeleton-title"></div>
+				<div class="albums-grid">
+					<SkeletonAlbumCard v-for="i in 6" :key="i" />
+				</div>
+			</div>
+
+			<div class="section">
+				<div class="skeleton-title"></div>
+				<div class="songs-list">
+					<SkeletonTrack v-for="i in 5" :key="i" />
+				</div>
+			</div>
+
+			<div class="section">
+				<div class="skeleton-title"></div>
+				<div class="playlists-grid">
+					<div class="collection">
+						<div class="skeleton-title-small"></div>
+						<div class="playlists-list">
+							<SkeletonPlaylistCard v-for="i in 6" :key="i" />
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<div v-else-if="error" class="error">
@@ -59,14 +85,14 @@
 				<div class="playlists-grid">
 					<div
 						v-for="collection in data.playlists"
-						:key="collection.title"
+						:key="collection.title || collection.type"
 						class="collection"
 					>
-						<h3>{{ collection.title }}</h3>
-						<div class="playlists-list">
+						<h3 v-if="collection.title">{{ collection.title }}</h3>
+						<div v-if="collection.playlists && collection.playlists.length > 0" class="playlists-list">
 							<PlaylistCard
 								v-for="playlist in collection.playlists"
-								:key="playlist.raw_id"
+								:key="playlist.raw_id || `${playlist.owner_id}_${playlist.playlist_id}`"
 								:playlist="playlist"
 								:show-play-button="true"
 							/>
@@ -81,7 +107,9 @@
 <script setup lang="ts">
 import type { TExploreData } from "~~/server/utils/types";
 
-const { data, pending: loading, error } = await useFetch<TExploreData>("api/vk/explore");
+const { data, pending: loading, error } = useLazyFetch<TExploreData>("api/vk/explore", {
+	server: false
+});
 </script>
 
 <style scoped lang="scss">
@@ -89,10 +117,48 @@ const { data, pending: loading, error } = await useFetch<TExploreData>("api/vk/e
 	padding: 24px 32px;
 }
 
-.loading,
 .error {
 	text-align: center;
 	padding: 40px;
+}
+
+.skeleton-title {
+	height: 28px;
+	width: 200px;
+	border-radius: 4px;
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0.05) 0%,
+		rgba(255, 255, 255, 0.1) 50%,
+		rgba(255, 255, 255, 0.05) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+	margin-bottom: 20px;
+}
+
+.skeleton-title-small {
+	height: 24px;
+	width: 150px;
+	border-radius: 4px;
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0.05) 0%,
+		rgba(255, 255, 255, 0.1) 50%,
+		rgba(255, 255, 255, 0.05) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.5s infinite;
+	margin-bottom: 15px;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
 }
 
 .content {

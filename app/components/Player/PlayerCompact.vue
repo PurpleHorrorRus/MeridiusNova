@@ -61,6 +61,15 @@
 			>
 				<Icon name="mdi:shuffle" size="18" />
 			</button>
+
+			<button
+				class="btn-compact-control"
+				:class="{ active: isQueueDrawerOpen }"
+				@click="openQueueDrawer"
+				:title="t('player.queue') || 'Очередь воспроизведения'"
+			>
+				<Icon name="mdi:playlist-music" size="18" />
+			</button>
 		</div>
 	</div>
 </template>
@@ -73,6 +82,7 @@ import { usePlaylistStore } from "~/stores/playlist";
 import { useStrings } from "~/composables/useStrings";
 import { useSongProps } from "~/composables/useSongProps";
 import { useModal } from "~/composables/useModal";
+import { useQueueDrawer } from "~/composables/useQueueDrawer";
 
 const {
 	currentSong,
@@ -94,6 +104,7 @@ const shuffle = computed(() => playlistStore.shuffle);
 
 const { generateSongProps } = useSongProps();
 const { openModal } = useModal();
+const { openQueueDrawer, isQueueDrawerOpen } = useQueueDrawer();
 
 const songProps = computed(() => {
 	const song = currentSong.value;

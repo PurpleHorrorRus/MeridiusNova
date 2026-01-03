@@ -1,12 +1,22 @@
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
+import { requireAuth } from "~~/server/utils/auth-check";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TGetCatalogSectionPayload, TGetGeneralSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "~~/server/utils/types";
 
 export default defineEventHandler(async (event) => {
+	requireAuth(event);
+
     const audioRequests = getAudioRequestsInstance(event);
 	const owner_id = Number(getRouterParam(event, "owner_id"));
 	const playlist_id = Number(getRouterParam(event, "playlist_id"));
+
+	if (isNaN(owner_id) || isNaN(playlist_id)) {
+		throw createError({
+			statusCode: 400,
+			statusMessage: "Invalid owner_id or playlist_id"
+		});
+	}
 
 	const query = getQuery<TMore & { access_hash?: string; count?: string; offset?: string }>(event);
 
@@ -37,7 +47,8 @@ export default defineEventHandler(async (event) => {
 		// Парсим треки и извлекаем more из payload[1][1]
 		const payloadData = section.payload[1][1];
 		const audios = await audioRequests.parseAudios(payloadData?.playlist?.list || [], {
-			count: query.count ? Number(query.count) : undefined
+			count: query.count ? Number(query.count) : undefined,
+			withUrls: false
 		});
 
 		// Извлекаем more используя parseMore
@@ -115,7 +126,8 @@ export default defineEventHandler(async (event) => {
 	// Парсим ответ используя parsePayload (аналогично meridius-core)
 	// parsePayload принимает payload[1][1], но мы передаем весь payload
 	const result = await audioRequests.parsePayload(catalogResponse.payload, {
-		count: query.count ? Number(query.count) : undefined
+		count: query.count ? Number(query.count) : undefined,
+		withUrls: false
 	});
 
 	return {

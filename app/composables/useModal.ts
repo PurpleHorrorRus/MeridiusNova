@@ -4,7 +4,7 @@ export const useModal = () => {
 	const modalStore = useModalStore();
 
 	const openModal = (
-		type: "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio",
+		type: "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | "songActions",
 		props?: ModalConfirmProps | ModalCustomProps | Record<string, any>,
 		callbacks?: {
 			onConfirm?: () => void | Promise<void>;

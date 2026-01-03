@@ -51,8 +51,8 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 	protected async normalize(rawAudios: TRawAudio[], params: TGetAudioParams = {}): Promise<TAudio[]> {
 		if (params.raw) {
-			return await Promise.all(rawAudios.map(audio => {
-				return this.formatAudio(audio);
+			return await Promise.all(rawAudios.map(audioItem => {
+				return this.formatAudio(audioItem);
 			}));
 		}
 
@@ -62,15 +62,32 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 		let restrictedIndexes: number[] = [];
 
-		const ids = rawAudios.map((audio, index) => {
-			const splittedHash = (audio[ERawAudio.HASHES] || "").split("/");
+		// Если не требуется получать URL, сразу форматируем все аудио
+		if (params.withUrls === false) {
+			const formattedAudios = await Promise.all(rawAudios.map(async (audioItem, index) => {
+				if (!audioItem[ERawAudio.HASHES] || !audioItem[ERawAudio.HASHES].split("/")[5]) {
+					restrictedIndexes.push(index);
+				}
+				// Создаем копию audio без URL, чтобы formatAudio не обрабатывал его
+				const audioWithoutUrl = [...audioItem] as TRawAudio;
+				audioWithoutUrl[ERawAudio.URL] = "";
+				return await this.formatAudio(audioWithoutUrl);
+			}));
+
+			// Получаем названия альбомов для треков, где album - это массив
+			await this.enrichAlbums(formattedAudios);
+			return formattedAudios;
+		}
+
+		const ids = rawAudios.map((audioItem, index) => {
+			const splittedHash = (audioItem[ERawAudio.HASHES] || "").split("/");
 
 			if (!splittedHash[5]) {
 				restrictedIndexes.push(index);
 				return null;
 			}
 
-			return `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}_${splittedHash[2]}_${splittedHash[5]}`;
+			return `${audioItem[ERawAudio.OWNER_ID]}_${audioItem[ERawAudio.ID]}_${splittedHash[2]}_${splittedHash[5]}`;
 		}).filter(Boolean) as unknown as string[];
 
 		// Если нет ID для загрузки, возвращаем пустой массив
@@ -79,20 +96,20 @@ class AudioRequests extends BaseRequest implements IRequest {
 		}
 
 		const fetchedAudios = await this.reloadAudios(ids);
-		
+
 		// Проверяем, что fetchedAudios является массивом
 		if (!Array.isArray(fetchedAudios)) {
 			return [];
 		}
 
-		const formattedAudios = await Promise.all(rawAudios.map(async (audio, index) => {
+		const formattedAudios = await Promise.all(rawAudios.map(async (audioItem, index) => {
 			if (!restrictedIndexes.includes(index)) {
-				const fetchedAudio = fetchedAudios.find(fetched => {
-					return `${fetched[ERawAudio.OWNER_ID]}_${fetched[ERawAudio.ID]}` === `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}`;
+				const fetchedAudio = fetchedAudios.find(fetchedAudioItem => {
+					return `${fetchedAudioItem[ERawAudio.OWNER_ID]}_${fetchedAudioItem[ERawAudio.ID]}` === `${audioItem[ERawAudio.OWNER_ID]}_${audioItem[ERawAudio.ID]}`;
 				});
 
 				if (fetchedAudio) {
-					const merged: TRawAudio = audio.map((property, propIndex) => {
+					const merged: TRawAudio = audioItem.map((propertyItem, propIndex) => {
 						// Для ALBUM приоритет отдаем fetchedAudio (данные после reload_audios)
 						if (propIndex === ERawAudio.ALBUM) {
 							const fetchedAlbum = fetchedAudio[ERawAudio.ALBUM];
@@ -103,19 +120,19 @@ class AudioRequests extends BaseRequest implements IRequest {
 							if (fetchedAlbum && typeof fetchedAlbum === "string" && fetchedAlbum.trim()) {
 								return fetchedAlbum;
 							}
-							// Иначе используем исходное значение
-							return property || fetchedAlbum;
-						}
-						// Для остальных полей используем стандартную логику мерджа
-						return property || fetchedAudio[propIndex];
-					}) as TRawAudio;
+						// Иначе используем исходное значение
+						return propertyItem || fetchedAlbum;
+					}
+					// Для остальных полей используем стандартную логику мерджа
+					return propertyItem || fetchedAudio[propIndex];
+				}) as TRawAudio;
 
-					return await this.formatAudio(merged);
-				}
+				return await this.formatAudio(merged);
 			}
+		}
 
-			return await this.formatAudio(audio);
-		}));
+		return await this.formatAudio(audioItem);
+	}));
 
 		// Получаем названия альбомов для треков, где album - это массив
 		await this.enrichAlbums(formattedAudios);
@@ -136,7 +153,10 @@ class AudioRequests extends BaseRequest implements IRequest {
 			let access_hash: string | undefined;
 
 			if (Array.isArray(audio.album) && audio.album.length >= 3) {
-				[owner_id, playlist_id, access_hash] = audio.album;
+				const albumArray = audio.album as any[];
+				owner_id = albumArray[0] !== null && albumArray[0] !== undefined ? Number(albumArray[0]) : undefined;
+				playlist_id = albumArray[1] !== null && albumArray[1] !== undefined ? Number(albumArray[1]) : undefined;
+				access_hash = albumArray[2] !== null && albumArray[2] !== undefined ? String(albumArray[2]) : undefined;
 			} else if (typeof audio.album === "object" && audio.album !== null && !Array.isArray(audio.album)) {
 				// Объект альбома - проверяем, есть ли title
 				const albumObj = audio.album as { owner_id?: number; ownerId?: number; id?: number; access_hash?: string; accessHash?: string; access_key?: string; accessKey?: string; title?: string };
@@ -155,7 +175,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 				return;
 			}
 
-			if (owner_id === undefined || playlist_id === undefined || access_hash === undefined) {
+			if (owner_id === undefined || owner_id === null || playlist_id === undefined || playlist_id === null) {
 				return;
 			}
 
@@ -165,7 +185,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 				albumMap.set(key, {
 					owner_id: owner_id as number,
 					playlist_id: playlist_id as number,
-					access_hash: access_hash as string,
+					access_hash: access_hash || "",
 					audios: []
 				});
 			}
@@ -181,13 +201,25 @@ class AudioRequests extends BaseRequest implements IRequest {
 		const { getPlaylistsRequestsInstance } = await import("~~/server/api/vk/playlists/playlists");
 
 		// Обрабатываем альбомы батчами по 5, чтобы не перегружать API
-		const albumEntries = Array.from(albumMap.values());
+		const albumEntries = Array.from(albumMap.values()).filter(album => {
+			return album.owner_id !== null && album.owner_id !== undefined
+				&& album.playlist_id !== null && album.playlist_id !== undefined;
+		});
+
+		if (albumEntries.length === 0) {
+			return;
+		}
+
 		const batchSize = 5;
 
 		for (let i = 0; i < albumEntries.length; i += batchSize) {
 			const batch = albumEntries.slice(i, i + batchSize);
 
 			await Promise.all(batch.map(async (albumInfo) => {
+				if (!albumInfo.playlist_id || albumInfo.playlist_id === null || albumInfo.playlist_id === undefined) {
+					return;
+				}
+
 				const playlistsRequests = getPlaylistsRequestsInstance(this.event);
 
 				const playlist = await playlistsRequests.getPlaylist({
@@ -197,7 +229,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 					list: false
 				}).catch((e: Error) => {
 					// Если не удалось получить информацию об альбоме, оставляем как есть
-					console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e);
+					console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e.message || e);
 					return null;
 				});
 				if (!playlist) {
@@ -283,15 +315,16 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 		let extra: Record<string, unknown> = {};
 		if (audio[ERawAudio.EXTRA_JSON]) {
-			const parsed = (() => {
+			const parseResult = (() => {
 				try {
 					return JSON.parse(audio[ERawAudio.EXTRA_JSON]);
 				} catch {
 					return null;
 				}
 			})();
-			if (parsed && typeof parsed === "object") {
-				extra = parsed as Record<string, unknown>;
+			
+			if (parseResult && typeof parseResult === "object") {
+				extra = parseResult as Record<string, unknown>;
 			}
 		}
 
@@ -437,9 +470,9 @@ class AudioRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getRawAudios(rawAudios: TRawAudio[]): Promise<TAudio[]> {
-		return await Promise.all(rawAudios.map(async audio => ({
-			raw: audio,
-			...(await this.formatAudio(audio))
+		return await Promise.all(rawAudios.map(async audioItem => ({
+			raw: audioItem,
+			...(await this.formatAudio(audioItem))
 		})));
 	}
 
@@ -621,6 +654,65 @@ class AudioRequests extends BaseRequest implements IRequest {
 			owner_id: audio.owner_id,
 			uuid
 		});
+	}
+
+	public async getFromWall(params: { owner_id: number; post_id: number; raw?: boolean }): Promise<TAudio[]> {
+		if (!params.owner_id || !params.post_id) {
+			throw createError({
+				statusCode: 400,
+				message: "You must to specify owner id and post id"
+			});
+		}
+
+		const response = await this.request<TRawResponse<TGetCatalogSectionPayload | TGetGeneralSectionPayload>>({}, `wall${params.owner_id}_${params.post_id}`);
+
+		console.log(`[getFromWall] Post ${params.post_id}, owner ${params.owner_id}`);
+		console.log(`[getFromWall] Response:`, JSON.stringify(response, null, 2).substring(0, 500));
+
+		if (!response || !response.payload) {
+			console.log(`[getFromWall] No response or payload`);
+			return [];
+		}
+
+		const payload = response.payload[1];
+		
+		if (!payload) {
+			console.log(`[getFromWall] No payload[1]`);
+			return [];
+		}
+
+		console.log(`[getFromWall] Payload type:`, Array.isArray(payload) ? "array" : typeof payload);
+		console.log(`[getFromWall] Payload keys:`, typeof payload === "object" && payload !== null ? Object.keys(payload) : "N/A");
+
+		let rawAudios: TRawAudio[] = [];
+
+		if (Array.isArray(payload)) {
+			console.log(`[getFromWall] Payload is array, length:`, payload.length);
+			if (payload[1] && typeof payload[1] === "object" && "playlist" in payload[1]) {
+				rawAudios = (payload[1] as any).playlist?.list || [];
+				console.log(`[getFromWall] Found audios in array[1].playlist.list:`, rawAudios.length);
+			}
+		} else if (typeof payload === "object" && payload !== null) {
+			if ("playlist" in payload) {
+				rawAudios = (payload as any).playlist?.list || [];
+				console.log(`[getFromWall] Found audios in playlist.list:`, rawAudios.length);
+			} else if ("list" in payload) {
+				rawAudios = (payload as any).list || [];
+				console.log(`[getFromWall] Found audios in list:`, rawAudios.length);
+			} else {
+				console.log(`[getFromWall] No playlist or list in payload`);
+			}
+		}
+
+		console.log(`[getFromWall] Total raw audios:`, rawAudios.length);
+
+		const parsed = await this.parseAudios(rawAudios, {
+			raw: params.raw || false
+		});
+
+		console.log(`[getFromWall] Parsed audios:`, parsed.length);
+
+		return parsed;
 	}
 };
 

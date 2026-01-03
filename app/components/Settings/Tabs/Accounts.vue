@@ -93,7 +93,7 @@ const loadProfiles = async () => {
 		}
 	}
 
-	if (vkStore.user && !profiles.value.some(profile => profile.id === vkStore.user_id)) {
+	if (vkStore.user && !profiles.value.some(profileItem => profileItem.id === vkStore.user_id)) {
 		profiles.value.unshift({
 			id: vkStore.user.id,
 			first_name: vkStore.user.first_name,
@@ -119,7 +119,7 @@ const switchAccount = async (index: number) => {
 		return;
 	}
 
-	const accountIndex = settings.value.vk.accounts.findIndex(account => account.user === profile.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === profile.id);
 	
 	if (accountIndex >= 0) {
 		updateSection("vk", { active: accountIndex });
@@ -135,7 +135,7 @@ const removeAccount = (index: number) => {
 		return;
 	}
 
-	const accountIndex = settings.value.vk.accounts.findIndex(account => account.user === profile.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === profile.id);
 	
 	if (accountIndex >= 0) {
 		const currentAccountIndex = settings.value.vk.accounts.findIndex(account => 

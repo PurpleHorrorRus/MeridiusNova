@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import webTokenPost, { cookieSignOptions } from "../api/vk/web-token.post";
-import { verifyDeviceFingerprint } from "../utils/device-fingerprint";
+import { isValidSession, updateSessionAccess } from "../utils/session-storage";
 
 import type { TCookie, TWebTokenResponse } from "~~/server/types/auth";
 
@@ -19,21 +19,26 @@ export default defineEventHandler(async event => {
 		return;
 	}
 	
-	let decoded: TCookie;
-	
-	try {
-		decoded = await jwt.verify(token, cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie;
-	} catch (error) {
+	const decoded = await Promise.resolve(jwt.verify(token, cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie).catch(() => {
+		return;
+	});
+
+	if (!decoded) {
 		return;
 	}
 	
 	const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
 	const isExpired = decoded.expires < Date.now() / 1000;
-	const fingerprintMismatch = decoded.deviceFingerprint && !verifyDeviceFingerprint(event, decoded.deviceFingerprint);
 
-	if (isOldToken || fingerprintMismatch) {
+	if (isOldToken) {
 		return;
 	}
+
+	if (!isValidSession(decoded.sessionId, decoded.user_id)) {
+		return;
+	}
+
+	updateSessionAccess(decoded.sessionId);
 
 	if (isExpired) {
 		const webToken = await webTokenPost(event);

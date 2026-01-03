@@ -211,13 +211,13 @@ onUnmounted(() => {
 	@media (max-width: 600px) {
 		left: 96px;
 		right: 4px;
-		bottom: 4px;
+		bottom: 64px;
 	}
 
 	@media (max-width: 480px) {
-		left: 8px;
-		right: 8px;
-		bottom: 8px;
+		left: 0;
+		right: 0;
+		bottom: 60px;
 	}
 }
 
@@ -228,6 +228,7 @@ onUnmounted(() => {
 	align-items: center;
 	justify-content: space-between;
 	padding: 0 24px;
+	padding-top: 6px;
 	gap: 20px;
 	background: rgba(22, 22, 22, 0.7);
 	backdrop-filter: blur(25px) saturate(180%);
@@ -267,6 +268,7 @@ onUnmounted(() => {
 
 	@media (max-width: 800px) {
 		padding: 0 6px;
+		padding-top: 0;
 		gap: 4px;
 		height: 80px;
 		border-radius: 16px;
@@ -278,6 +280,7 @@ onUnmounted(() => {
 
 	@media (max-width: 700px) {
 		padding: 0 4px;
+		padding-top: 0;
 		gap: 4px;
 		height: 76px;
 		border-radius: 12px;
@@ -285,6 +288,7 @@ onUnmounted(() => {
 
 	@media (max-width: 600px) {
 		padding: 0 4px;
+		padding-top: 0;
 		gap: 4px;
 		height: 72px;
 		border-radius: 12px;
@@ -295,15 +299,15 @@ onUnmounted(() => {
 	.player-wrapper {
 		left: 0;
 		right: 0;
-		bottom: 0;
-		border-radius: 0;
+		bottom: 60px;
 	}
 
 	.player {
-		border-radius: 0;
-		border-left: none;
-		border-right: none;
-		border-bottom: none;
+		border-radius: 12px 12px 0 0;
+		border: none;
+		padding-top: 6px;
+		box-shadow: 
+			0 -20px 40px -10px rgba(0, 0, 0, 0.5);
 	}
 }
 </style>

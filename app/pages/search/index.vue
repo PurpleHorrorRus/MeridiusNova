@@ -60,9 +60,10 @@
 					<!-- Треки -->
 					<div v-if="category.audios && category.audios.length > 0" :class="category.type === 'owned_audios' ? 'songs-grid' : 'songs-list'">
 						<Song
-							v-for="audio in category.audios"
+							v-for="(audio, index) in category.audios"
 							:key="audio.full_id"
 							:audio="audio"
+							:index="category.type === 'owned_audios' ? undefined : index"
 						/>
 					</div>
 
@@ -144,9 +145,10 @@
 					<h2>Треки</h2>
 					<div class="songs-list">
 						<Song
-							v-for="audio in results.audios"
+							v-for="(audio, index) in results.audios"
 							:key="audio.full_id"
 							:audio="audio"
+							:index="index"
 						/>
 					</div>
 				</div>
@@ -204,7 +206,7 @@ const handleLoadMore = async () => {
 
 // Обертка для loadMoreCategory с добавлением треков в очередь
 const handleLoadMoreCategory = async (categoryId: string) => {
-	const category = results.value?.categories?.find(c => c.id === categoryId);
+	const category = results.value?.categories?.find(categoryItem => categoryItem.id === categoryId);
 	if (!category) {
 		return;
 	}
@@ -213,7 +215,7 @@ const handleLoadMoreCategory = async (categoryId: string) => {
 	await loadMoreCategory(categoryId);
 	
 	// Получаем обновленную категорию после загрузки
-	const updatedCategory = results.value?.categories?.find(c => c.id === categoryId);
+	const updatedCategory = results.value?.categories?.find(categoryItem => categoryItem.id === categoryId);
 	if (!updatedCategory || !updatedCategory.audios) {
 		return;
 	}
@@ -235,8 +237,7 @@ const hasMore = computed(() => {
 	if (!results.value?.more) {
 		return false;
 	}
-	const more = results.value.more;
-	return Boolean(more.section_id && more.next_from);
+	return Boolean(results.value.more.section_id && results.value.more.next_from);
 });
 
 const hasMoreCategory = (category: TSearchCategory): boolean => {
@@ -260,10 +261,10 @@ const sortedCategories = computed(() => {
 	const order = ["playlists", "artists", "global_audios"];
 	
 	return [...results.value.categories]
-		.filter(cat => hasCategoryContent(cat))
-		.sort((a, b) => {
-			const indexA = order.indexOf(a.type);
-			const indexB = order.indexOf(b.type);
+		.filter(category => hasCategoryContent(category))
+		.sort((categoryA, categoryB) => {
+			const indexA = order.indexOf(categoryA.type);
+			const indexB = order.indexOf(categoryB.type);
 			
 			if (indexA === -1 && indexB === -1) {
 				return 0;
@@ -338,7 +339,7 @@ const allSearchAudios = computed<TAudio[]>(() => {
 	}
 
 	// Фильтруем restricted треки
-	return allAudios.filter(audio => !audio.is_restriction);
+	return allAudios.filter(audioItem => !audioItem.is_restriction);
 });
 
 // Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
@@ -350,13 +351,15 @@ const searchPlaylist = computed<TPlaylist | null>(() => {
 		return null;
 	}
 
+	const searchQueryValue = searchQuery.value || "";
+	
 	return {
 		owner_id: 0,
 		playlist_id: -1,
-		raw_id: `search_${searchQuery.value || ""}`,
-		title: `Поиск: ${searchQuery.value || ""}`,
+		raw_id: `search_${searchQueryValue}`,
+		title: getString("queue.source.search"),
 		cover_url: "",
-		description: "",
+		description: searchQueryValue,
 		size: allSearchAudios.value.length,
 		listens: 0,
 		last_updated: 0,
@@ -367,7 +370,8 @@ const searchPlaylist = computed<TPlaylist | null>(() => {
 		access_hash: "",
 		follow_hash: "",
 		edit_hash: "",
-		list: allSearchAudios.value
+		list: allSearchAudios.value,
+		link: `/search?q=${encodeURIComponent(searchQueryValue)}`
 	};
 });
 
@@ -375,7 +379,9 @@ const searchPlaylist = computed<TPlaylist | null>(() => {
 watch([searchPlaylist, allSearchAudios], ([newPlaylist, newAudios]) => {
 	if (newPlaylist && newAudios.length > 0) {
 		// Обновляем плейлист в store, чтобы треки были доступны для воспроизведения
-		setCurrent(newPlaylist);
+		setCurrent(newPlaylist).catch(() => {
+			// Игнорируем ошибки при установке плейлиста
+		});
 		
 		// Обновляем очередь треков только если поиск сейчас играет
 		const isSearchPlaying = playlistStore.playing && playlistStore.playing.raw_id === newPlaylist.raw_id;
@@ -448,8 +454,8 @@ useScrollLoad(() => {
 	threshold: 200,
 	enabled: computed(() => {
 		const categories = sortedCategories.value;
-		const globalAudiosCategories = categories.filter(cat => cat.type === "global_audios");
-		const hasGlobalAudiosWithMore = globalAudiosCategories.some(cat => hasMoreCategory(cat));
+		const globalAudiosCategories = categories.filter(category => category.type === "global_audios");
+		const hasGlobalAudiosWithMore = globalAudiosCategories.some(category => hasMoreCategory(category));
 		return !loading.value && hasGlobalAudiosWithMore;
 	})
 });

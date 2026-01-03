@@ -6,10 +6,10 @@
 					<Icon name="mdi:skip-previous" size="24" />
 				</button>
 				
-				<button class="btn-play" @click.stop="toggle">
-					<Icon v-if="paused" name="mdi:play" size="28" />
-					<Icon v-else name="mdi:pause" size="28" />
-				</button>
+			<button class="btn-play" @click.stop="toggle">
+				<Icon v-if="paused" name="mdi:play" size="28" />
+				<Icon v-else name="mdi:pause" size="28" />
+			</button>
 				
 				<button class="btn-control" @click.stop="playNext">
 					<Icon name="mdi:skip-next" size="24" />
@@ -165,6 +165,10 @@ const formatTime = (seconds: number): string => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+	:deep(svg) {
+		pointer-events: none;
+	}
 
 	@media (max-width: 1200px) {
 		width: 46px;

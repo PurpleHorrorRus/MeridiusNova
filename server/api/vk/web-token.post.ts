@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 
 import type { TCookie } from "~~/server/types/auth";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
+import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
 
 export const cookieSignOptions: jwt.SignOptions = {
 	algorithm: "RS256"
@@ -11,22 +12,31 @@ export default defineEventHandler(async (event) => {
 	const config = useRuntimeConfig();
 	const oldCookie = getCookie(event, "token") || "";
 
-	let decoded: TCookie = { access_token: "", user_id: 0, iat: 0, expires: 0, sessionId: "", deviceFingerprint: "" };
+	let decoded: TCookie | false = false;
 
 	if (oldCookie) {
-		try {
-			decoded = jwt.verify(oldCookie, config.cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie;
-			
-			const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
-			if (isOldToken) {
-				return false;
-			}
-		} catch (error) {
+		decoded = await Promise.resolve(jwt.verify(oldCookie, config.cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie).catch(() => {
 			return false;
+		});
+
+		if (decoded === false) {
+			return false;
+		}
+		
+		const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
+		if (isOldToken) {
+			return false;
+		}
+
+		const currentDeviceFingerprint = generateDeviceFingerprint(event);
+		const oldSession = decoded.sessionId ? getSessionData(decoded.sessionId) : null;
+
+		if (oldSession && oldSession.deviceFingerprint === currentDeviceFingerprint) {
+			removeSession(decoded.sessionId);
 		}
 	}
 
-	if (!decoded.access_token) {
+	if (!decoded || !decoded.access_token) {
 		return false;
 	}
 
@@ -36,15 +46,17 @@ export default defineEventHandler(async (event) => {
 		return false;
 	}
 
-	const deviceFingerprint = generateDeviceFingerprint(event);
 	const sessionId = generateSessionId();
+	const deviceFingerprint = generateDeviceFingerprint(event);
+
+	addSession(webToken.user_id, sessionId, deviceFingerprint);
 
 	const token = jwt.sign({
 		access_token: webToken.access_token,
 		user_id: webToken.user_id,
 		expires: webToken.expires,
-		sessionId: sessionId,
-		deviceFingerprint: deviceFingerprint
+		sessionId,
+		deviceFingerprint
 	}, config.cookieKey, cookieSignOptions);
 
 	await setUserSession(event, {

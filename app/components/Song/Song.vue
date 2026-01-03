@@ -4,6 +4,10 @@
 		:class="{ 'playing': isPlaying, 'table-mode': isTableMode, 'restricted': isRestricted }"
 		@click="handleClick"
 		@contextmenu.prevent="handleContextMenu"
+		@touchstart="handleTouchStart"
+		@touchmove="handleTouchMove"
+		@touchend="handleTouchEnd"
+		@touchcancel="handleTouchCancel"
 	>
 		<div v-if="isTableMode && isPlaying" class="song-index">
 			<Icon name="mdi:volume-high" size="16" />
@@ -25,14 +29,18 @@
 				<span v-html="audio.title" />
 			</div>
 
-			<div class="song-info-artist">
-				<span v-html="audio.performer || audio.artist" />
-			</div>
+		<div class="song-info-artist">
+			<span v-html="audio.performer || audio.artist" />
 		</div>
 
-		<div v-if="isTableMode" class="song-album">
+		<div v-if="!isTableMode && albumName" class="song-info-album" @click.stop="handleAlbumClick">
 			{{ albumName }}
 		</div>
+	</div>
+
+	<div v-if="isTableMode && albumName" class="song-album" @click.stop="handleAlbumClick">
+		{{ albumName }}
+	</div>
 
 		<div class="song-actions">
 			<SongActions :audio="audio" />
@@ -56,10 +64,12 @@
 
 <script setup lang="ts">
 import moment from "moment";
+import { inject } from "vue";
 import { storeToRefs } from "pinia";
 
 import SongActions from "~/components/SongActions.vue";
 import SongContextMenu from "~/components/SongContextMenu.vue";
+import { useModal } from "~/composables/useModal";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlaylist } from "~~/server/utils/types";
@@ -76,6 +86,8 @@ const playlistStore = usePlaylistStore();
 const songsContext = useSongsContext();
 const playerStore = usePlayerStore();
 const { song: playerSong } = storeToRefs(playerStore);
+const { isMobile } = useIsMobile();
+const { openModal } = useModal();
 
 const isTableMode = computed(() => props.index !== undefined);
 
@@ -98,27 +110,77 @@ const albumName = computed(() => {
 	const album = props.audio.album;
 
 	if (!album) {
-		return "-";
+		return "";
 	}
 
 	if (typeof album === "string") {
 		return album;
 	}
 
-	if (Array.isArray(album)) {
-		// Массив [owner_id, playlist_id, access_hash] - не можем показать название без дополнительного запроса
-		return "-";
-	}
-
-	if (typeof album === "object" && album !== null) {
+	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
 		// Объект с информацией об альбоме
-		if ("title" in album && album.title) {
-			return album.title;
+		const albumObject = album as any;
+		if (albumObject.title) {
+			return String(albumObject.title);
 		}
 	}
 
-	return "-";
+	// Массив [owner_id, playlist_id, access_hash] или объект без title - не показываем ничего
+	// Альбом будет обогащен через enrichAlbums и получит title
+	return "";
 });
+
+const albumInfo = computed(() => {
+	const album = props.audio.album;
+
+	if (!album) {
+		return null;
+	}
+
+	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
+		const albumObject = album as any;
+		const ownerId = albumObject.owner_id || albumObject.ownerId;
+		const playlistId = albumObject.id || albumObject.playlist_id;
+
+		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
+			return {
+				owner_id: Number(ownerId),
+				playlist_id: Number(playlistId),
+				access_hash: albumObject.access_hash || albumObject.access_key || ""
+			};
+		}
+	}
+
+	if (Array.isArray(album) && album.length >= 2) {
+		const ownerId = album[0];
+		const playlistId = album[1];
+		const accessHash = album[2] || "";
+
+		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
+			return {
+				owner_id: Number(ownerId),
+				playlist_id: Number(playlistId),
+				access_hash: String(accessHash)
+			};
+		}
+	}
+
+	return null;
+});
+
+const handleAlbumClick = () => {
+	if (!albumInfo.value) {
+		return;
+	}
+
+	const route = `/playlist/${albumInfo.value.owner_id}/${albumInfo.value.playlist_id}`;
+	const query = albumInfo.value.access_hash ? { access_hash: albumInfo.value.access_hash } : {};
+
+	navigateTo({
+		path: route,
+		query
+	});
+};
 
 const handleClick = async () => {
 	if (isRestricted.value) {
@@ -140,9 +202,19 @@ const handleClick = async () => {
 	} else if (isCurrentSong && !playerIsPlaying.value) {
 		resume();
 	} else {
-		// Используем current плейлист (со страницы), а не playing (который может быть VK Mix)
-		// Если есть current плейлист и он не VK Mix, используем playFromPlaylist
-		const currentPlaylist = current.value;
+		// Пытаемся получить плейлист из контекста страницы
+		const playlistInfo = inject<Ref<TPlaylist | null> | undefined>("playlistInfo", undefined);
+		const pagePlaylist = playlistInfo?.value;
+		
+		// Используем плейлист из контекста страницы, если он есть
+		// Для библиотек пользователей (playlist_id === -1) проверяем owner_id, чтобы не использовать плейлист другого пользователя
+		// Для обычных плейлистов используем плейлист из контекста страницы для корректного переключения
+		const isUserLibrary = pagePlaylist && pagePlaylist.playlist_id === -1;
+		const usePagePlaylist = pagePlaylist && (!isUserLibrary || pagePlaylist.owner_id === props.audio.owner_id);
+		
+		// Используем плейлист из контекста страницы, если он соответствует треку
+		// Иначе используем current плейлист из store
+		const currentPlaylist = usePagePlaylist ? pagePlaylist : current.value;
 		const isCurrentVkMix = currentPlaylist && (currentPlaylist.playlist_id === -9 || String(currentPlaylist.owner_id) === "vkmix");
 		
 		if (currentPlaylist && !isCurrentVkMix && songsContext?.value && songsContext.value.length > 0) {
@@ -172,12 +244,6 @@ const handlePlayFromContext = async () => {
 	
 	if (existingIndex >= 0) {
 		// Трек уже в очереди, просто обновляем индекс и воспроизводим
-		console.log("[SONG] Song already in queue, updating index only", {
-			songId: props.audio.full_id,
-			existingIndex,
-			currentIndex: playlistStore.currentIndex
-		});
-		
 		playlistStore.setCurrentIndex(existingIndex);
 		
 		// Используем трек из очереди, который уже имеет все данные (включая URL)
@@ -196,22 +262,36 @@ const handlePlayFromContext = async () => {
 	
 	// Ищем треки из контекста страницы или плейлиста
 	let contextSongs: TAudio[] = [];
+	let playlistToUse: TPlaylist | undefined = undefined;
 	const currentPlaylist = current.value;
 	const playingPlaylist = playing.value;
 	
 	// Приоритет 1: контекст страницы
-	if (songsContext?.value && songsContext.value.length > 0) {		
+	if (songsContext?.value && songsContext.value.length > 0) {
 		contextSongs = songsContext.value;
+		
+		// Если есть current плейлист и это плейлист поиска, используем его
+		if (currentPlaylist && currentPlaylist.raw_id.startsWith("search_")) {
+			playlistToUse = { ...currentPlaylist, list: contextSongs };
+		}
+		// Иначе, если есть current плейлист, используем его (для переключения плейлистов)
+		// Для библиотек пользователей (playlist_id === -1) проверяем owner_id
+		else if (currentPlaylist) {
+			const isUserLibrary = currentPlaylist.playlist_id === -1;
+			if (!isUserLibrary || currentPlaylist.owner_id === props.audio.owner_id) {
+				playlistToUse = { ...currentPlaylist, list: contextSongs };
+			}
+		}
 	}
 	// Приоритет 2: current плейлист с треками
 	else if (currentPlaylist?.list && currentPlaylist.list.length > 0) {
 		contextSongs = currentPlaylist.list;
-		
+		playlistToUse = currentPlaylist;
 	}
 	// Приоритет 3: playing плейлист с треками
 	else if (playingPlaylist?.list && playingPlaylist.list.length > 0) {
 		contextSongs = playingPlaylist.list;
-
+		playlistToUse = playingPlaylist;
 	}
 	// Приоритет 4: если есть current плейлист, но нет list, загружаем его
 	else if (currentPlaylist && currentPlaylist.owner_id && currentPlaylist.playlist_id) {
@@ -265,10 +345,16 @@ const handlePlayFromContext = async () => {
 	}
 	
 	// Используем универсальный метод для воспроизведения из очереди
-	await playFromQueue(props.audio, contextSongs, currentPlaylist || playingPlaylist || undefined);
+	// Если playlistToUse не установлен, используем current или playing плейлист
+	await playFromQueue(props.audio, contextSongs, playlistToUse || currentPlaylist || playingPlaylist || undefined);
 };
 
 const handleContextMenu = (event: MouseEvent) => {
+	// На мобильных устройствах используем долгое нажатие для открытия модального окна
+	if (isMobile.value) {
+		return;
+	}
+
 	event.preventDefault();
 	event.stopPropagation();
 
@@ -288,6 +374,72 @@ const handleContextMenuClose = () => {
 		contextMenuJustClosed.value = false;
 	}, 100);
 };
+
+let touchStartTime = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+let longPressTimer: NodeJS.Timeout | null = null;
+const LONG_PRESS_DURATION = 500;
+const MOVE_THRESHOLD = 10;
+let isLongPress = false;
+
+const handleTouchStart = (event: TouchEvent) => {
+	if (!isMobile.value || isRestricted.value) {
+		return;
+	}
+
+	const touch = event.touches[0];
+	if (touch) {
+		touchStartTime = Date.now();
+		touchStartX = touch.clientX;
+		touchStartY = touch.clientY;
+		isLongPress = false;
+
+		longPressTimer = setTimeout(() => {
+			isLongPress = true;
+			openModal("songActions", { audio: props.audio });
+		}, LONG_PRESS_DURATION);
+	}
+};
+
+const handleTouchMove = (event: TouchEvent) => {
+	if (!isMobile.value || !longPressTimer) {
+		return;
+	}
+
+	const touch = event.touches[0];
+	if (touch) {
+		const deltaX = Math.abs(touch.clientX - touchStartX);
+		const deltaY = Math.abs(touch.clientY - touchStartY);
+
+		if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) {
+			if (longPressTimer) {
+				clearTimeout(longPressTimer);
+				longPressTimer = null;
+			}
+		}
+	}
+};
+
+const handleTouchEnd = (event: TouchEvent) => {
+	if (longPressTimer) {
+		clearTimeout(longPressTimer);
+		longPressTimer = null;
+	}
+
+	// Если был долгий тап, предотвращаем обычный клик
+	if (isLongPress) {
+		event.preventDefault();
+		isLongPress = false;
+	}
+};
+
+const handleTouchCancel = () => {
+	if (longPressTimer) {
+		clearTimeout(longPressTimer);
+		longPressTimer = null;
+	}
+};
 </script>
 
 <style scoped lang="scss">
@@ -300,6 +452,8 @@ const handleContextMenuClose = () => {
 	transition: all 0.3s ease;
 	min-height: 56px;
 	position: relative;
+	overflow: hidden;
+	width: 100%;
 
 	&.playing {
 		background-color: var(--hover, rgba(42, 42, 42, 0.6));
@@ -346,6 +500,10 @@ const handleContextMenuClose = () => {
 			opacity: 1;
 			pointer-events: auto;
 			max-width: 200px;
+
+			.table-mode & {
+				max-width: none;
+			}
 		}
 
 		.song-info-title {
@@ -356,7 +514,7 @@ const handleContextMenuClose = () => {
 	// Table layout mode
 	&.table-mode {
 		display: grid;
-		grid-template-columns: 1fr 1fr auto 80px;
+		grid-template-columns: 1fr 1fr 80px;
 		gap: 16px;
 		padding: 10px 16px;
 		align-items: center;
@@ -380,15 +538,28 @@ const handleContextMenuClose = () => {
 		}
 
 		.song-actions {
-			grid-column: 3;
-			grid-row: 1;
+			position: absolute;
+			right: 96px;
+			top: 50%;
+			transform: translateY(-50%);
 			min-width: 0;
+			max-width: none !important;
+			overflow: visible !important;
+			opacity: 0;
+			pointer-events: none;
 		}
 
 		.song-duration {
-			grid-column: 4;
+			grid-column: 3;
 			grid-row: 1;
 			text-align: right;
+		}
+	}
+
+	&.table-mode:hover:not(.restricted) {
+		.song-actions {
+			opacity: 1;
+			pointer-events: auto;
 		}
 
 		.song-index {
@@ -457,11 +628,12 @@ const handleContextMenuClose = () => {
 	}
 
 	&-info {
-		flex: 1;
+		flex: 1 1 0;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		min-width: 0;
+		overflow: hidden;
 	}
 
 	&-info-title {
@@ -473,6 +645,7 @@ const handleContextMenuClose = () => {
 		text-overflow: ellipsis;
 		transition: color 0.3s ease, font-weight 0.3s ease;
 		line-height: 1.4;
+		min-width: 0;
 	}
 
 	&-info-artist {
@@ -483,6 +656,26 @@ const handleContextMenuClose = () => {
 		text-overflow: ellipsis;
 		transition: color 0.3s ease;
 		line-height: 1.3;
+		min-width: 0;
+	}
+
+	&-info-album {
+		font-size: 12px;
+		color: var(--text-secondary, #b3b3b3);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition: color 0.3s ease;
+		line-height: 1.2;
+		opacity: 0.8;
+		cursor: pointer;
+		min-width: 0;
+		flex-shrink: 1;
+
+		&:hover {
+			color: var(--text, #fff);
+			text-decoration: underline;
+		}
 	}
 
 	&-album {
@@ -494,9 +687,18 @@ const handleContextMenuClose = () => {
 		display: none;
 		transition: color 0.3s ease;
 		line-height: 1.3;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 100%;
 
 		.table-mode & {
 			display: block;
+			max-width: 200px;
+		}
+
+		&:hover {
+			color: var(--text, #fff);
+			text-decoration: underline;
 		}
 	}
 
@@ -540,6 +742,12 @@ const handleContextMenuClose = () => {
 	}
 }
 
+@media (max-width: 768px) {
+	.song-actions {
+		display: none !important;
+	}
+}
+
 @media (max-width: 1200px) {
 	.song {
 		gap: 10px;
@@ -557,6 +765,10 @@ const handleContextMenuClose = () => {
 
 	.song-info-artist {
 		font-size: 12px;
+	}
+
+	.song-info-album {
+		font-size: 11px;
 	}
 
 	.song-album {
@@ -600,6 +812,10 @@ const handleContextMenuClose = () => {
 		font-size: 12px;
 	}
 
+	.song-info-album {
+		font-size: 11px;
+	}
+
 	.song-album {
 		font-size: 12px;
 	}
@@ -622,10 +838,6 @@ const handleContextMenuClose = () => {
 			padding: 8px 10px;
 			min-height: 48px;
 
-			.song-album {
-				display: none;
-			}
-
 			.song-info {
 				margin-left: 48px;
 			}
@@ -636,6 +848,18 @@ const handleContextMenuClose = () => {
 
 			.song-duration {
 				grid-column: 3;
+			}
+
+			.song-album {
+				max-width: 150px;
+			}
+		}
+
+		.song-info {
+			flex: 1 1 0;
+
+			.song-info-album {
+				max-width: 60%;
 			}
 		}
 	}
@@ -703,6 +927,18 @@ const handleContextMenuClose = () => {
 			.song-duration {
 				grid-column: 3;
 			}
+
+			.song-album {
+				max-width: 120px;
+			}
+		}
+
+		.song-info {
+			flex: 1 1 0;
+
+			.song-info-album {
+				max-width: 50%;
+			}
 		}
 	}
 
@@ -722,6 +958,10 @@ const handleContextMenuClose = () => {
 
 	.song-info-artist {
 		font-size: 10px;
+	}
+
+	.song-info-album {
+		font-size: 9px;
 	}
 
 	.song-duration {

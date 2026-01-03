@@ -25,7 +25,7 @@ export const useQueue = () => {
 	 * @param playlist - Опциональный плейлист для установки как current/playing
 	 * @param startIndex - Опциональный индекс для установки текущего трека
 	 */
-	const setQueue = (songs: TAudio[], playlist?: TPlaylist, startIndex?: number) => {
+	const setQueue = async (songs: TAudio[], playlist?: TPlaylist, startIndex?: number) => {
 		console.log("[SET_QUEUE] Called", {
 			songsCount: songs.length,
 			playlistId: playlist?.raw_id,
@@ -37,27 +37,64 @@ export const useQueue = () => {
 		});
 
 		// Устанавливаем плейлист, если передан
+		// ВАЖНО: устанавливаем плейлист ДО setSongs, чтобы playing был обновлен
 		if (playlist) {
 			// setSongs автоматически фильтрует restricted треки, поэтому используем оригинальный список
 			// для плейлиста, а фильтрация произойдет в setSongs
-			playlistStore.setCurrent({ ...playlist, list: songs });
-			playlistStore.setPlaying({ ...playlist, list: songs });
+			// Обновляем плейлист с актуальным списком треков
+			const updatedPlaylist = { ...playlist, list: songs };
+			await playlistStore.setCurrent(updatedPlaylist);
+			await playlistStore.setPlaying(updatedPlaylist);
 		}
 
 		// Устанавливаем очередь треков (setSongs автоматически фильтрует restricted треки)
 		playlistStore.setSongs(songs);
 
 		console.log("[SET_QUEUE] After setSongs", {
-			newQueueLength: playlistStore.playingSongs.length
+			newQueueLength: playlistStore.playingSongs.length,
+			currentPlaylist: playlistStore.current?.raw_id,
+			playingPlaylist: playlistStore.playing?.raw_id
 		});
 
 		// Устанавливаем индекс, если передан
 		// Используем playingSongs для получения правильного индекса после фильтрации
-		if (startIndex !== undefined) {
-			const filteredSongs = playlistStore.playingSongs;
-			const validIndex = Math.max(0, Math.min(startIndex, filteredSongs.length - 1));
-			playlistStore.setCurrentIndex(validIndex);
+		if (startIndex !== undefined && startIndex >= 0 && startIndex < songs.length) {
+			// Находим трек по индексу в исходном списке
+			const targetSong = songs[startIndex];
+			console.log("[SET_QUEUE] Setting index", {
+				startIndex,
+				targetSongId: targetSong?.full_id,
+				queueLength: playlistStore.playingSongs.length,
+				currentIndex: playlistStore.currentIndex
+			});
+			
+			if (targetSong) {
+				// Ищем этот трек в отфильтрованной очереди
+				const filteredIndex = playlistStore.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
+				console.log("[SET_QUEUE] Found index in queue", {
+					filteredIndex,
+					targetSongId: targetSong.full_id
+				});
+				
+				if (filteredIndex >= 0) {
+					playlistStore.setCurrentIndex(filteredIndex);
+					console.log("[SET_QUEUE] Index set to", filteredIndex);
+				} else {
+					// Если трек не найден (возможно, был отфильтрован), используем первый доступный
+					console.log("[SET_QUEUE] Song not found in queue, setting to 0");
+					playlistStore.setCurrentIndex(0);
+				}
+			} else {
+				console.log("[SET_QUEUE] No target song, setting to 0");
+				playlistStore.setCurrentIndex(0);
+			}
 		}
+		
+		console.log("[SET_QUEUE] Final state", {
+			currentIndex: playlistStore.currentIndex,
+			queueLength: playlistStore.playingSongs.length,
+			playingPlaylistId: playlistStore.playing?.raw_id
+		});
 	};
 
 	/**
@@ -84,7 +121,7 @@ export const useQueue = () => {
 		// просто обновляем индекс и воспроизводим
 		if (isSamePlaylist && existingIndex >= 0 && !forceUpdate) {
 			if (playlist) {
-				playlistStore.setCurrent({ ...playlist, list: songs });
+				await playlistStore.setCurrent({ ...playlist, list: songs });
 			}
 
 			playlistStore.setCurrentIndex(existingIndex);
@@ -103,19 +140,25 @@ export const useQueue = () => {
 			return;
 		}
 
+		// Находим индекс трека в исходном списке для передачи в setQueue
+		const songIndexInSource = songs.findIndex(songItem => songItem.full_id === song.full_id);
+		const startIndex = songIndexInSource >= 0 ? songIndexInSource : 0;
+
 		// Устанавливаем очередь (setQueue автоматически фильтрует restricted треки)
 		// ВАЖНО: устанавливаем плейлист ДО вызова play, чтобы updatePlaylist не перезагружал плейлист
-		setQueue(songs, playlist);
+		// Передаем startIndex, чтобы setQueue правильно установил индекс после фильтрации
+		await setQueue(songs, playlist, startIndex);
 
-		// Находим индекс трека в отфильтрованной очереди
+		// После setQueue индекс уже должен быть установлен правильно
+		// Но на всякий случай проверяем и используем трек из очереди
 		const filteredSongs = playlistStore.playingSongs;
-		const songIndex = filteredSongs.findIndex(s => s.full_id === song.full_id);
-		const startIndex = songIndex >= 0 ? songIndex : 0;
-		playlistStore.setCurrentIndex(startIndex);
-
+		const actualIndex = playlistStore.currentIndex >= 0 && playlistStore.currentIndex < filteredSongs.length
+			? playlistStore.currentIndex
+			: 0;
+		
 		// Используем трек из очереди, который уже имеет все данные (включая URL)
 		// Если трек не найден в отфильтрованной очереди, используем исходный
-		const songToPlay = filteredSongs[startIndex] || song;
+		const songToPlay = filteredSongs[actualIndex] || song;
 
 		// Добавляем информацию о плейлисте в трек и помечаем как manual
 		// manual: true гарантирует, что updatePlaylist не будет вызван в playerStore.play
@@ -129,7 +172,7 @@ export const useQueue = () => {
 	 * @param songs - Массив треков для добавления
 	 */
 	const appendToQueue = (songs: TAudio[]) => {
-		const filteredSongs = songs.filter(song => !song.is_restriction);
+		const filteredSongs = songs.filter(songItem => !songItem.is_restriction);
 		filteredSongs.forEach(song => {
 			playlistStore.addSong(song);
 		});

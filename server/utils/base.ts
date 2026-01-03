@@ -59,7 +59,10 @@ export class BaseRequest implements IRequest {
 		return await this.http.request<T>(`https://vk.ru/${file}`, form, options);
 	}
 
-	public async callVKAPI(endpoint: string, params: Record<string, any> = {}, form: Record<string, any> = {}, method: "GET" | "POST" = "GET"): Promise<any> {
+	public async callVKAPI(endpoint: string, params: Record<string, any> = {}, form: Record<string, any> = {}, method: "GET" | "POST" = "GET", retryCount: number = 0): Promise<any> {
+		const maxRetries = 3;
+		const retryDelay = 2000;
+
 		const token = getCookie(this.event, "token");
 
 		if (!token) {
@@ -68,15 +71,11 @@ export class BaseRequest implements IRequest {
 
 		const { cookieKey } = useRuntimeConfig();
 		const { cookieSignOptions } = await import("~~/server/api/vk/web-token.post");
-		const { verifyDeviceFingerprint } = await import("./device-fingerprint");
+		const { isValidSession, updateSessionAccess } = await import("./session-storage");
 
-		let decodedToken: Record<string, any>;
-		
-		try {
-			decodedToken = jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>;
-		} catch (error) {
+		const decodedToken = await Promise.resolve(jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>).catch(() => {
 			throw new Error("Invalid token");
-		}
+		});
 
 		if (
 			!decodedToken ||
@@ -95,9 +94,11 @@ export class BaseRequest implements IRequest {
 			throw new Error("Old token format - re-authentication required");
 		}
 
-		if (decoded.deviceFingerprint && !verifyDeviceFingerprint(this.event, decoded.deviceFingerprint)) {
-			throw new Error("Device fingerprint mismatch - unauthorized access attempt");
+		if (!isValidSession(decoded.sessionId, decoded.user_id)) {
+			throw new Error("Invalid session - unauthorized access attempt");
 		}
+
+		updateSessionAccess(decoded.sessionId);
 
 		const query = new URLSearchParams({
 			...params,
@@ -113,19 +114,54 @@ export class BaseRequest implements IRequest {
 				"User-Agent": "VKAndroidApp/9.2.0-24200 (Android 11; SDK 30; arm64-v8a; Xiaomi M2003J15SC; ru; 2340x1080)",
 				...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {})
 			} as HeadersInit
+		}).catch(async (error: Error) => {
+			const errorMsg = error.message || "";
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control");
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests");
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw error;
 		});
 
-		const json = await response.json();
+		const json = await response.json().catch(async (error: Error) => {
+			const errorMsg = error.message || "";
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control");
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests");
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw error;
+		});
 
 		if (json.error) {
-			throw new Error(`VK API Error: ${json.error.error_msg || JSON.stringify(json.error)}`);
+			const errorMsg = json.error.error_msg || "";
+			const errorCode = json.error.error_code;
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control") || errorCode === 9;
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests") || errorCode === 6;
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw new Error(`VK API Error: ${errorMsg || JSON.stringify(json.error)}`);
 		}
 
 		return json.response;
 	}
 
 	public async loadCatalogSection<T>(more: TMore): Promise<TRawResponse<T>> {
-		return await this.request<any>({
+		return this.request<any>({
 			act: "load_catalog_section",
 			al: 1,
 			section_id: more.section_id,

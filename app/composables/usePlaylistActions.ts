@@ -1,6 +1,7 @@
 import type { TPlaylist, TAudio } from "~~/server/utils/types";
 import { createAudioBody } from "~/utils/audio-api";
 import { refreshDownloadsQueue } from "~/utils/downloads";
+import { authenticatedFetch } from "~/utils/api";
 
 export const usePlaylistActions = () => {
 	const createPlaylist = async (params: {
@@ -8,7 +9,7 @@ export const usePlaylistActions = () => {
 		description?: string;
 		cover?: string;
 	}) => {
-		return await $fetch<TPlaylist>("/api/vk/playlists/create", {
+		return await authenticatedFetch<TPlaylist>("/api/vk/playlists/create", {
 			method: "POST",
 			body: params
 		});
@@ -21,14 +22,14 @@ export const usePlaylistActions = () => {
 		cover?: string;
 		no_discover?: boolean;
 	}) => {
-		return await $fetch("/api/vk/playlists/edit", {
+		return await authenticatedFetch("/api/vk/playlists/edit", {
 			method: "POST",
 			body: params
 		});
 	};
 
 	const deletePlaylist = async (playlist: TPlaylist) => {
-		return await $fetch<{ success: boolean }>("/api/vk/playlists/delete", {
+		return await authenticatedFetch<{ success: boolean }>("/api/vk/playlists/delete", {
 			method: "POST",
 			body: {
 				playlist_id: playlist.playlist_id,
@@ -39,7 +40,7 @@ export const usePlaylistActions = () => {
 	};
 
 	const followPlaylist = async (playlist: TPlaylist) => {
-		return await $fetch("/api/vk/playlists/follow", {
+		return await authenticatedFetch("/api/vk/playlists/follow", {
 			method: "POST",
 			body: {
 				playlist_id: playlist.playlist_id,
@@ -53,14 +54,14 @@ export const usePlaylistActions = () => {
 		playlist_id: number;
 		prev_playlist_id: number;
 	}) => {
-		return await $fetch<{ success: boolean }>("/api/vk/playlists/reorder", {
+		return await authenticatedFetch<{ success: boolean }>("/api/vk/playlists/reorder", {
 			method: "POST",
 			body: params
 		});
 	};
 
 	const addSongToPlaylist = async (audio: TAudio, playlist: TPlaylist) => {
-		return await $fetch("/api/vk/playlists/add-song", {
+		return await authenticatedFetch("/api/vk/playlists/add-song", {
 			method: "POST",
 			body: {
 				...createAudioBody(audio),
@@ -71,7 +72,7 @@ export const usePlaylistActions = () => {
 	};
 
 	const removeSongFromPlaylist = async (audio: TAudio, playlist: TPlaylist) => {
-		return await $fetch("/api/vk/playlists/remove-song", {
+		return await authenticatedFetch("/api/vk/playlists/remove-song", {
 			method: "POST",
 			body: {
 				...createAudioBody(audio),
@@ -86,14 +87,14 @@ export const usePlaylistActions = () => {
 		Audios?: string;
 		force?: boolean;
 	}) => {
-		return await $fetch("/api/vk/playlists/reorder-songs", {
+		return await authenticatedFetch("/api/vk/playlists/reorder-songs", {
 			method: "POST",
 			body: params
 		});
 	};
 
 	const downloadPlaylist = async (playlist: TPlaylist) => {
-		const response = await $fetch<{ success: boolean; downloadId?: string }>("/api/vk/playlists/download", {
+		const response = await authenticatedFetch<{ success: boolean; downloadId?: string }>("/api/vk/playlists/download", {
 			method: "POST",
 			body: {
 				playlist_id: playlist.playlist_id,

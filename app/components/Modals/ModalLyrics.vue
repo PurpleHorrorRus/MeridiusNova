@@ -1,7 +1,7 @@
 <template>
 	<div class="lyrics-modal">
 		<div class="modal-header">
-			<h2 class="modal-title">Текст песни</h2>
+			<h2 class="modal-title" v-html="audio.title"></h2>
 			<button class="modal-close-btn" @click="closeModal">
 				<Icon name="mdi:close" size="24" />
 			</button>
@@ -101,6 +101,11 @@ watch(trackActive, (newValue, oldValue) => {
 	flex-direction: column;
 	height: 100%;
 	padding: 24px;
+	background: rgba(18, 18, 18, 0.95);
+	backdrop-filter: blur(20px);
+	border-radius: 12px;
+	width: 100%;
+	box-sizing: border-box;
 
 	@media (max-width: 768px) {
 		padding: 8px;

@@ -235,7 +235,7 @@ class GeneralRequests extends BaseRequest implements IRequest {
 			return block.querySelector(".CatalogBlock__content[data-type]");
 		});
 
-		return blocks.map(block => this.buildCollection(block));
+		return blocks.map(blockItem => this.buildCollection(blockItem));
 	}
 
 	public buildCollection(block: any): TPlaylistCollection {

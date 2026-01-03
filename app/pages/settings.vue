@@ -52,7 +52,7 @@ const allTabs = [
 ];
 
 const tabs = computed(() => {
-	return isTauri ? allTabs : allTabs.filter(tab => tab.id !== "hotkeys");
+	return isTauri ? allTabs : allTabs.filter(tabItem => tabItem.id !== "hotkeys");
 });
 
 const components: Record<string, any> = {

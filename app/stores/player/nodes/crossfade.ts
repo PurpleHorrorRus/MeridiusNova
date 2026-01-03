@@ -155,7 +155,7 @@ export class CrossFade {
 	}
 
 	setDuration(duration: number): number {
-		this.duration = Math.min(Math.max(duration, 2), 14);
+		this.duration = Math.min(Math.max(duration, 2), 16);
 		return this.duration;
 	}
 

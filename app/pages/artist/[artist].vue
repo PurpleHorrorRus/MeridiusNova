@@ -99,7 +99,6 @@ const toggleFollow = async () => {
 	}
 
 	// TODO: Implement follow/unfollow API
-	console.log("Toggle follow", current.value.follow);
 };
 </script>
 

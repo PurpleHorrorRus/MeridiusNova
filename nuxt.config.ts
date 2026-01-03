@@ -31,6 +31,11 @@ export default defineNuxtConfig({
 		},
 		esbuild: {
 			charset: "utf8"
+		},
+		server: {
+			hmr: {
+				port: 24679
+			}
 		}
 	},
 

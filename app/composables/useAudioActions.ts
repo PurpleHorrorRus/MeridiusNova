@@ -1,10 +1,11 @@
 import type { TAudio, TLyrics } from "~~/server/utils/types";
 import { createAudioBody } from "~/utils/audio-api";
 import { refreshDownloadsQueue } from "~/utils/downloads";
+import { authenticatedFetch } from "~/utils/api";
 
 export const useAudioActions = () => {
 	const addAudio = async (audio: TAudio) => {
-		return await $fetch<TAudio>("/api/vk/audio/add", {
+		return await authenticatedFetch<TAudio>("/api/vk/audio/add", {
 			method: "POST",
 			body: createAudioBody(audio, {
 				add_hash: audio.add_hash,
@@ -14,7 +15,7 @@ export const useAudioActions = () => {
 	};
 
 	const deleteAudio = async (audio: TAudio, restore = false) => {
-		return await $fetch<{ success: boolean }>("/api/vk/audio/delete", {
+		return await authenticatedFetch<{ success: boolean }>("/api/vk/audio/delete", {
 			method: "POST",
 			body: createAudioBody(audio, {
 				delete_hash: audio.delete_hash,
@@ -31,7 +32,7 @@ export const useAudioActions = () => {
 		lyrics?: string;
 		genre?: number;
 	}) => {
-		return await $fetch<TAudio>("/api/vk/audio/edit", {
+		return await authenticatedFetch<TAudio>("/api/vk/audio/edit", {
 			method: "POST",
 			body: createAudioBody(audio, {
 				edit_hash: audio.edit_hash,
@@ -49,7 +50,7 @@ export const useAudioActions = () => {
 			return null;
 		}
 
-		return await $fetch<TLyrics>("/api/vk/audio/lyrics", {
+		return await authenticatedFetch<TLyrics>("/api/vk/audio/lyrics", {
 			params: {
 				full_id: audio.full_id
 			}
@@ -61,14 +62,14 @@ export const useAudioActions = () => {
 		next_audio_id: number;
 		owner_id?: number;
 	}) => {
-		return await $fetch<{ success: boolean }>("/api/vk/audio/reorder", {
+		return await authenticatedFetch<{ success: boolean }>("/api/vk/audio/reorder", {
 			method: "POST",
 			body: params
 		});
 	};
 
 	const downloadAudio = async (audio: TAudio) => {
-		const response = await $fetch<{ success: boolean; downloadId?: string }>("/api/vk/audio/download", {
+		const response = await authenticatedFetch<{ success: boolean; downloadId?: string }>("/api/vk/audio/download", {
 			method: "POST",
 			body: createAudioBody(audio, {
 				full_id: audio.full_id
@@ -89,7 +90,7 @@ export const useAudioActions = () => {
 		toWall?: boolean;
 	}) => {
 		if (params.toWall) {
-			return await $fetch<{ success: boolean }>("/api/vk/wall/post", {
+			return await authenticatedFetch<{ success: boolean }>("/api/vk/wall/post", {
 				method: "POST",
 				body: {
 					attachments: params.attachment,
@@ -98,7 +99,7 @@ export const useAudioActions = () => {
 			});
 		}
 
-		return await $fetch<{ success: boolean }>("/api/vk/messages/send", {
+		return await authenticatedFetch<{ success: boolean }>("/api/vk/messages/send", {
 			method: "POST",
 			body: {
 				attachment: params.attachment,
@@ -110,7 +111,7 @@ export const useAudioActions = () => {
 	};
 
 	const getSimilarTracks = async (audio: TAudio) => {
-		return await $fetch<{ audios: TAudio[] }>("/api/vk/search/similar", {
+		return await authenticatedFetch<{ audios: TAudio[] }>("/api/vk/search/similar", {
 			params: {
 				audio_id: audio.id,
 				audio_owner_id: audio.owner_id

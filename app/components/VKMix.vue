@@ -94,7 +94,7 @@ const handlePlay = async () => {
 		owner_id: 0,
 		playlist_id: -9,
 		raw_id: "vkmix_-9",
-		title: "VK Mix",
+		title: getString("queue.source.vkMix"),
 		cover_url: "",
 		description: "",
 		size: 0,

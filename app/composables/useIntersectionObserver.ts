@@ -58,51 +58,21 @@ export const useIntersectionObserver = (
 	});
 
 	const setupObserver = () => {
-		console.log("[IntersectionObserver] setupObserver called", {
-			hasTarget: !!target.value,
-			isEnabled: isEnabled.value,
-			targetElement: target.value
-		});
-
 		if (observer) {
-			console.log("[IntersectionObserver] Disconnecting existing observer");
 			observer.disconnect();
 			observer = null;
 		}
 
 		if (!target.value || !isEnabled.value) {
-			console.log("[IntersectionObserver] Skipping setup - no target or disabled", {
-				hasTarget: !!target.value,
-				isEnabled: isEnabled.value
-			});
 			return;
 		}
 
 		const rootValue = isRef(rootOption) ? rootRef.value : rootOption;
 
-		console.log("[IntersectionObserver] Creating new observer", {
-			threshold,
-			root: rootValue,
-			rootMargin,
-			target: target.value
-		});
-
 		observer = new IntersectionObserver(
 			async (entries) => {
-				console.log("[IntersectionObserver] ⚡ ENTRY OBSERVED ⚡", {
-					entriesCount: entries.length,
-					isIntersecting: entries[0]?.isIntersecting,
-					intersectionRatio: entries[0]?.intersectionRatio,
-					boundingClientRect: entries[0]?.boundingClientRect,
-					isEnabled: isEnabled.value,
-					target: target.value
-				});
-
 				if (isEnabled.value) {
-					console.log("[IntersectionObserver] ✅ Enabled, calling callback");
 					await callback(entries);
-				} else {
-					console.log("[IntersectionObserver] ❌ Disabled, skipping callback");
 				}
 			},
 			{
@@ -113,13 +83,6 @@ export const useIntersectionObserver = (
 		);
 
 		observer.observe(target.value);
-		console.log("[IntersectionObserver] ✅ Observer started observing target", {
-			target: target.value,
-			targetId: target.value?.id,
-			targetClass: target.value?.className,
-			threshold,
-			root: rootValue
-		});
 	};
 
 	const stop = () => {
@@ -141,18 +104,11 @@ export const useIntersectionObserver = (
 	watch(
 		[target, isEnabled, rootRef],
 		() => {
-			console.log("[IntersectionObserver] Watch triggered", {
-				hasTarget: !!target.value,
-				isEnabled: isEnabled.value,
-				targetElement: target.value
-			});
-
 			if (target.value && isEnabled.value) {
 				nextTick(() => {
 					setupObserver();
 				});
 			} else {
-				console.log("[IntersectionObserver] Stopping observer");
 				stop();
 			}
 		},

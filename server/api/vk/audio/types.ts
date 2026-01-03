@@ -173,6 +173,7 @@ export type TReloadAudiosPayload = [TRawAudio[] | "no_audios"];
 export type TGetAudioParams = Partial<{
 	raw: boolean;
 	count: number;
+	withUrls: boolean;
 }>;
 
 export type TParsedPayload = {

@@ -7,25 +7,38 @@
 			<div class="auth-container">
 				<div class="auth-header">
 					<h1 class="auth-title">Авторизация</h1>
-					<p class="auth-subtitle">Отсканируйте QR-код в приложении VK</p>
+					<p class="auth-subtitle">
+						{{ isMobile ? "Нажмите кнопку для авторизации через VK" : "Отсканируйте QR-код в приложении VK" }}
+					</p>
 				</div>
 
 				<div class="auth-qr-wrapper">
 					<div v-if="pending" class="auth-loading">
 						<div class="spinner"></div>
-						<p>Загрузка QR-кода...</p>
+						<p>{{ isMobile ? "Загрузка..." : "Загрузка QR-кода..." }}</p>
 					</div>
-					<div v-else-if="data?.url" class="auth-qr">
-						<Qrcode :value="data.url" :size="280" />
-						<div v-if="isExpired" class="auth-expired">
-							<p>QR-код истек</p>
-							<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+					<div v-else-if="data?.url">
+						<div v-if="isMobile" class="auth-button-wrapper">
+							<button 
+								v-if="!isExpired"
+								@click="handleVkAuth"
+								class="auth-vk-button"
+							>
+								Авторизоваться через VK
+							</button>
+							<div v-else class="auth-expired">
+								<p>Ссылка истекла</p>
+								<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+							</div>
+						</div>
+						<div v-else class="auth-qr">
+							<Qrcode :value="data.url" :size="280" />
+							<div v-if="isExpired" class="auth-expired">
+								<p>QR-код истек</p>
+								<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+							</div>
 						</div>
 					</div>
-				</div>
-
-				<div class="auth-footer">
-					<p class="auth-hint">Откройте приложение VK на телефоне и отсканируйте код</p>
 				</div>
 			</div>
 		</div>
@@ -36,6 +49,7 @@
 import Qrcode from "qrcode.vue";
 
 import { useVkStore } from "~/stores/vk";
+import { useIsMobile } from "~/composables/useIsMobile";
 
 import type { TQrResponse } from "~~/server/utils/types";
 import type { TWebTokenResponse } from "~~/server/types/auth";
@@ -47,10 +61,17 @@ definePageMeta({
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const vkStore = useVkStore();
 const authInit = useAuthInit();
+const { isMobile } = useIsMobile();
 
-// Если пользователь уже авторизован, редиректим на главную
+// Если пользователь уже авторизован, редиректим на сохраненный путь или главную
 if (vkStore.authenticated && vkStore.user) {
-	await navigateTo("/");
+	const savedRedirect = typeof window !== "undefined" ? sessionStorage.getItem("authRedirect") : null;
+	if (savedRedirect) {
+		sessionStorage.removeItem("authRedirect");
+		await navigateTo(savedRedirect);
+	} else {
+		await navigateTo("/general");
+	}
 }
 
 const intervalId = ref<ReturnType<typeof setInterval> | null>(null);
@@ -66,8 +87,11 @@ const isExpired = computed(() => {
 const loadQr = async () => {
 	pending.value = true;
 
-	const [error, response] = await $fetch<TQrResponse>("/api/vk/qr", {
-		credentials: "include"
+	const [error, response] = await $fetch<TQrResponse>(`/api/vk/qr?_t=${Date.now()}`, {
+		credentials: "include",
+		headers: {
+			"Cache-Control": "no-cache"
+		}
 	}).then(data => [null, data]).catch(err => [err, null]);
 	
 	if (error) {
@@ -89,6 +113,30 @@ const refreshQr = async () => {
 	await loadQr();
 };
 
+const handleVkAuth = () => {
+	if (data.value?.url) {
+		window.open(data.value.url, "_blank");
+		
+		if (isMobile.value) {
+			setTimeout(() => {
+				check();
+			}, 2000);
+		}
+	}
+};
+
+const handleVisibilityChange = () => {
+	if (document.visibilityState === "visible" && !pending.value && data.value?.url && !isExpired.value) {
+		check();
+	}
+};
+
+const handleFocus = () => {
+	if (!pending.value && data.value?.url && !isExpired.value) {
+		check();
+	}
+};
+
 await loadQr();
 
 const stopInterval = () => {
@@ -96,6 +144,20 @@ const stopInterval = () => {
 		clearInterval(intervalId.value);
 		intervalId.value = null;
 	}
+};
+
+const getRedirectPath = (): string => {
+	if (typeof window === "undefined") {
+		return "/general";
+	}
+
+	const savedRedirect = sessionStorage.getItem("authRedirect");
+	if (savedRedirect) {
+		sessionStorage.removeItem("authRedirect");
+		return savedRedirect;
+	}
+
+	return "/general";
 };
 
 const check = async () => {
@@ -110,14 +172,20 @@ const check = async () => {
 	stopInterval();
 	
 	if (await authInit.initialize()) {
-		await navigateTo("/");
+		await navigateTo(getRedirectPath());
 	}
 };
 
-onBeforeMount(() => {
+onMounted(() => {
+	if (typeof window !== "undefined") {
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		window.addEventListener("focus", handleFocus);
+	}
+
 	watch(pending, (pending: boolean) => {
 		if (!pending && data.value?.url) {
-			intervalId.value = setInterval(check, 3000);
+			const checkInterval = isMobile.value ? 1500 : 3000;
+			intervalId.value = setInterval(check, checkInterval);
 		} else {
 			stopInterval();
 		}
@@ -127,12 +195,20 @@ onBeforeMount(() => {
 		if (expired) {
 			stopInterval();
 		} else if (!pending.value && data.value?.url && !intervalId.value) {
-			intervalId.value = setInterval(check, 3000);
+			const checkInterval = isMobile.value ? 1500 : 3000;
+			intervalId.value = setInterval(check, checkInterval);
 		}
 	});
 });
 
-onBeforeUnmount(stopInterval);
+onBeforeUnmount(() => {
+	stopInterval();
+	
+	if (typeof window !== "undefined") {
+		document.removeEventListener("visibilitychange", handleVisibilityChange);
+		window.removeEventListener("focus", handleFocus);
+	}
+});
 </script>
 
 <style scoped lang="scss">
@@ -276,14 +352,33 @@ onBeforeUnmount(stopInterval);
 	}
 }
 
-.auth-footer {
-	text-align: center;
+.auth-button-wrapper {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 320px;
 }
 
-.auth-hint {
-	margin: 0;
-	font-size: 14px;
-	color: var(--text-tertiary, #6b6b6b);
-	line-height: 1.5;
+.auth-vk-button {
+	padding: 16px 32px;
+	background: var(--primary, #e9003f);
+	color: #ffffff;
+	border: none;
+	border-radius: 12px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.2s ease, transform 0.1s ease;
+	box-shadow: 0 4px 16px rgba(233, 0, 63, 0.3);
+
+	&:hover {
+		background: var(--primary-hover, #ff1a5c);
+		transform: scale(1.05);
+	}
+
+	&:active {
+		transform: scale(0.98);
+	}
 }
 </style>
