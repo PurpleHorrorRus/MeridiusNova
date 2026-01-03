@@ -8,9 +8,7 @@ const isExternalServer = (): boolean => {
 
 const getFFmpegPath = (): string => {
 	if (isExternalServer()) {
-		const ffmpegDir = path.join(os.homedir(), ".meridius", "ffmpeg");
-		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-		return path.join(ffmpegDir, ffmpegExe);
+		return process.env.FFMPEG_BINARY || "";
 	}
 
 	const ffmpegDir = path.join(os.homedir(), ".ffmpeg");

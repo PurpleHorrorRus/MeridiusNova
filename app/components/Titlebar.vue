@@ -160,6 +160,7 @@ const handleClose = async () => {
 	grid-template-columns: auto 1fr auto;
 	align-items: center;
 	
+	width: 100%;
 	height: 100%;
 
 	background-color: var(--titlebar);

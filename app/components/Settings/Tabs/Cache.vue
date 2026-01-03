@@ -104,10 +104,15 @@
 <script setup lang="ts">
 const { getString } = useStrings();
 const { settings, updateSection } = useSettings();
-const config = useRuntimeConfig();
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-const isExternalServer = computed(() => config.public.externalServer === true);
+
+const config = useRuntimeConfig();
+
+const isExternalServer = process.env.EXTERNAL_SERVER === "true"
+	|| process.env.EXTERNAL_SERVER === "1"
+	|| config.public.externalServer;
+
 const cacheStats = ref<{ size: number; tracks: number; sizeMB: number; maxSize: number; maxSizeMB: number } | null>(null);
 const clearing = ref(false);
 
@@ -139,19 +144,18 @@ const chooseCachePath = async () => {
 		return;
 	}
 
-	try {
-		const { open } = await import("@tauri-apps/plugin-dialog");
-		const selected = await open({
-			directory: true,
-			multiple: false
-		});
+	const { open } = await import("@tauri-apps/plugin-dialog");
+		
+	const selected = await open({
+		directory: true,
+		multiple: false
+	}).catch(() => null);
 
-		if (selected && typeof selected === "string") {
-		updateSection("cache", { path: selected });
+	if (selected) {
+		updateSection("cache", {
+			path: selected as string
+		});
 	}
-} catch (error) {
-	// Ignore cache path selection errors
-}
 };
 
 const updateCachePath = (event: Event) => {

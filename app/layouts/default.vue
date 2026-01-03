@@ -58,6 +58,8 @@ const gridStyle = computed(() => {
 
 .layout-header {
 	grid-row: 1;
+	grid-column: 1 / -1;
+	width: 100%;
 	z-index: 100;
 }
 

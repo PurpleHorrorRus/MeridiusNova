@@ -56,7 +56,8 @@ export default defineNuxtConfig({
 		},
 
 		public: {
-			externalServer: process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1"
+			externalServer: process.env.EXTERNAL_SERVER === "true"
+				|| process.env.EXTERNAL_SERVER === "1"
 		}
 	}
 });

@@ -33,8 +33,11 @@ COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/package*.json ./
 
 ENV NODE_ENV=production
+ENV FFMPEG_BINARY=/usr/bin/ffmpeg
 
-RUN npm install --only=production --ignore-scripts && \
+RUN apk update && \
+    apk add --no-cache ffmpeg && \
+    npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
 USER node
