@@ -11,7 +11,7 @@ const n = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0PQRSTUVWXYZO123456789+/=";
 const unavailableRegex = /audio_api_unavailable/;
 const oldRegex = /data-audio=\"(.*?)\" on/;
 
-class AudioRequests extends BaseRequest implements IRequest {
+export class AudioRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
 		super(event);
 	}
@@ -140,6 +140,21 @@ class AudioRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async enrichAlbums(audios: TAudio[]): Promise<void> {
+		const { CacheManager } = await import("~~/server/utils/cache-manager");
+		const cacheManager = CacheManager.getInstance();
+		const cacheEnabled = await cacheManager.isEnabled();
+
+		// Проверяем кэш для каждого трека
+		if (cacheEnabled) {
+			for (const audio of audios) {
+				const cachedMetadata = await cacheManager.getMetadata(audio.full_id);
+
+				if (cachedMetadata && cachedMetadata.album && typeof cachedMetadata.album === "object" && !Array.isArray(cachedMetadata.album)) {
+					audio.album = cachedMetadata.album as typeof audio.album;
+				}
+			}
+		}
+
 		// Собираем уникальные album IDs (массивы [owner_id, playlist_id, access_hash] или объекты без title)
 		const albumMap = new Map<string, { owner_id: number; playlist_id: number; access_hash: string; audios: TAudio[] }>();
 
@@ -220,18 +235,32 @@ class AudioRequests extends BaseRequest implements IRequest {
 					return;
 				}
 
-				const playlistsRequests = getPlaylistsRequestsInstance(this.event);
+				// Проверяем кэш плейлистов перед запросом к VK
+				let playlist = null;
 
-				const playlist = await playlistsRequests.getPlaylist({
-					owner_id: albumInfo.owner_id,
-					playlist_id: albumInfo.playlist_id,
-					access_hash: albumInfo.access_hash,
-					list: false
-				}).catch((e: Error) => {
-					// Если не удалось получить информацию об альбоме, оставляем как есть
-					console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e.message || e);
-					return null;
-				});
+				if (cacheEnabled) {
+					const cachedPlaylist = await cacheManager.getPlaylistCache(albumInfo.owner_id, albumInfo.playlist_id);
+
+					if (cachedPlaylist && cachedPlaylist.title) {
+						playlist = cachedPlaylist as any;
+					}
+				}
+
+				// Если не нашли в кэше, запрашиваем у VK
+				if (!playlist) {
+					const playlistsRequests = getPlaylistsRequestsInstance(this.event);
+
+					playlist = await playlistsRequests.getPlaylist({
+						owner_id: albumInfo.owner_id,
+						playlist_id: albumInfo.playlist_id,
+						access_hash: albumInfo.access_hash,
+						list: false
+					}).catch((e: Error) => {
+						// Если не удалось получить информацию об альбоме, оставляем как есть
+						console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e.message || e);
+						return null;
+					});
+				}
 				if (!playlist) {
 					return;
 				}
@@ -268,6 +297,27 @@ class AudioRequests extends BaseRequest implements IRequest {
 						} : undefined
 					};
 				});
+
+				// Сохраняем в кэш для каждого трека title и thumb альбома (основная цель обогащения)
+				// Не сохраняем access_hash и access_key, так как они могут измениться
+				if (cacheEnabled) {
+					albumInfo.audios.forEach(async (audio) => {
+						if (audio.album && typeof audio.album === "object" && !Array.isArray(audio.album)) {
+							const metadata: Record<string, any> = {
+								album: {
+									owner_id: audio.album.owner_id,
+									id: audio.album.id,
+									title: audio.album.title,
+									thumb: audio.album.thumb
+								}
+							};
+
+							await cacheManager.saveMetadata(audio.full_id, metadata).catch((error) => {
+								console.error(`[enrichAlbums] Failed to cache metadata for ${audio.full_id}:`, error);
+							});
+						}
+					});
+				}
 			}));
 		}
 	}
@@ -329,6 +379,25 @@ class AudioRequests extends BaseRequest implements IRequest {
 		}
 
 		const additional = this.getAdditionalInfo(audio);
+
+		// Формируем performer и artist из MAIN_ARTISTS и FEAT_ARTISTS
+		let performer = this.unescape(audio[ERawAudio.PERFORMER] || "");
+		let artist = this.unescape(audio[ERawAudio.PERFORMER] || "");
+
+		if (additional.artists && additional.artists.length > 0) {
+			const mainArtistsNames = additional.artists.map(artistItem => artistItem.name).filter(Boolean);
+			if (mainArtistsNames.length > 0) {
+				performer = mainArtistsNames.join(", ");
+				artist = mainArtistsNames[0];
+			}
+		}
+
+		if (additional.feat && additional.feat.length > 0) {
+			const featArtistsNames = additional.feat.map(artistItem => artistItem.name).filter(Boolean);
+			if (featArtistsNames.length > 0) {
+				performer = performer ? `${performer} feat. ${featArtistsNames.join(", ")}` : `feat. ${featArtistsNames.join(", ")}`;
+			}
+		}
 
 		const rawAlbum = audio[ERawAudio.ALBUM];
 		let album: string | [number, number, string] | {
@@ -408,8 +477,8 @@ class AudioRequests extends BaseRequest implements IRequest {
 			owner_id: audio[ERawAudio.OWNER_ID],
 			full_id: `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}`,
 			title: this.unescape(audio[ERawAudio.TITLE] || ""),
-			performer: this.unescape(audio[ERawAudio.PERFORMER] || ""),
-			artist: this.unescape(audio[ERawAudio.PERFORMER] || ""),
+			performer,
+			artist,
 			duration: audio[ERawAudio.DURATION] || 0,
 			url: source,
 			covers: (audio[ERawAudio.COVER_URL] || "").replaceAll("&amp;", "&"),

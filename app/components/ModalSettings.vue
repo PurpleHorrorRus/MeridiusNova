@@ -39,6 +39,7 @@ import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
 import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
 import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
 import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
+import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
 
 import { useModalStore } from "~/stores/modal";
 
@@ -57,6 +58,7 @@ const allTabs = [
 	{ id: "downloads", label: "settings.tabs.downloads", icon: "mdi:download" },
 	{ id: "equalizer", label: "settings.tabs.equalizer", icon: "mdi:equalizer" },
 	{ id: "hotkeys", label: "settings.tabs.hotkeys", icon: "mdi:keyboard" },
+	{ id: "cache", label: "settings.tabs.cache", icon: "mdi:database" },
 	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" }
 ];
 
@@ -72,6 +74,7 @@ const components: Record<string, any> = {
 	downloads: SettingsDownloads,
 	equalizer: SettingsEqualizer,
 	hotkeys: SettingsHotkeys,
+	cache: SettingsCache,
 	accounts: SettingsAccounts
 };
 

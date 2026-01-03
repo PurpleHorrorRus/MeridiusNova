@@ -30,7 +30,32 @@
 			</div>
 
 		<div class="song-info-artist">
-			<span v-html="audio.performer || audio.artist" />
+			<template v-if="audio.artists && audio.artists.length > 0">
+				<template v-for="(artistItem, index) in audio.artists" :key="artistItem.id || index">
+					<span
+						class="artist-link"
+						:class="{ 'clickable': canNavigateToArtist(artistItem) }"
+						@click.stop="handleArtistClick(artistItem)"
+						v-html="artistItem.name"
+					/>
+					<span v-if="index < audio.artists.length - 1" class="artist-separator">, </span>
+				</template>
+			</template>
+			<template v-if="audio.feat && audio.feat.length > 0">
+				<span class="feat-label"> feat. </span>
+				<template v-for="(featItem, index) in audio.feat" :key="featItem.id || index">
+					<span
+						class="artist-link feat-artist"
+						:class="{ 'clickable': canNavigateToArtist(featItem) }"
+						@click.stop="handleArtistClick(featItem)"
+						v-html="featItem.name"
+					/>
+					<span v-if="index < audio.feat.length - 1" class="artist-separator">, </span>
+				</template>
+			</template>
+			<template v-if="(!audio.artists || audio.artists.length === 0) && (!audio.feat || audio.feat.length === 0)">
+				<span v-html="audio.performer || audio.artist" />
+			</template>
 		</div>
 
 		<div v-if="!isTableMode && albumName" class="song-info-album" @click.stop="handleAlbumClick">
@@ -180,6 +205,21 @@ const handleAlbumClick = () => {
 		path: route,
 		query
 	});
+};
+
+const canNavigateToArtist = (artist: { id?: string; link?: string }): boolean => {
+	return Boolean(artist.id || artist.link);
+};
+
+const handleArtistClick = (artist: { id?: string; link?: string; name?: string }) => {
+	if (!canNavigateToArtist(artist)) {
+		return;
+	}
+
+	const artistId = artist.id || artist.link;
+	if (artistId) {
+		navigateTo(`/artist/${artistId}`);
+	}
 };
 
 const handleClick = async () => {
@@ -657,6 +697,35 @@ const handleTouchCancel = () => {
 		transition: color 0.3s ease;
 		line-height: 1.3;
 		min-width: 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0;
+
+		.artist-link {
+			&.clickable {
+				cursor: pointer;
+				transition: color 0.2s ease;
+
+				&:hover {
+					color: var(--text, #fff);
+					text-decoration: underline;
+				}
+			}
+		}
+
+		.artist-separator {
+			margin: 0 2px;
+		}
+
+		.feat-label {
+			margin: 0 4px;
+			opacity: 0.7;
+		}
+
+		.feat-artist {
+			opacity: 0.9;
+		}
 	}
 
 	&-info-album {

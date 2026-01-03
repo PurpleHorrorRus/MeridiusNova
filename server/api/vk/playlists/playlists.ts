@@ -320,6 +320,21 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		// Проверяем кэш, если не требуется список треков (используется в enrichAlbums)
+		if (params.list === false) {
+			const { CacheManager } = await import("~~/server/utils/cache-manager");
+			const cacheManager = CacheManager.getInstance();
+			const cacheEnabled = await cacheManager.isEnabled();
+
+			if (cacheEnabled) {
+				const cachedPlaylist = await cacheManager.getPlaylistCache(owner_id, params.playlist_id);
+
+				if (cachedPlaylist && cachedPlaylist.title) {
+					return cachedPlaylist as TPlaylist;
+				}
+			}
+		}
+
 		// Пробуем использовать новый API
 		const access_key = params.access_hash || "";
 
@@ -401,11 +416,39 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				}
 			}
 
+			// Сохраняем в кэш, если не требуется список треков
+			if (params.list === false) {
+				const { CacheManager } = await import("~~/server/utils/cache-manager");
+				const cacheManager = CacheManager.getInstance();
+				const cacheEnabled = await cacheManager.isEnabled();
+
+				if (cacheEnabled) {
+					await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch((error) => {
+						console.error(`[getPlaylist] Failed to cache playlist ${owner_id}_${params.playlist_id}:`, error);
+					});
+				}
+			}
+
 			return playlist;
 		}
 
 		// Fallback на старый метод если новый API не сработал
-		return await this.getById(params);
+		const playlist = await this.getById(params);
+
+		// Сохраняем в кэш, если не требуется список треков
+		if (params.list === false) {
+			const { CacheManager } = await import("~~/server/utils/cache-manager");
+			const cacheManager = CacheManager.getInstance();
+			const cacheEnabled = await cacheManager.isEnabled();
+
+			if (cacheEnabled) {
+				await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch((error) => {
+					console.error(`[getPlaylist] Failed to cache playlist ${owner_id}_${params.playlist_id}:`, error);
+				});
+			}
+		}
+
+		return playlist;
 	}
 
 	public async getById(params: {

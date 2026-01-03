@@ -33,12 +33,15 @@ import SettingsDownloads from "~/components/Settings/Tabs/Downloads.vue";
 import SettingsEqualizer from "~/components/Settings/Tabs/Equalizer.vue";
 import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
 import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
+import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
 
 const { getString, loadLanguage } = useStrings();
 const { settings, load } = useSettings();
 
 const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const activeTab = ref("general");
+
+const { isMobile } = useIsMobile();
 
 const allTabs = [
 	{ id: "general", label: "settings.tabs.general", icon: "mdi:cog" },
@@ -48,11 +51,22 @@ const allTabs = [
 	{ id: "downloads", label: "settings.tabs.downloads", icon: "mdi:download" },
 	{ id: "equalizer", label: "settings.tabs.equalizer", icon: "mdi:equalizer" },
 	{ id: "hotkeys", label: "settings.tabs.hotkeys", icon: "mdi:keyboard" },
+	{ id: "cache", label: "settings.tabs.cache", icon: "mdi:database" },
 	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" }
 ];
 
 const tabs = computed(() => {
-	return isTauri ? allTabs : allTabs.filter(tabItem => tabItem.id !== "hotkeys");
+	if (isTauri) {
+		return allTabs;
+	}
+	
+	if (isMobile.value) {
+		return allTabs.filter(tabItem => 
+			["general", "appearance", "player", "optimization", "equalizer", "cache", "accounts"].includes(tabItem.id)
+		);
+	}
+	
+	return allTabs.filter(tabItem => tabItem.id !== "hotkeys");
 });
 
 const components: Record<string, any> = {
@@ -63,6 +77,7 @@ const components: Record<string, any> = {
 	downloads: SettingsDownloads,
 	equalizer: SettingsEqualizer,
 	hotkeys: SettingsHotkeys,
+	cache: SettingsCache,
 	accounts: SettingsAccounts
 };
 
@@ -71,7 +86,7 @@ const currentComponent = computed(() => {
 });
 
 watch(() => tabs.value, (newTabs) => {
-	if (!isTauri && activeTab.value === "hotkeys") {
+	if (!newTabs.some(tabItem => tabItem.id === activeTab.value)) {
 		activeTab.value = "general";
 	}
 }, { immediate: true });
@@ -83,7 +98,7 @@ onMounted(async () => {
 		await loadLanguage(lang);
 	}
 
-	if (!isTauri && activeTab.value === "hotkeys") {
+	if (!tabs.value.some(tabItem => tabItem.id === activeTab.value)) {
 		activeTab.value = "general";
 	}
 });

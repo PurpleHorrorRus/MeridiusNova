@@ -27,23 +27,29 @@ const userId = computed(() => vkStore.user_id || 0);
 const navigationItems = computed(() => [
 	{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
 	{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
-	{ path: "/discover/feed", label: "Лента", icon: "mdi:wall" },
-	{ path: "/discover/updates", label: "Обновления", icon: "mdi:rss" },
-	{ path: "/discover/friends", label: "Друзья", icon: "mdi:account-group" },
-	{ path: "/discover/communities", label: "Сообщества", icon: "mdi:account-multiple" }
+	{ path: "/search", label: "Поиск", icon: "mdi:magnify" },
+	{ path: "/settings", label: getString("navigation.settings"), icon: "mdi:cog" }
 ]);
 
 const getCustomActive = (path: string): boolean => {
 	const currentPath = route.path;
 
-	if (path === "/discover/feed" && currentPath === "/discover") {
-		return true;
+	if (path === "/general") {
+		return currentPath === "/general";
+	}
+
+	if (path === "/search") {
+		return currentPath.startsWith("/search");
 	}
 
 	if (path.startsWith("/playlist") && path.endsWith("/-1")) {
 		return currentPath.startsWith("/playlist") && 
 			route.params.playlist_id === "-1" && 
 			Number(route.params.owner_id) === userId.value;
+	}
+
+	if (path === "/settings") {
+		return currentPath === "/settings";
 	}
 
 	return false;
@@ -77,15 +83,27 @@ const getCustomActive = (path: string): boolean => {
 	transition: all 0.2s;
 	flex: 1;
 	text-align: center;
+	position: relative;
 	
 	&.nuxt-link-active,
 	&.active {
 		color: var(--secondary, #e9003f);
+		
+		&::before {
+			content: "";
+			position: absolute;
+			top: 0;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 40px;
+			height: 3px;
+			background: var(--secondary, #e9003f);
+			border-radius: 0 0 3px 3px;
+		}
 	}
 	
-	&:hover {
+	&:hover:not(.active):not(.nuxt-link-active) {
 		color: var(--text, #fff);
-		background: var(--hover, #2a2a2a);
 	}
 }
 

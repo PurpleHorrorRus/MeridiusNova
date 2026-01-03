@@ -3,7 +3,7 @@
 		<div class="settings-section">
 			<h2 class="section-title">{{ getString("settings.optimization.title") }}</h2>
 			<div class="settings-items">
-				<div class="settings-item">
+				<div v-if="isTauri" class="settings-item">
 					<label class="settings-label">
 						<input
 							type="checkbox"
@@ -15,7 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="hardwareAccelerationHint" class="settings-tip">
+				<div v-if="isTauri && hardwareAccelerationHint" class="settings-tip">
 					{{ hardwareAccelerationHint }}
 				</div>
 
@@ -59,6 +59,46 @@
 				</div>
 			</div>
 		</div>
+
+		<div v-if="!isTauri" class="settings-section">
+			<h2 class="section-title">{{ getString("settings.downloads.title") }}</h2>
+			<div class="settings-items">
+				<div class="settings-item">
+					<label class="settings-label">
+						<input
+							type="checkbox"
+							:checked="settings.download.enable"
+							@change="updateDownloadEnable"
+							class="settings-checkbox"
+						/>
+						{{ getString("settings.downloads.enable") }}
+					</label>
+				</div>
+
+				<div class="settings-item">
+					<label class="settings-label">{{ getString("settings.downloads.template.title") }}</label>
+					<input
+						:value="settings.download.template"
+						@input="updateTemplate"
+						type="text"
+						class="settings-input"
+						:placeholder="templatePlaceholder"
+					/>
+				</div>
+
+				<div v-if="templateHint" class="settings-tip">
+					{{ templateHint }}
+				</div>
+
+				<div class="settings-tip">
+					{{ getString("settings.downloads.template.headers") }}: {{ headers }}
+				</div>
+
+				<div class="settings-tip settings-info">
+					{{ getString("settings.downloads.mobile.note") || "На мобильных устройствах файлы скачиваются в папку загрузок браузера. Выбор папки недоступен." }}
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -66,10 +106,13 @@
 const { getString } = useStrings();
 const { settings, updateSection } = useSettings();
 
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+
 const lang = computed(() => settings.value.general.lang as "ru" | "en");
 const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
 const downloadAutoHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.auto);
 const downloadFixedHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.fixed);
+const templateHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.template);
 
 const autoDownloadCount = computed(() => {
 	if (import.meta.client && typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
@@ -77,6 +120,9 @@ const autoDownloadCount = computed(() => {
 	}
 	return 2;
 });
+
+const headers = "{{ index }}, {{ performer }}, {{ title }}, {{ id }}, {{ owner }}";
+const templatePlaceholder = "{{ performer }} - {{ title }}";
 
 const updateHardwareAcceleration = (event: Event) => {
 	const target = event.target as HTMLInputElement;
@@ -102,6 +148,16 @@ const updateFixedDownloads = (event: Event) => {
 			fixed: value
 		}
 	});
+};
+
+const updateDownloadEnable = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	updateSection("download", { enable: target.checked });
+};
+
+const updateTemplate = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	updateSection("download", { template: target.value });
 };
 </script>
 
@@ -235,5 +291,43 @@ const updateFixedDownloads = (event: Event) => {
 	border: 1px solid var(--border, #282828);
 	border-radius: 8px;
 	border-left: 3px solid var(--secondary, #e9003f);
+}
+
+.settings-info {
+	border-left-color: var(--text-secondary, #b3b3b3);
+}
+
+.settings-input {
+	flex: 1;
+	padding: 10px 14px;
+	background: var(--bg-tertiary, #2a2a2a);
+	border: 1px solid var(--border, #3a3a3a);
+	border-radius: 6px;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+	color: var(--text, #fff);
+	font-size: 14px;
+	font-weight: 500;
+	outline: none;
+	transition: all 0.2s ease;
+
+	@media (max-width: 768px) {
+		width: 100%;
+	}
+
+	&:hover {
+		border-color: var(--secondary, #e9003f);
+		background: var(--bg-hover, #2a2a2a);
+	}
+
+	&:focus {
+		border-color: var(--secondary, #e9003f);
+		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.1);
+	}
+
+	&::placeholder {
+		color: var(--text-tertiary, #6b6b6b);
+	}
 }
 </style>

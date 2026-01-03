@@ -530,6 +530,11 @@ export type TSettings = {
 		levels: number[];
 		spectrumVisualization: boolean;
 	};
+	cache: {
+		enable: boolean;
+		path: string;
+		maxSize: number;
+	};
 	vk: {
 		active: number;
 		accounts: TAccount[];

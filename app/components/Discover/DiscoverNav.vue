@@ -59,6 +59,24 @@ const isActive = (id: string): boolean => {
 	position: sticky;
 	top: 0;
 	z-index: 998;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	@media (max-width: 768px) {
+		padding: 8px;
+		gap: 6px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 6px;
+		gap: 4px;
+	}
 }
 
 .nav-item {
@@ -72,6 +90,20 @@ const isActive = (id: string): boolean => {
 	transition: all 0.2s;
 	font-size: 14px;
 	font-weight: 500;
+	flex-shrink: 0;
+
+	@media (max-width: 768px) {
+		padding: 8px 12px;
+		gap: 6px;
+		font-size: 13px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 8px;
+		gap: 0;
+		justify-content: center;
+		min-width: 44px;
+	}
 
 	&:hover {
 		background-color: var(--bg-hover, #2a2a2a);
@@ -86,6 +118,10 @@ const isActive = (id: string): boolean => {
 
 .nav-item-text {
 	white-space: nowrap;
+
+	@media (max-width: 480px) {
+		display: none;
+	}
 }
 </style>
 

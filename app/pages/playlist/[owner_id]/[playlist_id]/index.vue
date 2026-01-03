@@ -71,13 +71,18 @@ const isRestricted = computed(() => {
 		return false;
 	}
 	
-	// Для коллекций проверяем только явный флаг restricted из плейлиста
+	// Для коллекций проверяем флаг restricted из плейлиста или отсутствие данных
 	const playlist = playlistData.value;
 	if (!playlist) {
 		return false;
 	}
 	
-	// Возвращаем true только если явно установлен флаг restricted И нет треков
+	// Если есть ошибка и нет данных, считаем что музыка скрыта
+	if (error.value && !data.value) {
+		return true;
+	}
+	
+	// Возвращаем true если явно установлен флаг restricted И нет треков
 	return playlist.restricted === true;
 });
 
@@ -124,6 +129,27 @@ const audios = computed(() => {
 
 	return [];
 });
+
+// Обновляем restricted в playlistData для коллекций на основе ответа API
+watch([data, pending, error], ([newData, isPending, hasError]) => {
+	if (!isCollection.value || !playlistData.value) {
+		return;
+	}
+
+	// Если загрузка завершена
+	if (!isPending) {
+		// Если есть ошибка, считаем что музыка скрыта
+		if (hasError) {
+			playlistData.value.restricted = true;
+		} else if (!newData || !newData.audios || newData.audios.length === 0) {
+			// Если треков нет, устанавливаем restricted = true
+			playlistData.value.restricted = true;
+		} else {
+			// Если есть треки, устанавливаем restricted = false
+			playlistData.value.restricted = false;
+		}
+	}
+}, { immediate: true });
 
 // Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(audios);

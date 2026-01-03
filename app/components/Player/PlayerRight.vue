@@ -520,7 +520,7 @@ onUnmounted(() => {
 
 .volume-slider {
 	flex: 1;
-	min-width: 150px;
+	min-width: 120px;
 	height: 4px;
 	position: relative;
 	background: rgba(255, 255, 255, 0.1);
@@ -532,57 +532,57 @@ onUnmounted(() => {
 	display: block;
 }
 
-	.volume-range {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		left: 0;
-		top: 0;
-		opacity: 0;
-		cursor: pointer;
-		z-index: 3;
-		pointer-events: auto;
-		-webkit-appearance: none;
-		appearance: none;
-		margin: 0;
-		padding: 0;
-		border: 0;
-		box-sizing: border-box;
-		outline: none;
-	}
+.volume-range {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	left: 0;
+	top: 0;
+	opacity: 0;
+	cursor: pointer;
+	z-index: 3;
+	pointer-events: auto;
+	-webkit-appearance: none;
+	appearance: none;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	box-sizing: border-box;
+	outline: none;
+}
 
-	.volume-range::-webkit-slider-runnable-track {
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		padding: 0;
-		border: 0;
-	}
+.volume-range::-webkit-slider-runnable-track {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
 
-	.volume-range::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		width: 0;
-		height: 0;
-		margin: 0;
-		padding: 0;
-	}
+.volume-range::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 0;
+	height: 0;
+	margin: 0;
+	padding: 0;
+}
 
-	.volume-range::-moz-range-track {
-		width: 100%;
-		height: 100%;
-		margin: 0;
-		padding: 0;
-		border: 0;
-	}
+.volume-range::-moz-range-track {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
 
-	.volume-range::-moz-range-thumb {
-		width: 0;
-		height: 0;
-		border: none;
-		margin: 0;
-		padding: 0;
-	}
+.volume-range::-moz-range-thumb {
+	width: 0;
+	height: 0;
+	border: none;
+	margin: 0;
+	padding: 0;
+}
 
 .volume-fill {
 	height: 100%;

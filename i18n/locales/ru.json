@@ -52,6 +52,7 @@
 			"downloads": "Скачивание",
 			"equalizer": "Эквалайзер",
 			"hotkeys": "Горячие клавиши",
+			"cache": "Кэш",
 			"accounts": "Аккаунты"
 		},
 		"general": {
@@ -173,6 +174,21 @@
 			"template": {
 				"title": "Шаблон названия файла",
 				"headers": "Доступные заголовки"
+			}
+		},
+		"cache": {
+			"title": "Кэширование",
+			"enable": "Включить кэширование",
+			"path": "Папка для кэша",
+			"pathPlaceholder": "По умолчанию - ~/.meridius/cache",
+			"choose": "Выбрать",
+			"maxSize": "Максимальный размер кэша",
+			"maxSizePlaceholder": "1024",
+			"clear": "Очистить кэш",
+			"clearing": "Очистка...",
+			"stats": {
+				"size": "Размер",
+				"tracks": "Треков"
 			}
 		},
 		"equalizer": {

@@ -1,23 +1,7 @@
 <template>
 	<div class="mobile-sidebar" :class="{ 'mobile-only-bottom-nav': showBottomNavigation }">
 		<!-- Mobile bottom navigation bar -->
-		<div v-if="showBottomNavigation" class="mobile-bottom-nav">
-			<NuxtLink
-				v-for="item in navigationItems"
-				:key="item.path"
-				:to="item.path"
-				class="bottom-nav-item"
-				:class="{ active: isActive(item.path) }"
-			>
-				<Icon :name="item.icon" size="24" />
-				<ClientOnly>
-					<span class="bottom-nav-text">{{ item.label }}</span>
-					<template #fallback>
-						<span class="bottom-nav-text"></span>
-					</template>
-				</ClientOnly>
-			</NuxtLink>
-		</div>
+		<MobileBottomNav v-if="showBottomNavigation" />
 
 		<!-- Desktop sidebar content -->
 		<div v-else class="desktop-sidebar">
@@ -130,6 +114,7 @@
 import { useVkStore } from "~/stores/vk";
 import { useModal } from "~/composables/useModal";
 import { useEventListener } from "~/composables/useEventListener";
+import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
 
 const { getString } = useStrings();
 const route = useRoute();
@@ -260,49 +245,6 @@ const switchAccount = async (account: any) => {
 	}
 }
 
-/* Mobile bottom navigation styles */
-.mobile-bottom-nav {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
-	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	height: 60px;
-	background: var(--bg-sidebar, #1a1a1a);
-	border-top: 1px solid var(--border, #2a2a2a);
-	z-index: 1001;
-	width: 100%;
-}
-
-.bottom-nav-item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 4px;
-	color: var(--text-secondary, #b3b3b3);
-	text-decoration: none;
-	padding: 8px 0;
-	transition: all 0.2s;
-	flex: 1;
-	text-align: center;
-	
-	&.active {
-		color: var(--secondary, #e9003f);
-	}
-	
-	&:hover {
-		color: var(--text, #fff);
-		background: var(--hover, #2a2a2a);
-	}
-}
-
-.bottom-nav-text {
-	font-size: 12px;
-	font-weight: 500;
-}
 
 /* Hide desktop sidebar when mobile bottom nav is active */
 .desktop-sidebar {
@@ -344,16 +286,6 @@ const switchAccount = async (account: any) => {
 		background: transparent;
 	}
 
-	.mobile-sidebar.mobile-only-bottom-nav .mobile-bottom-nav {
-		position: fixed;
-		width: 100%;
-		height: 60px;
-	}
-	
-	/* Ensure mobile bottom nav is always visible */
-	.mobile-bottom-nav {
-		z-index: 1001;
-	}
 	
 	/* Make navigation items more compact on mobile */
 	.nav-item {

@@ -52,6 +52,7 @@
 			"downloads": "Downloads",
 			"equalizer": "Equalizer",
 			"hotkeys": "Hotkeys",
+			"cache": "Cache",
 			"accounts": "Accounts"
 		},
 		"general": {
@@ -173,6 +174,21 @@
 			"template": {
 				"title": "Filename Template",
 				"headers": "Available headers"
+			}
+		},
+		"cache": {
+			"title": "Caching",
+			"enable": "Enable caching",
+			"path": "Cache folder",
+			"pathPlaceholder": "Default - ~/.meridius/cache",
+			"choose": "Choose",
+			"maxSize": "Maximum cache size",
+			"maxSizePlaceholder": "1024",
+			"clear": "Clear cache",
+			"clearing": "Clearing...",
+			"stats": {
+				"size": "Size",
+				"tracks": "Tracks"
 			}
 		},
 		"equalizer": {

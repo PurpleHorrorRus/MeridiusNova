@@ -338,9 +338,10 @@ export const usePlayerStore = defineStore("player", {
 			if (!song.url) {
 				// Fetch URL if missing using new endpoint
 				const { authenticatedFetch } = await import("~/utils/api");
-				const audioWithUrl = await authenticatedFetch<TAudio[]>(`/api/vk/audio/url`, {
+				const fullId = `${song.owner_id}_${song.id}`;
+				const urlResponse = await authenticatedFetch<Record<string, string>>(`/api/vk/audio/url`, {
 					params: {
-						ids: `${song.owner_id}_${song.id}`
+						ids: fullId
 					}
 				}).catch((error: Error) => {
 					console.error("Failed to fetch audio URL:", error);
@@ -349,12 +350,14 @@ export const usePlayerStore = defineStore("player", {
 					return null;
 				});
 
-				if (!audioWithUrl) {
+				if (!urlResponse) {
 					return false;
 				}
 
-				if (audioWithUrl && audioWithUrl.length > 0 && audioWithUrl[0]?.url) {
-					song.url = audioWithUrl[0]?.url;
+				const url = urlResponse[fullId];
+
+				if (url) {
+					song.url = url;
 					// Update the song object with the fetched URL
 					this.song = { ...song };
 				} else {

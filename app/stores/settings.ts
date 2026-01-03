@@ -124,6 +124,11 @@ const defaultSettings: TSettings = {
 		spectrumVisualization: false
 	},
 
+	cache: {
+		enable: false,
+		path: "",
+		maxSize: 1024
+	},
 
 	vk: {
 		active: -1,
@@ -271,7 +276,7 @@ const loadSettingsFromTauri = async (): Promise<Partial<TSettings> | null> => {
 	const store = await Store.load(".settings.dat");
 	const saved = await store.get<Partial<TSettings>>("settings");
 
-	return saved;
+	return saved || null;
 };
 
 const loadSettingsFromServer = async (): Promise<Partial<TSettings> | null> => {
@@ -310,11 +315,17 @@ const mergeSettings = (settings: Partial<TSettings>, defaults: TSettings): TSett
 	const merged = { ...defaults };
 
 	for (const key in settings) {
-		if (settings[key] !== undefined) {
-			if (typeof settings[key] === "object" && !Array.isArray(settings[key]) && settings[key] !== null) {
-				merged[key] = mergeSettings(settings[key] as any, defaults[key] as any);
-			} else {
-				merged[key] = settings[key] as any;
+		if (Object.prototype.hasOwnProperty.call(settings, key)) {
+			const settingsKey = key as keyof TSettings;
+			const settingsValue = settings[settingsKey];
+			const defaultValue = defaults[settingsKey];
+
+			if (settingsValue !== undefined) {
+				if (typeof settingsValue === "object" && !Array.isArray(settingsValue) && settingsValue !== null && typeof defaultValue === "object" && !Array.isArray(defaultValue) && defaultValue !== null) {
+					(merged as any)[settingsKey] = { ...defaultValue, ...settingsValue };
+				} else {
+					(merged as any)[settingsKey] = settingsValue;
+				}
 			}
 		}
 	}
@@ -369,7 +380,12 @@ export const useSettingsStore = defineStore("settings", {
 		},
 
 		async updateSection<T extends keyof TSettings>(section: T, updates: Partial<TSettings[T]>) {
-			this.settings[section] = mergeSettings(updates, this.settings[section]) as TSettings[T];
+			const currentValue = this.settings[section];
+			if (typeof currentValue === "object" && currentValue !== null && !Array.isArray(currentValue)) {
+				this.settings[section] = { ...currentValue, ...updates } as TSettings[T];
+			} else {
+				this.settings[section] = updates as TSettings[T];
+			}
 			await this.save();
 		},
 

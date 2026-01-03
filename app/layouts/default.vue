@@ -84,9 +84,20 @@ const gridStyle = computed(() => {
 	background: var(--bg-primary, #121212);
 	padding-bottom: 108px; // ~76px высота плеера + 32px отступы
 	
-	/* Adjust padding for mobile bottom navigation */
-	@media (max-width: 768px) {
-		padding-bottom: 60px; // Height of bottom navigation
+	@media (max-width: 800px) {
+		padding-bottom: 100px; // 80px высота плеера + 12px bottom + 8px отступ
+	}
+	
+	@media (max-width: 700px) {
+		padding-bottom: 92px; // 76px высота плеера + 8px bottom + 8px отступ
+	}
+	
+	@media (max-width: 600px) {
+		padding-bottom: 144px; // 72px высота плеера + 64px bottom + 8px отступ
+	}
+	
+	@media (max-width: 480px) {
+		padding-bottom: 140px; // 72px высота плеера + 60px bottom + 8px отступ
 	}
 }
 </style>
