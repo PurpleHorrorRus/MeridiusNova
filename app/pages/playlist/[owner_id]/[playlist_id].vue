@@ -9,15 +9,17 @@
 		</div>
 
 		<div v-else class="playlist-page-content">
-			<CollectionHeader
-				v-if="playlistData && isCollection && collectionUser"
-				:playlist="playlistData"
-				:user="collectionUser"
-				@play="handlePlay"
-			/>
+			<ClientOnly>
+				<CollectionHeader
+					v-if="playlistData && isCollection && collectionUser"
+					:playlist="playlistData"
+					:user="collectionUser"
+					@play="handlePlay"
+				/>
+			</ClientOnly>
 
 			<PlaylistHeader
-				v-else-if="playlistData && !isCollection"
+				v-if="playlistData && !isCollection"
 				:playlist="playlistData"
 				@play="handlePlay"
 				@follow="handleFollow"

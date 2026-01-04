@@ -1,5 +1,5 @@
 <template>
-	<div v-if="!showSearchInTitlebar" class="sidebar-search">
+	<div class="sidebar-search" :class="{ 'sidebar-search-hidden': showSearchInTitlebar }">
 		<div class="search-input-wrapper">
 			<Icon name="mdi:magnify" size="20" class="search-icon" />
 			<input
@@ -58,6 +58,10 @@ const clearSearch = () => {
 	}
 
 	@media (max-width: 600px) {
+		display: none;
+	}
+
+	&.sidebar-search-hidden {
 		display: none;
 	}
 }

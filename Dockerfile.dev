@@ -1,0 +1,20 @@
+FROM node:slim
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/* && \
+    chown -R node:node /app
+
+RUN mkdir /home/node/.meridius && \
+    chown -R node:node /home/node/.meridius
+
+USER node
+
+ENV NODE_ENV=development
+ENV EXTERNAL_SERVER=true
+ENV FFMPEG_BINARY=/usr/bin/ffmpeg
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

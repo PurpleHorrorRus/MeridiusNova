@@ -1,25 +1,48 @@
 <template>
 	<div class="sidebar">
-		<MobileBottomNav v-if="showBottomNavigation" />
+		<ClientOnly>
+			<MobileBottomNav v-if="showBottomNavigation" />
 
-		<div v-else class="desktop-sidebar">
-			<SidebarSearch :show-search-in-titlebar="showSearchInTitlebar" />
+			<div v-else class="desktop-sidebar">
+				<SidebarSearch :show-search-in-titlebar="showSearchInTitlebar" />
 
-			<SidebarNavigation
-				:user-playlists="userPlaylists"
-				:playlists-expanded="playlistsExpanded"
-				:playlist-playing-states="playlistPlayingStates"
-				:playlist-loading-states="playlistLoadingStates"
-				@update:playlists-expanded="playlistsExpanded = $event"
-				@playlist-play="handlePlaylistPlay"
-			/>
+				<SidebarNavigation
+					:user-playlists="userPlaylists"
+					:playlists-expanded="playlistsExpanded"
+					:playlist-playing-states="playlistPlayingStates"
+					:playlist-loading-states="playlistLoadingStates"
+					@update:playlists-expanded="playlistsExpanded = $event"
+					@playlist-play="handlePlaylistPlay"
+				/>
 
-			<div class="sidebar-bottom-section">
-				<SidebarSettingsButton />
+				<div class="sidebar-bottom-section">
+					<SidebarSettingsButton />
 
-				<SidebarUser :accounts="accounts" />
+					<SidebarUser :accounts="accounts" />
+				</div>
 			</div>
-		</div>
+
+			<template #fallback>
+				<div class="desktop-sidebar">
+					<SidebarSearch :show-search-in-titlebar="false" />
+
+					<SidebarNavigation
+						:user-playlists="userPlaylists"
+						:playlists-expanded="playlistsExpanded"
+						:playlist-playing-states="playlistPlayingStates"
+						:playlist-loading-states="playlistLoadingStates"
+						@update:playlists-expanded="playlistsExpanded = $event"
+						@playlist-play="handlePlaylistPlay"
+					/>
+
+					<div class="sidebar-bottom-section">
+						<SidebarSettingsButton />
+
+						<SidebarUser :accounts="accounts" />
+					</div>
+				</div>
+			</template>
+		</ClientOnly>
 	</div>
 </template>
 
@@ -49,7 +72,7 @@ const playlistsExpanded = ref(false);
 const playlistPlayingStates = ref<Record<string, boolean>>({});
 const playlistLoadingStates = ref<Record<string, boolean>>({});
 
-const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
+const windowWidth = ref(0);
 
 const showSearchInTitlebar = computed(() => {
 	return windowWidth.value <= 600;
@@ -58,14 +81,6 @@ const showSearchInTitlebar = computed(() => {
 const showBottomNavigation = computed(() => {
 	return windowWidth.value <= 600;
 });
-
-if (typeof window !== "undefined") {
-	const handleResize = () => {
-		windowWidth.value = window.innerWidth;
-	};
-
-	useEventListener(window, "resize", handleResize);
-}
 
 const updatePlaylistStates = () => {
 	userPlaylists.value.forEach(playlist => {
@@ -126,6 +141,16 @@ const loadAccounts = async () => {
 };
 
 onMounted(async () => {
+	if (typeof window !== "undefined") {
+		windowWidth.value = window.innerWidth;
+
+		const handleResize = () => {
+			windowWidth.value = window.innerWidth;
+		};
+
+		useEventListener(window, "resize", handleResize);
+	}
+
 	await load();
 	await loadAccounts();
 	playlistsExpanded.value = Boolean(settings.value.appearance.sidebarPlaylistsExpanded ?? false);

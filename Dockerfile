@@ -18,8 +18,7 @@ ARG NUXT_COOKIE_KEY
 ARG DISCORD_CLIENT_ID
 ARG DISCORD_CLIENT_SECRET
 
-RUN EXTERNAL_SERVER=true && \
-    NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
+RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
     NUXT_COOKIE_KEY="$(echo -e "$NUXT_COOKIE_KEY")" \
     DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
     DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
@@ -33,16 +32,22 @@ COPY --from=build --chown=node:node /app/.output ./.output
 COPY --from=build --chown=node:node /app/package*.json ./
 
 ENV NODE_ENV=production
+ENV EXTERNAL_SERVER=true
 ENV FFMPEG_BINARY=/usr/bin/ffmpeg
 
 RUN apk update && \
-    apk add --no-cache ffmpeg && \
+    apk add --no-cache ffmpeg su-exec && \
     npm install --only=production --ignore-scripts && \
-    npm cache clean --force
+    npm cache clean --force && \
+    mkdir -p /home/node/.meridius/.cache && \
+    chown -R node:node /home/node/.meridius
 
-USER node
-	
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 3000
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/api/healthcheck', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"

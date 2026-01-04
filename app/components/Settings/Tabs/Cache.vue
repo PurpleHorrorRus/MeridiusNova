@@ -222,20 +222,25 @@ const formatSize = (bytes: number): string => {
 	return `${Math.round((bytes / 1024 / 1024) * 100) / 100} MB`;
 };
 
+let cacheStatsInterval: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
 	if (settings.value.cache.enable) {
 		await loadCacheStats();
 	}
 
-	const interval = setInterval(() => {
+	cacheStatsInterval = setInterval(() => {
 		if (settings.value.cache.enable) {
 			loadCacheStats();
 		}
 	}, 30000);
+});
 
-	onUnmounted(() => {
-		clearInterval(interval);
-	});
+onUnmounted(() => {
+	if (cacheStatsInterval) {
+		clearInterval(cacheStatsInterval);
+		cacheStatsInterval = null;
+	}
 });
 </script>
 

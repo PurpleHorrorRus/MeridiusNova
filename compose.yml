@@ -1,0 +1,100 @@
+services:
+  meridius: &meridius
+    # image: infinitehorror/meridius-nova:nightly
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+      args:
+        EXTERNAL_SERVER: true
+        NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
+        NUXT_COOKIE_KEY: ${NUXT_COOKIE_KEY}
+
+    cpus: 1
+    mem_limit: 256M
+    restart: unless-stopped
+
+    volumes:
+      - data:/home/node/.meridius:rw
+      - cache:/home/node/.meridius/.cache:rw
+
+    ports:
+      - 3000:3000/tcp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - FOWNER
+
+  meridius-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+
+    mem_limit: 2G
+    restart: unless-stopped
+
+    environment:
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
+      NUXT_COOKIE_KEY: ${NUXT_COOKIE_KEY}
+
+    volumes:
+      - data:/home/node/.meridius:rw
+      - cache:/home/node/.meridius/.cache:rw
+
+      - ./app:/app/app:rw
+      - ./i18n:/app/i18n:ro
+      - ./locales:/app/locales:ro
+      - ./public:/app/public:ro
+      - ./server:/app/server:ro
+      - ./node_modules:/app/node_modules:rw
+
+      - type: bind
+        source: ./nuxt.config.ts
+        target: /app/nuxt.config.ts
+        read_only: true
+
+      - type: bind
+        source: ./package.json
+        target: /app/package.json
+        read_only: true
+
+      - type: bind
+        source: ./package-lock.json
+        target: /app/package-lock.json
+        read_only: true
+
+      - type: bind
+        source: ./tsconfig.json
+        target: /app/tsconfig.json
+        read_only: true
+
+    ports:
+      - 3001:3000/tcp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - FOWNER
+
+volumes:
+  data:
+    driver: local
+
+  cache:
+    driver: local
