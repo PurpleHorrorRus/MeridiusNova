@@ -24,30 +24,44 @@
 						</span>
 					</div>
 
-					<div
-						v-for="(audio, index) in audios"
-						:key="`${audio.owner_id}-${audio.id}-${index}`"
-						class="song-wrapper"
-						:class="{
-							'dragging': dragAndDrop.draggedIndex.value === index,
-							'drag-over': dragAndDrop.draggedOverIndex.value === index
-						}"
+					<VirtualSongList
+						:items="audios"
+						:item-height="56"
+						:overscan="14"
+						:has-more="hasMore"
+						:is-loading-more="isLoadingMore"
+						:load-more="loadMore"
+						ref="virtualListRef"
+						class="playlist-virtual-list"
 					>
-						<div
-							class="song-drag-handle"
-							:class="{ 'draggable': canEdit }"
-							@mousedown="(e) => { if (canEdit) { dragAndDrop.handleMouseDown(e, index); } }"
-						>
-							<Song
-								:audio="audio"
-								:index="index"
-							/>
-						</div>
-					</div>
-
-					<div v-show="hasMore" class="load-more" ref="loadMoreRef">
-						<LoadingSpinner v-if="isLoadingMore" />
-					</div>
+						<template #default="{ visibleItems, startIndex }">
+							<div
+								v-for="(audio, relativeIndex) in visibleItems"
+								:key="`${audio.owner_id}-${audio.id}-${startIndex + relativeIndex}`"
+								class="song-wrapper"
+								:class="{
+									'dragging': dragAndDrop.draggedIndex.value === startIndex + relativeIndex,
+									'drag-over': dragAndDrop.draggedOverIndex.value === startIndex + relativeIndex
+								}"
+							>
+								<VirtualSongItem
+									:index="startIndex + relativeIndex"
+									@height="(height) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
+								>
+									<div
+										class="song-drag-handle"
+										:class="{ 'draggable': canEdit }"
+										@mousedown="(e) => { if (canEdit) { dragAndDrop.handleMouseDown(e, startIndex + relativeIndex); } }"
+									>
+										<Song
+											:audio="audio"
+											:index="startIndex + relativeIndex"
+										/>
+									</div>
+								</VirtualSongItem>
+							</div>
+						</template>
+					</VirtualSongList>
 				</template>
 			</div>
 		</div>
@@ -63,6 +77,8 @@ import { useDragAndDrop } from "~/composables/useDragAndDrop";
 import { usePlaylistActions } from "~/composables/usePlaylistActions";
 import { useAudioActions } from "~/composables/useAudioActions";
 import { useVkStore } from "~/stores/vk";
+import VirtualSongList from "~/components/VirtualSongList.vue";
+import VirtualSongItem from "~/components/VirtualSongItem.vue";
 
 const { getString } = useStrings();
 const route = useRoute();
@@ -217,7 +233,7 @@ const hasMore = computed(() => {
 	return false;
 });
 
-const loadMoreRef = ref<HTMLElement | null>(null);
+const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
 const isLoadingMore = ref(false);
 
 const loadMore = async () => {
@@ -311,23 +327,7 @@ const loadMore = async () => {
 	isLoadingMore.value = false;
 };
 
-useScrollLoad(() => {
-	if (!hasMore.value) {
-		return;
-	}
-
-	if (isLoadingMore.value) {
-		return;
-	}
-
-	loadMore();
-}, {
-	threshold: 200,
-	enabled: computed(() => {
-		// Всегда включаем observer, проверку делаем внутри
-		return !isLoadingMore.value;
-	})
-});
+// loadMore теперь обрабатывается внутри VirtualSongList через IntersectionObserver
 
 const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], fromIndex?: number, toIndex?: number) => {
 	console.log("[handleReorderSongs] Called", { canEdit: canEdit.value, isCollection: isCollection.value, newOrderLength: newOrder.length, originalOrderLength: originalOrder?.length, fromIndex, toIndex });
@@ -505,6 +505,8 @@ const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 	display: flex;
 	flex-direction: column;
 	padding: 0 32px 32px;
+	flex: 1;
+	min-height: 0;
 
 	@media (max-width: 768px) {
 		padding: 0 16px 16px;
@@ -513,6 +515,11 @@ const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 	@media (max-width: 480px) {
 		padding: 0 12px 12px;
 	}
+}
+
+.playlist-virtual-list {
+	flex: 1;
+	min-height: 0;
 }
 
 .playlist-tracks-header {
