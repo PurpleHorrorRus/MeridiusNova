@@ -65,7 +65,27 @@ const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const appWindow = ref<any>(null);
 const { updateAvailable, checkForUpdates } = useUpdater();
 
+const searchQuery = ref("");
+
+const windowWidth = ref(0);
+
+const showSearch = computed(() => {
+	return windowWidth.value <= 600;
+});
+
 onMounted(async () => {
+	await nextTick();
+
+	if (typeof window !== "undefined") {
+		windowWidth.value = window.innerWidth;
+
+		const handleResize = () => {
+			windowWidth.value = window.innerWidth;
+		};
+
+		useEventListener(window, "resize", handleResize);
+	}
+
 	if (isTauri && import.meta.client) {
 		const { getCurrentWindow } = await import("@tauri-apps/api/window");
 		appWindow.value = getCurrentWindow();
@@ -81,22 +101,6 @@ onMounted(async () => {
 		});
 	}
 });
-
-const searchQuery = ref("");
-
-const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
-
-const showSearch = computed(() => {
-	return windowWidth.value <= 600;
-});
-
-if (typeof window !== "undefined") {
-	const handleResize = () => {
-		windowWidth.value = window.innerWidth;
-	};
-
-	useEventListener(window, "resize", handleResize);
-}
 
 const handleSearchKeydown = (event: KeyboardEvent) => {
 	if (event.key === "Enter") {
@@ -172,6 +176,7 @@ const handleClose = async () => {
 		justify-content: flex-start;
 		height: 100%;
 		flex-shrink: 0;
+		grid-column: 1;
 	
 		&__logo {
 			padding-left: 10px;
@@ -194,6 +199,7 @@ const handleClose = async () => {
 		justify-content: center;
 		height: 100%;
 		position: relative;
+		grid-column: 2;
 	}
 
 	&-right {
@@ -204,6 +210,7 @@ const handleClose = async () => {
 		height: 100%;
 		flex-shrink: 0;
 		gap: 8px;
+		grid-column: 3;
 
 		.titlebar-update-notification {
 			display: flex;

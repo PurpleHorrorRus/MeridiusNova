@@ -39,8 +39,6 @@ export const useDiscordStore = defineStore("discord", {
 				return false;
 			}
 
-			console.log("[Discord RPC]: Connecting...");
-
 			const clientId = process.env.DISCORD_CLIENT_ID || "";
 			const clientSecret = process.env.DISCORD_CLIENT_SECRET || "";
 
@@ -63,7 +61,6 @@ export const useDiscordStore = defineStore("discord", {
 
 			if (connected) {
 				this.connected = true;
-				console.log("[Discord RPC]: Ready");
 			}
 
 			return connected;
@@ -106,8 +103,6 @@ export const useDiscordStore = defineStore("discord", {
 					|| "meridiushq"
 			};
 
-			console.log("[Discord RPC]: Update activity", currentSong.full_id);
-
 			if (playlist && playlist.playlist_id && playlist.playlist_id !== -1) {
 				activity.smallImageText = playlist.title;
 				activity.smallImageKey = playlist.cover_url || "meridiushq";
@@ -136,7 +131,6 @@ export const useDiscordStore = defineStore("discord", {
 			}
 
 			await this.throttle();
-			console.log("[Discord RPC]: Clear activity");
 
 			return client.user?.clearActivity().catch((error) => {
 				console.error("[Discord RPC]: Failed to clear activity", error);
@@ -154,8 +148,6 @@ export const useDiscordStore = defineStore("discord", {
 			const timeLeft = this.timestamp !== 0 && now - this.timestamp < delay
 				? delay - (now - this.timestamp)
 				: defaultDelay;
-
-			console.log("[Discord RPC]: Throttle =", timeLeft, "ms");
 
 			if (this.timeout) {
 				clearTimeout(this.timeout);

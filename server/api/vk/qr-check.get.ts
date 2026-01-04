@@ -4,10 +4,12 @@ import type { TCookie } from "~~/server/types/auth";
 import type { TAuthSession } from "~~/server/utils/types";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
+import { configuration, getHttpInstance } from "~~/server/utils/http";
 import { cookieSignOptions } from "./web-token.post";
 
 export default defineEventHandler(async (event) => {
-	const http = getHttpInstance();
+	const userId = event.context.user?.id;
+	const http = getHttpInstance(userId);
 	const config = useRuntimeConfig();
 
 	const userSession = await getUserSession(event);
@@ -37,8 +39,20 @@ export default defineEventHandler(async (event) => {
 		access_token: ""
 	}, configuration.auth.options);
 
+	if (qrCheckResponse.type === "error" || (qrCheckResponse as any).error_code) {
+		const errorCode = (qrCheckResponse as any).error_code || "unknown";
+		const errorInfo = (qrCheckResponse as any).error_info || (qrCheckResponse as any).error_msg || "Произошла ошибка при авторизации";
 
-	console.log(qrCheckResponse.response?.status);
+		throw createError({
+			statusCode: 400,
+			statusMessage: errorInfo,
+			data: {
+				error_code: errorCode,
+				error_info: errorInfo,
+				type: "error"
+			}
+		});
+	}
 
 	if (qrCheckResponse.response?.status === 2) {
 		const connectCodeAuthResponse = await http.request<TCheckResponse>(configuration.endpoints.qr.connectCodeAuth, {
@@ -59,8 +73,19 @@ export default defineEventHandler(async (event) => {
 			version: 1
 		}, configuration.auth.options);
 
-		if (connectCodeAuthResponse.type === "error") {
-			throw connectCodeAuthResponse;
+		if (connectCodeAuthResponse.type === "error" || (connectCodeAuthResponse as any).error_code) {
+			const errorCode = (connectCodeAuthResponse as any).error_code || "unknown";
+			const errorInfo = (connectCodeAuthResponse as any).error_info || (connectCodeAuthResponse as any).error_msg || "Произошла ошибка при авторизации";
+
+			throw createError({
+				statusCode: 400,
+				statusMessage: errorInfo,
+				data: {
+					error_code: errorCode,
+					error_info: errorInfo,
+					type: "error"
+				}
+			});
 		}
 
 		await http.request<string>(connectCodeAuthResponse.data.next_step_url);
@@ -87,10 +112,31 @@ export default defineEventHandler(async (event) => {
 		}
 
 		const accessToken = connectCodeAuthResponse.data.access_token;
-		const webToken = await http.webToken(accessToken);
+		const webToken = await http.webToken(accessToken).catch((error: any) => {
+			const errorCode = error?.error_code || error?.code || "unknown";
+			const errorInfo = error?.error_info || error?.error_msg || error?.message || "Произошла ошибка при получении токена";
+
+			throw createError({
+				statusCode: 400,
+				statusMessage: errorInfo,
+				data: {
+					error_code: errorCode,
+					error_info: errorInfo,
+					type: "error"
+				}
+			});
+		});
 
 		if (!webToken) {
-			return false;
+			throw createError({
+				statusCode: 400,
+				statusMessage: "Не удалось получить токен авторизации",
+				data: {
+					error_code: "token_error",
+					error_info: "Не удалось получить токен авторизации",
+					type: "error"
+				}
+			});
 		}
 
 		const sessionId = generateSessionId();

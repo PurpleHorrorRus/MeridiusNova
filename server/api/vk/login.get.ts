@@ -1,7 +1,9 @@
+import { ERequestMethod } from "~~/server/utils/types";
+import { configuration, getHttpInstance } from "~~/server/utils/http";
 import webTokenPost from "./web-token.post";
 
 export default defineEventHandler(async (event) => {
-	await getHttpInstance().request<string>(configuration.endpoints.main, {}, {
+	await getHttpInstance(event.context.user?.id).request<string>(configuration.endpoints.main, {}, {
 		method: ERequestMethod.GET
 	});
 

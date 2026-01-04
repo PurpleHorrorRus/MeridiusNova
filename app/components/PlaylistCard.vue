@@ -7,7 +7,7 @@
 				:height="coverSize"
 			/>
 			<div v-if="showPlayButton" class="playlist-card-overlay">
-				<button class="playlist-card-play-button" @click.stop="handlePlayPause" :disabled="isLoading">
+				<button class="playlist-card-play-button" @click.stop="(event) => handlePlayPause(event)" :disabled="isLoading">
 					<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="32" :class="{ 'loading-icon': isLoading }" />
 				</button>
 			</div>
@@ -63,9 +63,9 @@ const handleClick = () => {
 	navigateTo(`/playlist/${props.playlist.owner_id}/${props.playlist.playlist_id}`);
 };
 
-const handlePlayPause = async () => {
+const handlePlayPause = async (event?: MouseEvent) => {
 	emit("play", props.playlist);
-	await handlePlayPauseBase();
+	await handlePlayPauseBase(event);
 };
 </script>
 

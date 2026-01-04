@@ -139,6 +139,7 @@ const collectionUser = computed(() => {
 // Для коллекций создаем плейлист на основе информации о пользователе
 // Для обычных плейлистов используем данные из API
 watch([data, isCollection, userInfo], ([newPlaylistData, isCollectionValue, userInfoValue]) => {
+
 	if (isCollectionValue) {
 		// Для коллекций всегда создаем плейлист на основе информации о пользователе
 		const user = ownerId.value === vkStore.user_id ? vkStore.user : userInfo.value;
@@ -180,6 +181,7 @@ watch([data, isCollection, userInfo], ([newPlaylistData, isCollectionValue, user
 	}
 	
 	if (playlistData.value) {
+
 		setCurrent(playlistData.value).catch(() => {
 			// Игнорируем ошибки при установке плейлиста
 		});
@@ -199,8 +201,84 @@ const handlePlay = async (playlist: TPlaylist) => {
 	await playPlaylist(playlist);
 };
 
-const handleFollow = async (playlist: TPlaylist) => {
-	// TODO: Implement follow/unfollow API
+const handleFollow = async (playlist: TPlaylist & { followed?: boolean }) => {
+	const { followPlaylist, unfollowPlaylist } = usePlaylistActions();
+
+	if (!playlistData.value) {
+		return;
+	}
+
+	// Определяем операцию по полю followed из emit (до оптимистичного обновления)
+	// Если оно не передано, используем текущее значение из playlistData
+	const isFollowed = playlist.followed !== undefined 
+		? playlist.followed 
+		: (playlistData.value.followed ?? false);
+	
+	// Для follow ВСЕГДА используем данные владельца из original
+	// Для unfollow используем текущие данные (которые стали моими после follow)
+	let playlistForOperation: TPlaylist;
+	if (isFollowed) {
+		// Для unfollow используем текущие данные
+		playlistForOperation = playlistData.value;
+	} else {
+		// Для follow используем данные владельца из original
+		if (playlistData.value.original) {
+			playlistForOperation = {
+				...playlistData.value,
+				playlist_id: playlistData.value.original.playlist_id,
+				owner_id: playlistData.value.original.owner_id,
+				access_hash: playlistData.value.original.access_key
+			};
+		} else {
+			// Fallback на текущие данные (если нет original)
+			playlistForOperation = playlistData.value;
+		}
+	}
+	
+	// Выполняем операцию
+	const operation = isFollowed
+		? unfollowPlaylist(playlistForOperation)
+		: followPlaylist(playlistForOperation);
+
+	operation.then(async (result) => {
+		if (result && playlistData.value) {
+			if (!isFollowed && result.playlist_id && result.owner_id) {
+				// Если это follow, обновляем данные плейлиста из ответа (мои ID)
+				// Сохраняем исходные данные в original перед обновлением, если их еще нет
+				if (!playlistData.value.original) {
+					playlistData.value.original = {
+						playlist_id: playlistForOperation.playlist_id,
+						owner_id: playlistForOperation.owner_id,
+						access_key: playlistForOperation.access_hash || ""
+					};
+				}
+				playlistData.value.playlist_id = result.playlist_id;
+				playlistData.value.owner_id = result.owner_id;
+				playlistData.value.followed = true;
+			} else if (isFollowed) {
+				// Если это unfollow, заменяем данные на исходные из original
+				if (playlistData.value.original) {
+					playlistData.value.playlist_id = playlistData.value.original.playlist_id;
+					playlistData.value.owner_id = playlistData.value.original.owner_id;
+					playlistData.value.access_hash = playlistData.value.original.access_key;
+				}
+				playlistData.value.followed = false;
+			}
+
+			// Обновляем список плейлистов в фоне
+			vkStore.refreshPlaylists().then(() => {
+				// Отправляем событие для обновления данных в sidebar
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(new CustomEvent("playlists-updated"));
+				}
+			});
+		}
+	}).catch((error) => {
+		// Откатываем оптимистичное обновление при ошибке
+		if (playlistData.value) {
+			playlistData.value.followed = !isFollowed;
+		}
+	});
 };
 </script>
 

@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import type { TCookie } from "~~/server/types/auth";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
+import { getHttpInstance } from "~~/server/utils/http";
+
+import type { H3Event, EventHandlerRequest } from "h3";
 
 export const cookieSignOptions: jwt.SignOptions = {
 	algorithm: "RS256"
@@ -19,11 +22,13 @@ export default defineEventHandler(async (event) => {
 			return false;
 		});
 
+
 		if (decoded === false) {
 			return false;
 		}
 		
 		const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
+
 		if (isOldToken) {
 			return false;
 		}
@@ -40,7 +45,8 @@ export default defineEventHandler(async (event) => {
 		return false;
 	}
 
-	const webToken = await getHttpInstance().webToken(decoded.access_token);
+	const userId = decoded.user_id;
+	const webToken = await getHttpInstance(userId).webToken(decoded.access_token);
 
 	if (!webToken) {
 		return false;
@@ -73,3 +79,22 @@ export default defineEventHandler(async (event) => {
 
 	return webToken;
 });
+
+export const getAccessToken = async (event: H3Event<EventHandlerRequest>): Promise<string | false> => {
+	const config = useRuntimeConfig();
+	const token = getCookie(event, "token") || "";
+
+	if (!token) {
+		return false;
+	}
+
+	const decoded = await Promise.resolve(jwt.verify(token, config.cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie).catch(() => {
+		return false;
+	}) as TCookie | false;
+
+	if (!decoded) {
+		return false;
+	}
+
+	return decoded.access_token;
+};

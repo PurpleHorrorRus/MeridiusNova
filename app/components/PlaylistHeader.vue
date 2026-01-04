@@ -28,18 +28,27 @@
 					</div>
 
 					<div class="playlist-header-actions">
-					<button @click.stop="handlePlayPause" class="playlist-header-play-button" :disabled="isLoading">
+					<button @click.stop="(event) => handlePlayPause(event)" class="playlist-header-play-button" :disabled="isLoading">
 						<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="24" :class="{ 'loading-icon': isLoading }" />
 						<span>{{ isLoading ? 'Загрузка...' : (isPlaying ? 'Пауза' : 'Воспроизвести') }}</span>
 					</button>
 
+					<button @click.stop="handlePlayRandom" class="playlist-header-random-button" :disabled="isLoading">
+						<Icon name="mdi:shuffle" size="20" />
+					</button>
+
 						<button
-							v-if="playlist.follow_hash"
+						v-if="canFollow"
 							@click="handleFollow"
 							class="playlist-header-follow-button"
 							:class="{ active: playlist.followed }"
+						:disabled="isFollowing"
 						>
-							<Icon :name="playlist.followed ? 'mdi:heart' : 'mdi:heart-outline'" size="20" />
+						<Icon 
+							:name="isFollowing ? 'mdi:loading' : (playlist.followed ? 'mdi:heart' : 'mdi:heart-outline')" 
+							size="20"
+							:class="{ 'loading-icon': isFollowing }"
+						/>
 						</button>
 
 						<div class="playlist-header-more-actions">
@@ -95,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useEventListener } from "~/composables/useEventListener";
 import type { TPlaylist } from "~~/server/utils/types";
 import { usePlaylistActions } from "~/composables/usePlaylistActions";
@@ -119,6 +128,7 @@ const { openModal, openConfirm, openCustom } = useModal();
 const vkStore = useVkStore();
 
 const showActionsMenu = ref(false);
+const isFollowing = ref(false);
 
 const canEdit = computed(() => {
 	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.edit;
@@ -134,6 +144,27 @@ const canDownload = computed(() => {
 
 const canDelete = computed(() => {
 	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.delete;
+});
+
+const wasFollowed = ref<boolean | null>(null);
+
+watch(() => props.playlist.followed, (newValue) => {
+	if (newValue === true) {
+		wasFollowed.value = true;
+	}
+}, { immediate: true });
+
+const canFollow = computed(() => {
+	const hasFollowHash = Boolean(props.playlist.follow_hash);
+	const isNotOwnPlaylist = props.playlist.owner_id !== vkStore.user_id;
+	const isFollowed = props.playlist.followed;
+	// Показываем кнопку если есть follow_hash и:
+	// - это чужой плейлист, ИЛИ
+	// - плейлист в избранном, ИЛИ
+	// - плейлист был в избранном (чтобы кнопка оставалась видимой после unfollow)
+	const result = hasFollowHash && (isNotOwnPlaylist || isFollowed || wasFollowed.value === true);
+
+	return result;
 });
 
 const handleClickOutside = (event: MouseEvent) => {
@@ -176,12 +207,40 @@ const formatListens = (listens: number): string => {
 	return String(listens);
 };
 
-const handlePlayPause = async () => {
-	await handlePlayPauseBase();
+const handlePlayPause = async (event?: MouseEvent) => {
+	await handlePlayPauseBase(event);
 };
 
-const handleFollow = () => {
-	emit("follow", props.playlist);
+const handlePlayRandom = async () => {
+	await handlePlayPauseBase(undefined, true);
+};
+
+watch(() => props.playlist, () => {
+	// Обновляем canFollow при изменении плейлиста
+}, { deep: true, immediate: true });
+
+const handleFollow = async () => {
+	if (isFollowing.value) {
+		return;
+	}
+
+	isFollowing.value = true;
+	
+	// Сохраняем исходное состояние ДО оптимистичного обновления
+	const previousFollowed = props.playlist.followed;
+	
+	// Оптимистично обновляем состояние
+	if (props.playlist) {
+		props.playlist.followed = !previousFollowed;
+	}
+
+	// Передаем исходное состояние в emit, чтобы родитель знал, какую операцию выполнять
+	emit("follow", { ...props.playlist, followed: previousFollowed });
+
+	// Сбрасываем состояние загрузки после небольшой задержки
+	setTimeout(() => {
+		isFollowing.value = false;
+	}, 500);
 };
 
 const handleEdit = () => {
@@ -200,8 +259,8 @@ const handleShare = () => {
 
 const handleDownload = async () => {
 	showActionsMenu.value = false;
-	await downloadPlaylist(props.playlist).catch((error) => {
-		console.error("Failed to download playlist:", error);
+	await downloadPlaylist(props.playlist).catch(() => {
+		// Ignore download errors
 	});
 };
 
@@ -218,8 +277,7 @@ const handleDelete = async () => {
 		return;
 	}
 
-	const result = await deletePlaylist(props.playlist).catch((error) => {
-		console.error("Failed to delete playlist:", error);
+	const result = await deletePlaylist(props.playlist).catch(() => {
 		return null;
 	});
 
@@ -445,6 +503,31 @@ const handleDelete = async () => {
 	}
 }
 
+.playlist-header-random-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	background: transparent;
+	border: 1px solid var(--border, #282828);
+	border-radius: 50%;
+	color: var(--text-secondary, #b3b3b3);
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:hover:not(:disabled) {
+		border-color: var(--text, #fff);
+		color: var(--text, #fff);
+		transform: scale(1.1);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+}
+
 .playlist-header-follow-button {
 	display: flex;
 	align-items: center;
@@ -458,15 +541,24 @@ const handleDelete = async () => {
 	cursor: pointer;
 	transition: all 0.2s;
 
-	&:hover {
+	&:hover:not(:disabled) {
 		border-color: var(--text, #fff);
 		color: var(--text, #fff);
 		transform: scale(1.1);
 	}
 
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+
 	&.active {
 		border-color: var(--secondary, #e9003f);
 		color: var(--secondary, #e9003f);
+	}
+
+	.loading-icon {
+		animation: spin 1s linear infinite;
 	}
 }
 
@@ -532,6 +624,11 @@ const handleDelete = async () => {
 		font-size: 13px;
 	}
 
+	.playlist-header-random-button {
+		width: 44px;
+		height: 44px;
+	}
+
 	.playlist-header-follow-button {
 		width: 44px;
 		height: 44px;
@@ -595,6 +692,16 @@ const handleDelete = async () => {
 		:deep(svg) {
 			width: 20px;
 			height: 20px;
+		}
+	}
+
+	.playlist-header-random-button {
+		width: 40px;
+		height: 40px;
+
+		:deep(svg) {
+			width: 18px;
+			height: 18px;
 		}
 	}
 
@@ -665,6 +772,11 @@ const handleDelete = async () => {
 	.playlist-header-play-button {
 		flex: 1;
 		max-width: 200px;
+	}
+
+	.playlist-header-random-button {
+		width: 40px;
+		height: 40px;
 	}
 
 	.playlist-header-follow-button {

@@ -13,9 +13,12 @@
 					:playlist-loading-states="playlistLoadingStates"
 					@update:playlists-expanded="playlistsExpanded = $event"
 					@playlist-play="handlePlaylistPlay"
+					@playlist-created="loadUserPlaylists"
 				/>
 
 				<div class="sidebar-bottom-section">
+					<Downloads v-if="!isTauri" :show-label="true" :icon-size="24" />
+
 					<SidebarSettingsButton />
 
 					<SidebarUser :accounts="accounts" />
@@ -33,9 +36,12 @@
 						:playlist-loading-states="playlistLoadingStates"
 						@update:playlists-expanded="playlistsExpanded = $event"
 						@playlist-play="handlePlaylistPlay"
+						@playlist-created="loadUserPlaylists"
 					/>
 
 					<div class="sidebar-bottom-section">
+						<Downloads v-if="!isTauri" :show-label="true" :icon-size="24" />
+
 						<SidebarSettingsButton />
 
 						<SidebarUser :accounts="accounts" />
@@ -56,6 +62,7 @@ import SidebarSearch from "~/components/Navigation/SidebarSearch.vue";
 import SidebarNavigation from "~/components/Navigation/SidebarNavigation.vue";
 import SidebarSettingsButton from "~/components/Navigation/SidebarSettingsButton.vue";
 import SidebarUser from "~/components/Navigation/SidebarUser.vue";
+import Downloads from "~/components/Downloads/Downloads.vue";
 import { loadUserAccounts } from "~/utils/accounts";
 
 const { playPlaylist } = usePlaylist();
@@ -64,6 +71,7 @@ const vkStore = useVkStore();
 const { settings, load } = useSettings();
 const { playing } = usePlaylist();
 const playerStore = usePlayerStore();
+const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const userId = computed(() => vkStore.user_id || 0);
 const accounts = ref<any[]>([]);
@@ -161,6 +169,13 @@ watch(userId, async () => {
 	playlistsExpanded.value = Boolean(settings.value.appearance.sidebarPlaylistsExpanded ?? false);
 	await loadUserPlaylists();
 });
+
+// Обновляем список плейлистов при событии обновления
+if (typeof window !== "undefined") {
+	window.addEventListener("playlists-updated", async () => {
+		await loadUserPlaylists();
+	});
+}
 </script>
 
 <style scoped lang="scss">
@@ -212,5 +227,49 @@ watch(userId, async () => {
 	display: flex;
 	flex-direction: column;
 	margin-top: auto;
+	overflow: visible;
+
+	:deep(.downloads-container) {
+		width: 100%;
+		position: relative;
+		overflow: visible;
+
+		.downloads-button {
+			width: 100%;
+			height: auto;
+			padding: 12px 20px;
+			justify-content: flex-start;
+			gap: 12px;
+			border-top: 1px solid var(--border, #2a2a2a);
+			border-radius: 0;
+
+			@media (max-width: 1000px) {
+				padding: 10px 16px;
+				gap: 10px;
+			}
+
+			@media (max-width: 800px) {
+				padding: 8px 12px;
+				gap: 8px;
+			}
+
+			@media (max-width: 600px) {
+				padding: 10px;
+				justify-content: center;
+				gap: 0;
+			}
+		}
+
+		.downloads-menu {
+			position: fixed;
+			top: auto;
+			bottom: auto;
+			right: auto;
+			left: auto;
+			width: 320px;
+			transform-origin: top left;
+			z-index: 1001;
+		}
+	}
 }
 </style>

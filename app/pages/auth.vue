@@ -17,6 +17,11 @@
 						<div class="spinner"></div>
 						<p>{{ isMobile ? "Загрузка..." : "Загрузка QR-кода..." }}</p>
 					</div>
+					<div v-else-if="errorMessage" class="auth-error">
+						<div class="auth-error-icon">⚠️</div>
+						<p class="auth-error-message">{{ errorMessage }}</p>
+						<button @click="clearErrorAndRefresh" class="auth-refresh-btn">Попробовать снова</button>
+					</div>
 					<div v-else-if="data?.url">
 						<div v-if="isMobile" class="auth-button-wrapper">
 							<button 
@@ -78,6 +83,7 @@ const intervalId = ref<ReturnType<typeof setInterval> | null>(null);
 const expiresAt = ref<number | null>(null);
 const data = ref<TQrResponse | null>(null);
 const pending = ref(true);
+const errorMessage = ref<string | null>(null);
 
 const isExpired = computed(() => {
 	if (!expiresAt.value) return false;
@@ -110,7 +116,14 @@ const loadQr = async () => {
 };
 
 const refreshQr = async () => {
+	errorMessage.value = null;
 	await loadQr();
+};
+
+const clearErrorAndRefresh = async () => {
+	errorMessage.value = null;
+	stopInterval();
+	await refreshQr();
 };
 
 const handleVkAuth = () => {
@@ -126,13 +139,13 @@ const handleVkAuth = () => {
 };
 
 const handleVisibilityChange = () => {
-	if (document.visibilityState === "visible" && !pending.value && data.value?.url && !isExpired.value) {
+	if (document.visibilityState === "visible" && !pending.value && data.value?.url && !isExpired.value && !errorMessage.value) {
 		check();
 	}
 };
 
 const handleFocus = () => {
-	if (!pending.value && data.value?.url && !isExpired.value) {
+	if (!pending.value && data.value?.url && !isExpired.value && !errorMessage.value) {
 		check();
 	}
 };
@@ -161,9 +174,20 @@ const getRedirectPath = (): string => {
 };
 
 const check = async () => {
-	const checked = await $fetch<TWebTokenResponse["data"] | false>("/api/vk/qr-check", {
+	const [error, checked] = await $fetch<TWebTokenResponse["data"] | false>("/api/vk/qr-check", {
 		credentials: "include"
-	}).catch(() => (false));
+	}).then(data => [null, data]).catch((err: any) => {
+		const errorData = err?.data || err?.response?._data || {};
+		const errorInfo = errorData.error_info || errorData.error_msg || err?.statusMessage || err?.message || "Произошла ошибка при авторизации";
+		
+		return [errorInfo, null];
+	});
+
+	if (error) {
+		errorMessage.value = error;
+		stopInterval();
+		return;
+	}
 
 	if (!checked) {
 		return;
@@ -183,7 +207,7 @@ onMounted(() => {
 	}
 
 	watch(pending, (pending: boolean) => {
-		if (!pending && data.value?.url) {
+		if (!pending && data.value?.url && !errorMessage.value) {
 			const checkInterval = isMobile.value ? 1500 : 3000;
 			intervalId.value = setInterval(check, checkInterval);
 		} else {
@@ -194,9 +218,15 @@ onMounted(() => {
 	watch(isExpired, (expired) => {
 		if (expired) {
 			stopInterval();
-		} else if (!pending.value && data.value?.url && !intervalId.value) {
+		} else if (!pending.value && data.value?.url && !intervalId.value && !errorMessage.value) {
 			const checkInterval = isMobile.value ? 1500 : 3000;
 			intervalId.value = setInterval(check, checkInterval);
+		}
+	});
+
+	watch(errorMessage, (error) => {
+		if (error) {
+			stopInterval();
 		}
 	});
 });
@@ -380,5 +410,33 @@ onBeforeUnmount(() => {
 	&:active {
 		transform: scale(0.98);
 	}
+}
+
+.auth-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	padding: 24px;
+	background: var(--bg-secondary, #181818);
+	border-radius: 16px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+	min-height: 320px;
+	text-align: center;
+}
+
+.auth-error-icon {
+	font-size: 48px;
+	line-height: 1;
+}
+
+.auth-error-message {
+	margin: 0;
+	color: var(--text, #ffffff);
+	font-size: 16px;
+	font-weight: 500;
+	max-width: 300px;
+	line-height: 1.5;
 }
 </style>

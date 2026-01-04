@@ -11,12 +11,11 @@ export default defineEventHandler(async (event) => {
 		});
 	}
 
-	// audio.followPlaylist требует playlist_id, owner_id и access_key (из access_hash)
+	// audio.deletePlaylist требует только playlist_id и owner_id
 	// access_token передается автоматически через callVKAPI
-	return await playlistsRequests.follow({
+	return await playlistsRequests.unfollow({
 		playlist_id: body.playlist_id,
-		owner_id: body.owner_id,
-		access_hash: body.access_hash || ""
+		owner_id: body.owner_id
 	});
 });
 

@@ -229,6 +229,11 @@ export type TPlaylist = {
 	list?: TAudio[];
 	more?: TMore | null;
 	link?: string;
+	original?: {
+		playlist_id: number;
+		owner_id: number;
+		access_key: string;
+	};
 };
 
 import type { TAudio as TAudioFromAudio } from "../api/vk/audio/types";

@@ -144,17 +144,6 @@ export class AudioRequests extends BaseRequest implements IRequest {
 		const cacheManager = CacheManager.getInstance();
 		const cacheEnabled = await cacheManager.isEnabled();
 
-		// Проверяем кэш для каждого трека
-		if (cacheEnabled) {
-			for (const audio of audios) {
-				const cachedMetadata = await cacheManager.getMetadata(audio.full_id);
-
-				if (cachedMetadata && cachedMetadata.album && typeof cachedMetadata.album === "object" && !Array.isArray(cachedMetadata.album)) {
-					audio.album = cachedMetadata.album as typeof audio.album;
-				}
-			}
-		}
-
 		// Собираем уникальные album IDs (массивы [owner_id, playlist_id, access_hash] или объекты без title)
 		const albumMap = new Map<string, { owner_id: number; playlist_id: number; access_hash: string; audios: TAudio[] }>();
 
@@ -235,7 +224,34 @@ export class AudioRequests extends BaseRequest implements IRequest {
 					return;
 				}
 
-				// Проверяем кэш плейлистов перед запросом к VK
+				// Проверяем кэш альбомов перед запросом к VK
+				let cachedAlbum = null;
+
+				if (cacheEnabled) {
+					cachedAlbum = await cacheManager.getAlbumCache(albumInfo.owner_id, albumInfo.playlist_id);
+				}
+
+				// Если нашли в кэше альбомов, используем его
+				if (cachedAlbum) {
+					albumInfo.audios.forEach(audio => {
+						if (!audio.album) {
+							return;
+						}
+
+						audio.album = {
+							owner_id: cachedAlbum.owner_id,
+							id: cachedAlbum.id,
+							access_key: albumInfo.access_hash,
+							access_hash: albumInfo.access_hash,
+							title: cachedAlbum.title,
+							thumb: cachedAlbum.thumb
+						};
+					});
+
+					return;
+				}
+
+				// Если не нашли в кэше альбомов, проверяем кэш плейлистов
 				let playlist = null;
 
 				if (cacheEnabled) {
@@ -261,6 +277,7 @@ export class AudioRequests extends BaseRequest implements IRequest {
 						return null;
 					});
 				}
+
 				if (!playlist) {
 					return;
 				}
@@ -278,6 +295,17 @@ export class AudioRequests extends BaseRequest implements IRequest {
 				}
 
 				// Обновляем album для всех треков с этим альбомом
+				const albumData = {
+					owner_id: albumInfo.owner_id,
+					id: albumInfo.playlist_id,
+					title: playlist.title,
+					thumb: playlist.cover_url ? {
+						photo_300: playlist.cover_url,
+						photo_600: playlist.cover_url,
+						photo_1200: playlist.cover_url
+					} : undefined
+				};
+
 				albumInfo.audios.forEach(audio => {
 					if (!audio.album) {
 						return;
@@ -285,37 +313,19 @@ export class AudioRequests extends BaseRequest implements IRequest {
 
 					// Обновляем альбом независимо от его текущего формата
 					audio.album = {
-						owner_id: albumInfo.owner_id,
-						id: albumInfo.playlist_id,
+						owner_id: albumData.owner_id,
+						id: albumData.id,
 						access_key: albumInfo.access_hash,
 						access_hash: albumInfo.access_hash,
-						title: playlist.title,
-						thumb: playlist.cover_url ? {
-							photo_300: playlist.cover_url,
-							photo_600: playlist.cover_url,
-							photo_1200: playlist.cover_url
-						} : undefined
+						title: albumData.title,
+						thumb: albumData.thumb
 					};
 				});
 
-				// Сохраняем в кэш для каждого трека title и thumb альбома (основная цель обогащения)
-				// Не сохраняем access_hash и access_key, так как они могут измениться
+				// Сохраняем альбом в централизованный кэш
 				if (cacheEnabled) {
-					albumInfo.audios.forEach(async (audio) => {
-						if (audio.album && typeof audio.album === "object" && !Array.isArray(audio.album)) {
-							const metadata: Record<string, any> = {
-								album: {
-									owner_id: audio.album.owner_id,
-									id: audio.album.id,
-									title: audio.album.title,
-									thumb: audio.album.thumb
-								}
-							};
-
-							await cacheManager.saveMetadata(audio.full_id, metadata).catch(() => {
-								// Ignore background caching errors
-							});
-						}
+					await cacheManager.saveAlbumCache(albumData.owner_id, albumData.id, albumData).catch(() => {
+						// Ignore background caching errors
 					});
 				}
 			}));
@@ -679,8 +689,8 @@ export class AudioRequests extends BaseRequest implements IRequest {
 
 	public async getReorderHash(): Promise<string> {
 		const response = await this.request<string>({});
-
 		const reorderHashMatch = response.match(/"audiosReorderHash":"(.*?)"/);
+
 		if (!reorderHashMatch) {
 			return "";
 		}
@@ -735,51 +745,33 @@ export class AudioRequests extends BaseRequest implements IRequest {
 
 		const response = await this.request<TRawResponse<TGetCatalogSectionPayload | TGetGeneralSectionPayload>>({}, `wall${params.owner_id}_${params.post_id}`);
 
-		console.log(`[getFromWall] Post ${params.post_id}, owner ${params.owner_id}`);
-		console.log(`[getFromWall] Response:`, JSON.stringify(response, null, 2).substring(0, 500));
-
 		if (!response || !response.payload) {
-			console.log(`[getFromWall] No response or payload`);
 			return [];
 		}
 
 		const payload = response.payload[1];
 		
 		if (!payload) {
-			console.log(`[getFromWall] No payload[1]`);
 			return [];
 		}
-
-		console.log(`[getFromWall] Payload type:`, Array.isArray(payload) ? "array" : typeof payload);
-		console.log(`[getFromWall] Payload keys:`, typeof payload === "object" && payload !== null ? Object.keys(payload) : "N/A");
 
 		let rawAudios: TRawAudio[] = [];
 
 		if (Array.isArray(payload)) {
-			console.log(`[getFromWall] Payload is array, length:`, payload.length);
 			if (payload[1] && typeof payload[1] === "object" && "playlist" in payload[1]) {
 				rawAudios = (payload[1] as any).playlist?.list || [];
-				console.log(`[getFromWall] Found audios in array[1].playlist.list:`, rawAudios.length);
 			}
 		} else if (typeof payload === "object" && payload !== null) {
 			if ("playlist" in payload) {
 				rawAudios = (payload as any).playlist?.list || [];
-				console.log(`[getFromWall] Found audios in playlist.list:`, rawAudios.length);
 			} else if ("list" in payload) {
 				rawAudios = (payload as any).list || [];
-				console.log(`[getFromWall] Found audios in list:`, rawAudios.length);
-			} else {
-				console.log(`[getFromWall] No playlist or list in payload`);
 			}
 		}
-
-		console.log(`[getFromWall] Total raw audios:`, rawAudios.length);
 
 		const parsed = await this.parseAudios(rawAudios, {
 			raw: params.raw || false
 		});
-
-		console.log(`[getFromWall] Parsed audios:`, parsed.length);
 
 		return parsed;
 	}

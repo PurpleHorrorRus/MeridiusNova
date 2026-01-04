@@ -4,12 +4,18 @@
 			class="downloads-button"
 			@click="toggleMenu"
 		>
-			<Icon name="mdi:download" size="16" />
+			<Icon name="mdi:download" :size="iconSize" />
+			<span v-if="showLabel" class="downloads-button-text">{{ getString("downloads.title") }}</span>
 			<span v-if="activeCount > 0" class="downloads-badge">{{ activeCount }}</span>
 		</button>
 
 		<Transition name="fade">
-			<div v-if="showMenu" class="downloads-menu">
+			<div 
+				v-if="showMenu" 
+				ref="downloadsMenuRef"
+				class="downloads-menu"
+				:style="showLabel ? { top: `${menuPosition.top}px`, left: `${menuPosition.left}px` } : {}"
+			>
 				<div class="downloads-menu-header">
 					<span class="downloads-menu-title">{{ getString("downloads.title") }}</span>
 					<div class="downloads-menu-header-actions">
@@ -60,6 +66,14 @@ import { useDownloadsStore } from "~/stores/downloads";
 import DownloadItem from "./DownloadItem.vue";
 import { useEventListener } from "~/composables/useEventListener";
 
+const props = withDefaults(defineProps<{
+	showLabel?: boolean;
+	iconSize?: number;
+}>(), {
+	showLabel: false,
+	iconSize: 16
+});
+
 const { getString } = useStrings();
 const downloadsStore = useDownloadsStore();
 
@@ -79,6 +93,11 @@ onMounted(() => {
 
 	if (import.meta.client) {
 		useEventListener(document, "click", handleClickOutside);
+		
+		if (props.showLabel) {
+			useEventListener(window, "resize", updateMenuPosition);
+			useEventListener(window, "scroll", updateMenuPosition, true);
+		}
 	}
 });
 
@@ -87,6 +106,8 @@ onUnmounted(() => {
 });
 
 const downloadsContainerRef = ref<HTMLElement | null>(null);
+const downloadsMenuRef = ref<HTMLElement | null>(null);
+const menuPosition = ref({ top: 0, left: 0 });
 
 const handleClickOutside = (event: MouseEvent) => {
 	const target = event.target as HTMLElement;
@@ -97,9 +118,46 @@ const handleClickOutside = (event: MouseEvent) => {
 	}
 };
 
+const updateMenuPosition = () => {
+	if (!downloadsContainerRef.value || !downloadsMenuRef.value || !props.showLabel) {
+		return;
+	}
+
+	const containerRect = downloadsContainerRef.value.getBoundingClientRect();
+	const menuWidth = 320;
+	const gap = 8;
+	
+	let left = containerRect.right + gap;
+	let top = containerRect.top;
+
+	if (window.innerWidth - left < menuWidth) {
+		left = containerRect.left - menuWidth - gap;
+	}
+
+	if (window.innerHeight - top < 500) {
+		top = window.innerHeight - 500;
+	}
+
+	menuPosition.value = { top, left };
+};
+
 const toggleMenu = () => {
 	showMenu.value = !showMenu.value;
+	
+	if (showMenu.value && props.showLabel) {
+		nextTick(() => {
+			updateMenuPosition();
+		});
+	}
 };
+
+watch(showMenu, (isOpen) => {
+	if (isOpen && props.showLabel) {
+		nextTick(() => {
+			updateMenuPosition();
+		});
+	}
+});
 
 const closeMenu = () => {
 	showMenu.value = false;
@@ -159,13 +217,33 @@ const clearAll = async () => {
 	height: 32px;
 	background: transparent;
 	border: none;
-	color: var(--text, #fff);
+	color: var(--text-secondary, #b3b3b3);
 	cursor: pointer;
 	border-radius: 4px;
-	transition: background 0.2s;
+	transition: all 0.2s;
+	text-align: left;
 
 	&:hover {
 		background: var(--hover, #2a2a2a);
+		color: var(--text, #fff);
+	}
+}
+
+.downloads-button-text {
+	font-size: 14px;
+	font-weight: 500;
+	flex: 1;
+
+	@media (max-width: 1000px) {
+		font-size: 13px;
+	}
+
+	@media (max-width: 800px) {
+		font-size: 12px;
+	}
+
+	@media (max-width: 600px) {
+		display: none;
 	}
 }
 

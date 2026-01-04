@@ -15,8 +15,8 @@ interface SegmentData {
 	normalized: boolean;
 	gainData?: {
 		gain: number;
-		averageDb: number;
-		boost: number;
+		rms: number;
+		rmsDb: number;
 	};
 }
 
@@ -28,12 +28,14 @@ export class Normalizer {
 	private hls: Hls;
 	private config: NormalizerConfig;
 	private crossfade: any;
-	private song: TAudio;
+	private song: TAudio & { crossfade?: boolean };
 	private gained: SegmentData[] = [];
 	private connected: boolean = false;
 	private normalized: boolean = false;
-	private lastGain: number = 0;
+	private lastGain: number = 1;
 	private audioContext: AudioContext;
+	private targetRmsDb: number = -16;
+	private transitionDuration: number = 0.1;
 
 	constructor(
 		soundNode: HTMLAudioElement,
@@ -42,7 +44,7 @@ export class Normalizer {
 		hls: Hls,
 		config: NormalizerConfig,
 		crossfade: any,
-		song: TAudio
+		song: TAudio & { crossfade?: boolean }
 	) {
 		this.soundNode = soundNode;
 		this.audio = soundNode;
@@ -53,15 +55,9 @@ export class Normalizer {
 		this.crossfade = crossfade;
 		this.song = song;
 		this.audioContext = audioContext;
-		this.max = config.max;
-		this.min = 1;
-		this.maxDb = 1 + (config.max / 10);
-		this.lastGain = 0;
+		this.targetRmsDb = -16 - (config.max / 2);
+		this.lastGain = 1;
 	}
-
-	private max: number;
-	private min: number;
-	private maxDb: number;
 
 	connect(): Normalizer {
 		if (this.connected || !this.config.enable) {
@@ -72,11 +68,16 @@ export class Normalizer {
 			this.normalized = true;
 		});
 
-		this.hls.on(Hls.Events.BUFFER_APPENDING, async (_: any, segment: SegmentData) => {
-			if (segment.data.byteLength > 10000 && this.gainNode !== null) {
-				segment.normalized = false;
-				segment = await this.normalizeSegment(segment);
-				this.gained.push(segment);
+		this.hls.on(Hls.Events.BUFFER_APPENDING, async (_: any, data: any) => {
+			const segmentData: SegmentData = {
+				frag: data.frag,
+				data: data.data,
+				normalized: false
+			};
+
+			if (segmentData.data.byteLength > 10000 && this.gainNode !== null) {
+				const normalizedSegment = await this.normalizeSegment(segmentData);
+				this.gained.push(normalizedSegment);
 			}
 		});
 
@@ -107,7 +108,8 @@ export class Normalizer {
 			return segment.frag.end > this.audio.currentTime;
 		});
 
-		if (segments.length === 0 || this.checkBlocked(segments[0])) {
+		const firstSegment = segments[0];
+		if (segments.length === 0 || !firstSegment || this.checkBlocked(firstSegment)) {
 			return false;
 		}
 
@@ -134,81 +136,95 @@ export class Normalizer {
 		}
 
 		segment.gainData = segment.gainData || await this.calculateGain(segment.data);
-		this.lastGain = segment.gainData.gain;
 
 		const calculatedTime = this.playerTime <= segment.frag.start
 			? (segment.frag.start - this.playerTime)
 			: 0;
 
-		const time = this.audioContext.currentTime + calculatedTime;
+		const startTime = this.audioContext.currentTime + calculatedTime;
+		const endTime = startTime + this.transitionDuration;
 
 		if (this.gainNode) {
-			this.gainNode.gain.linearRampToValueAtTime(segment.gainData.gain, time);
+			const currentGain = this.gainNode.gain.value;
+			const targetGain = segment.gainData.gain;
+
+			if (Math.abs(currentGain - targetGain) > 0.001) {
+				this.gainNode.gain.setValueAtTime(currentGain, startTime);
+				this.gainNode.gain.linearRampToValueAtTime(targetGain, endTime);
+			} else {
+				this.gainNode.gain.setValueAtTime(targetGain, startTime);
+			}
 		}
 
+		this.lastGain = segment.gainData.gain;
 		segment.normalized = true;
 		return segment;
 	}
 
-	private async calculatePeaks(data: ArrayBuffer): Promise<number[]> {
+	private async calculateRms(data: ArrayBuffer): Promise<number> {
 		const buffer = data.slice(0);
 		const decodedData = await this.audioContext.decodeAudioData(buffer);
-		const decodedBuffer = decodedData.getChannelData(0);
-		const sliceLen = Math.floor(decodedData.sampleRate * 0.05);
+		const numberOfChannels = decodedData.numberOfChannels;
+		const length = decodedData.length;
 
-		const peaks: number[] = [];
-		for (let i = 0, sum = 0; i < decodedBuffer.length / 2; i++) {
-			sum += decodedBuffer[i] ** 2;
+		if (length === 0) {
+			return 0;
+		}
 
-			if (i % sliceLen === 0) {
-				peaks.push(Math.sqrt(sum / sliceLen));
-				sum = 0;
+		let sumOfSquares = 0;
+
+		for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex++) {
+			const channelData = decodedData.getChannelData(channelIndex);
+
+			for (let sampleIndex = 0; sampleIndex < length; sampleIndex++) {
+				const sample = channelData[sampleIndex];
+				if (sample !== undefined) {
+					sumOfSquares += sample * sample;
+				}
 			}
 		}
 
-		return peaks.filter(peak => peak > 0);
+		const meanSquare = sumOfSquares / (numberOfChannels * length);
+		const rms = Math.sqrt(meanSquare);
+
+		return rms;
+	}
+
+	private rmsToDb(rms: number): number {
+		if (rms <= 0) {
+			return -Infinity;
+		}
+
+		return 20 * Math.log10(rms);
 	}
 
 	private async calculateGain(data: ArrayBuffer): Promise<{
 		gain: number;
-		averageDb: number;
-		boost: number;
+		rms: number;
+		rmsDb: number;
 	}> {
-		const peaks = await this.calculatePeaks(data);
-		if (peaks.length === 0) {
+		const rms = await this.calculateRms(data);
+
+		if (rms <= 0) {
 			return {
 				gain: this.lastGain,
-				averageDb: 0,
-				boost: 0
+				rms: 0,
+				rmsDb: -Infinity
 			};
 		}
 
-		const average = peaks.reduce((acc, value) => acc + value, 0) / peaks.length;
-		const averageDb = Number((average * 10).toFixed(2));
-		const gainData = this.calculateIncrease(averageDb);
+		const rmsDb = this.rmsToDb(rms);
+		const targetGainDb = this.targetRmsDb - rmsDb;
+		const targetGain = Math.pow(10, targetGainDb / 20);
+
+		const maxGain = Math.pow(10, this.config.max / 20);
+		const minGain = Math.pow(10, -this.config.max / 20);
+		const clampedGain = Math.max(minGain, Math.min(maxGain, targetGain));
 
 		return {
-			gain: Number((gainData.gain).toFixed(1)),
-			averageDb,
-			...gainData
-		};
-	}
-
-	private calculateIncrease(averageDb: number): {
-		gain: number;
-		boost: number;
-	} {
-		let boost = this.maxDb;
-
-		if (averageDb <= 1) {
-			boost = Number(((1 - averageDb) * 10).toFixed(2));
-			boost = Math.max(boost, this.maxDb);
-			boost = Math.min(boost, this.max);
-		}
-
-		return {
-			gain: Math.min(Math.max((this.max + (this.max - averageDb)) * boost, this.min), this.max),
-			boost
+			gain: Number(clampedGain.toFixed(4)),
+			rms: Number(rms.toFixed(6)),
+			rmsDb: Number(rmsDb.toFixed(2))
 		};
 	}
 
@@ -225,3 +241,4 @@ export class Normalizer {
 		return this.audio.currentTime;
 	}
 }
+

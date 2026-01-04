@@ -13,6 +13,7 @@ import { getAudioUrls } from "../audio/url.get";
 
 import type { TAudio } from "../audio/types";
 import type { IPlaylistDownload } from "~~/server/utils/download-manager";
+import type { TGetSectionPayload, TGetCatalogSectionPayload, TMore } from "~~/server/utils/types";
 
 const isExternalServer = (): boolean => {
 	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
@@ -104,7 +105,7 @@ export default defineEventHandler(async (event) => {
 
 	const downloadId = downloadManager.generateId();
 
-	const playlist = await playlistsRequests.getPlaylist({
+	let playlist = await playlistsRequests.getPlaylist({
 		owner_id: Number(body.owner_id),
 		playlist_id: Number(body.playlist_id),
 		access_hash: body.access_hash as string | undefined,
@@ -116,6 +117,46 @@ export default defineEventHandler(async (event) => {
 			statusCode: 404,
 			message: "Playlist not found"
 		});
+	}
+
+	// Для библиотеки пользователя (playlist_id === -1) получаем информацию о пользователе
+	if (playlist.playlist_id === -1) {
+		const { BaseRequest } = await import("~~/server/utils/base");
+		const baseRequest = new BaseRequest(event);
+		const ownerId = Number(body.owner_id);
+		const isUser = ownerId > 0;
+
+		if (isUser) {
+			const users = await baseRequest.callVKAPI("users.get", {
+				user_ids: Math.abs(ownerId).toString(),
+				fields: "photo_200,photo_max"
+			}).catch(() => []);
+
+			if (users && Array.isArray(users) && users.length > 0) {
+				const user = users[0];
+				playlist.title = `${user.first_name || ""} ${user.last_name || ""}`.trim() || `User ${ownerId}`;
+				playlist.cover_url = user.photo_200 || user.photo_max || playlist.cover_url;
+				playlist.author = {
+					id: user.id,
+					name: playlist.title
+				};
+			}
+		} else {
+			const response = await baseRequest.callVKAPI("groups.getById", {
+				group_ids: Math.abs(ownerId).toString(),
+				fields: "photo_200"
+			}).catch(() => ({ groups: [] }));
+
+			if (response && response.groups && Array.isArray(response.groups) && response.groups.length > 0) {
+				const group = response.groups[0];
+				playlist.title = group.name || `Group ${ownerId}`;
+				playlist.cover_url = group.photo_200 || playlist.cover_url;
+				playlist.author = {
+					id: -Math.abs(group.id),
+					name: playlist.title
+				};
+			}
+		}
 	}
 
 	const download: IPlaylistDownload = {
@@ -145,25 +186,85 @@ export default defineEventHandler(async (event) => {
 		let allAudios: TAudio[] = [];
 		let more = playlist.more;
 
-		while (true) {
-			const response = await playlistsRequests.getPlaylist({
-				owner_id: playlist.owner_id,
-				playlist_id: playlist.playlist_id,
-				access_hash: playlist.access_hash,
-				list: true,
-				count: 1000,
-				offset: allAudios.length
-			});
+		// Для библиотеки пользователя (playlist_id === -1) используем другой способ загрузки
+		if (playlist.playlist_id === -1) {
+			let hasMore = true;
 
-			if (!response || !response.list || response.list.length === 0) {
-				break;
+			while (hasMore) {
+				let response: { audios: TAudio[]; more: TMore | null } | null = null;
+
+				if (!more) {
+					// Первая загрузка
+					const section = await audioRequests.getSection<TGetSectionPayload>({
+						owner_id: playlist.owner_id,
+						section: "all"
+					});
+
+					const payloadData = section.payload[1]?.[1] as { playlist?: { list?: any[] } } | undefined;
+					const audios = await audioRequests.parseAudios(payloadData?.playlist?.list || [], {
+						withUrls: false
+					});
+
+					more = audioRequests.parseMore(payloadData || {});
+
+					response = {
+						audios,
+						more
+					};
+				} else {
+					// Загрузка следующей страницы
+					const result = await audioRequests.requestMore<TGetCatalogSectionPayload, TAudio>(more);
+
+					if (result && typeof result === "object" && "list" in result) {
+						response = {
+							audios: result.list as TAudio[],
+							more: result.more || null
+						};
+					} else {
+						hasMore = false;
+						break;
+					}
+				}
+
+				if (!response || !response.audios || response.audios.length === 0) {
+					hasMore = false;
+					break;
+				}
+
+				allAudios = allAudios.concat(response.audios);
+				more = response.more;
+
+				if (!more || !more.next_from) {
+					hasMore = false;
+					break;
+				}
 			}
+		} else {
+			// Для обычных плейлистов используем стандартный способ
+			let hasMore = true;
 
-			allAudios = allAudios.concat(response.list);
-			more = response.more;
+			while (hasMore) {
+				const response = await playlistsRequests.getPlaylist({
+					owner_id: playlist.owner_id,
+					playlist_id: playlist.playlist_id,
+					access_hash: playlist.access_hash,
+					list: true,
+					count: 1000,
+					offset: allAudios.length
+				});
 
-			if (!more || !more.next_from) {
-				break;
+				if (!response || !response.list || response.list.length === 0) {
+					hasMore = false;
+					break;
+				}
+
+				allAudios = allAudios.concat(response.list);
+				more = response.more;
+
+				if (!more || !more.next_from) {
+					hasMore = false;
+					break;
+				}
 			}
 		}
 

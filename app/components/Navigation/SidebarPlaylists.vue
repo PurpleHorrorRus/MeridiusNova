@@ -84,6 +84,10 @@ const handlePlaylistPlay = async (playlist: any) => {
 
 <style scoped lang="scss">
 .nav-item-subitems-wrapper {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 }
 
@@ -98,42 +102,33 @@ const handlePlaylistPlay = async (playlist: any) => {
 	margin-bottom: 0;
 	border-top: 1px solid transparent;
 	border-bottom: 1px solid transparent;
+	min-height: 0;
+	max-height: 100%;
 
 	&.expanded {
 		grid-template-rows: 1fr;
 		opacity: 1;
 		padding-top: 8px;
-		padding-bottom: 8px;
+		padding-bottom: 0;
 		margin-top: 4px;
-		margin-bottom: 4px;
+		margin-bottom: 0;
 		border-top-color: var(--border, #2a2a2a);
-		border-bottom-color: var(--border, #2a2a2a);
+		border-bottom-color: transparent;
 	}
 }
 
 .nav-item-subitems-inner {
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
 	overflow-y: auto;
 	overflow-x: hidden;
 	min-height: 0;
-	max-height: calc(100vh - 550px);
-
-	@media (max-width: 1000px) {
-		max-height: calc(100vh - 530px);
-	}
-
-	@media (max-width: 800px) {
-		max-height: calc(100vh - 510px);
-	}
-
-	@media (max-width: 600px) {
-		max-height: calc(100vh - 490px);
-	}
+	scrollbar-width: thin;
+	scrollbar-color: var(--scroll, #404040) transparent;
+	padding-right: 4px;
 
 	&::-webkit-scrollbar {
-		width: 4px;
+		width: 6px;
 	}
 
 	&::-webkit-scrollbar-track {
@@ -141,12 +136,17 @@ const handlePlaylistPlay = async (playlist: any) => {
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background: var(--text-tertiary, #6b6b6b);
-		border-radius: 2px;
+		background: var(--scroll, #404040);
+		border-radius: 3px;
+		transition: background 0.2s ease;
 
 		&:hover {
-			background: var(--text-secondary, #b3b3b3);
+			background: var(--scroll-hover, #505050);
 		}
+	}
+
+	&::-webkit-scrollbar-corner {
+		background: transparent;
 	}
 }
 

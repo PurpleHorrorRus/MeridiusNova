@@ -131,8 +131,6 @@ export const useHotkeys = () => {
 			const handler = actionHandlers[action];
 
 			if (handler) {
-				console.log("register hotkey", tauriAccelerator, action);
-
 				await register(tauriAccelerator, handler).catch((error) => {
 					console.error(`Failed to register hotkey ${action}: ${tauriAccelerator}`, error);
 				});

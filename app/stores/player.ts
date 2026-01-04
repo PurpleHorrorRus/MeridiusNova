@@ -263,19 +263,16 @@ export const usePlayerStore = defineStore("player", {
 
 		async play(song: TAudio & { crossfade?: boolean; clear?: boolean; manual?: boolean }) {
 			if (!song || song.is_restriction) {
-				console.log("[PLAYER.PLAY] Rejected", { reason: !song ? "no song" : "restriction" });
 				return false;
 			}
 
 			// If current song is same and paused -> resume (но не при manual переключении)
 			const isSameSong = this.song?.full_id === song.full_id;
 			if (isSameSong && this.paused && !song.manual) {
-				console.log("[PLAYER.PLAY] Resuming same song");
 				return this.resume();
 			}
 
 			if (this.loading) {
-				console.log("[PLAYER.PLAY] Already loading, rejected");
 				return false;
 			}
 
@@ -297,13 +294,6 @@ export const usePlayerStore = defineStore("player", {
 
 			// Sync playlist index
 			const playlistStore = usePlaylistStore();
-			console.log("[PLAYER.PLAY] Before index sync", {
-				manual: song.manual,
-				currentIndex: playlistStore.currentIndex,
-				currentSongId: playlistStore.currentSong?.full_id,
-				playingSongId: song.full_id,
-				queueLength: playlistStore.playingSongs.length
-			});
 			
 			// При manual переключении не синхронизируем индекс, так как он уже установлен в next()
 			// Синхронизируем только если индекс не установлен или трек не найден по текущему индексу
@@ -311,25 +301,11 @@ export const usePlayerStore = defineStore("player", {
 				const currentSong = playlistStore.currentSong;
 				if (!currentSong || currentSong.full_id !== song.full_id) {
 					const songIndex = playlistStore.playingSongs.findIndex((s: TAudio) => s.full_id === song.full_id);
-					console.log("[PLAYER.PLAY] Syncing index", {
-						songIndex,
-						currentSongId: currentSong?.full_id,
-						playingSongId: song.full_id
-					});
 					if (songIndex >= 0) {
 						playlistStore.setCurrentIndex(songIndex);
 					}
-				} else {
-					console.log("[PLAYER.PLAY] Index already correct");
 				}
-			} else {
-				console.log("[PLAYER.PLAY] Skipping index sync (manual)");
 			}
-			
-			console.log("[PLAYER.PLAY] After index sync", {
-				currentIndex: playlistStore.currentIndex,
-				currentSongId: playlistStore.currentSong?.full_id
-			});
 
 			if (!this.audioContext) {
 				await this.initPlayer();

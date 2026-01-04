@@ -184,20 +184,10 @@ export const usePlaylistStore = defineStore("playlist", {
 	},
 
 	setSongs(songs: TAudio[]) {
-		console.log("[SET_SONGS] Called", {
-			inputSongsCount: Array.isArray(songs) ? songs.length : 0,
-			currentQueueLength: this.playingSongs.length,
-			currentIndex: this.currentIndex
-		});
-		
 		// Фильтруем restricted треки при добавлении в очередь
 		const filteredSongs = Array.isArray(songs) 
 			? songs.filter(songItem => !songItem.is_restriction)
 			: [];
-		
-		console.log("[SET_SONGS] After filtering", {
-			filteredSongsCount: filteredSongs.length
-		});
 		
 		// Полностью заменяем массив для правильной реактивности
 		// Создаем новый массив, чтобы гарантировать обновление реактивности
@@ -211,11 +201,6 @@ export const usePlaylistStore = defineStore("playlist", {
 		if (this.currentIndex >= this.playingSongs.length) {
 			this.currentIndex = -1;
 		}
-		
-		console.log("[SET_SONGS] After update", {
-			newQueueLength: this.playingSongs.length,
-			newIndex: this.currentIndex
-		});
 	},
 
 		addSong(song: TAudio, index?: number) {

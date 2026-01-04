@@ -144,11 +144,9 @@ const canProcess = (attachment: { type: string }) => {
 	return attachment.type === "audio" || attachment.type === "audio_playlist";
 };
 
-const processingPosts = (data: { items: WallPostItem[]; count: number }) => {
-	const items = [...data.items];
-	const repostedFromMap = new Map<number, { owner_id: number; post_id: number }>();
-
-	console.log(`[Wall] Received ${items.length} posts from API`);
+	const processingPosts = (data: { items: WallPostItem[]; count: number }) => {
+		const items = [...data.items];
+		const repostedFromMap = new Map<number, { owner_id: number; post_id: number }>();
 
 	for (let i = 0; i < items.length; i++) {
 		if (items[i].copy_history && items[i].copy_history.length > 0) {
@@ -178,13 +176,8 @@ const processingPosts = (data: { items: WallPostItem[]; count: number }) => {
 
 	const filtered = items.filter(post => {
 		const hasAudio = post.attachments?.some(attachmentItem => canProcess(attachmentItem));
-		if (!hasAudio) {
-			console.log(`[Wall] Post ${post.id} skipped - no audio attachments`);
-		}
 		return hasAudio;
 	});
-
-	console.log(`[Wall] Filtered to ${filtered.length} posts with audio attachments`);
 	loaded.value += items.length;
 
 	return { posts: filtered, repostedFromMap };
@@ -230,8 +223,6 @@ const processingPost = async (post: WallPostItem, repostedFrom?: { owner_id: num
 		}
 		
 		if (allAudioIds.length > 0) {
-			console.log(`[Wall] Found ${allAudioIds.length} audio(s) in post ${post.id}, reloading:`, allAudioIds);
-			
 			const reloadResponse = await $fetch<TAudio[]>("/api/vk/audio/reload", {
 				method: "POST",
 				body: {
@@ -249,7 +240,6 @@ const processingPost = async (post: WallPostItem, repostedFrom?: { owner_id: num
 					type: "audio",
 					audios: reloadResponse
 				});
-				console.log(`[Wall] Successfully reloaded ${reloadResponse.length} audio(s) for post ${post.id}`);
 			} else {
 				console.warn(`[Wall] Reload returned empty, trying getFromWall for post ${post.id}`);
 				
@@ -270,7 +260,6 @@ const processingPost = async (post: WallPostItem, repostedFrom?: { owner_id: num
 						type: "audio",
 						audios
 					});
-					console.log(`[Wall] Successfully loaded ${audios.length} audio(s) via getFromWall for post ${post.id}`);
 				} else {
 					console.warn(`[Wall] No audios found in post ${post.id} after all attempts`);
 				}
@@ -330,8 +319,6 @@ const getAudiosPosts = async (params: { offset?: number; count?: number } = {}) 
 const get = async (params: { offset?: number; count?: number } = {}) => {
 	const { posts: audioPosts, repostedFromMap } = await getAudiosPosts(params);
 
-	console.log(`[Wall] Found ${audioPosts.length} posts with audio attachments`);
-
 	if (audioPosts.length > 0) {
 		const results: ProcessedWallPost[] = [];
 		
@@ -341,7 +328,6 @@ const get = async (params: { offset?: number; count?: number } = {}) => {
 				console.error(`[Wall] Failed to process post ${post.id}:`, err, post);
 				return [];
 			});
-			console.log(`[Wall] Processed post ${post.id}: ${processed.length} results`);
 			return processed;
 		});
 
@@ -353,7 +339,6 @@ const get = async (params: { offset?: number; count?: number } = {}) => {
 			}
 		}
 
-		console.log(`[Wall] Total processed posts: ${results.length}`);
 		return results;
 	}
 

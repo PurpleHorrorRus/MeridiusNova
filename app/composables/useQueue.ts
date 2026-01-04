@@ -26,16 +26,6 @@ export const useQueue = () => {
 	 * @param startIndex - Опциональный индекс для установки текущего трека
 	 */
 	const setQueue = async (songs: TAudio[], playlist?: TPlaylist, startIndex?: number) => {
-		console.log("[SET_QUEUE] Called", {
-			songsCount: songs.length,
-			playlistId: playlist?.raw_id,
-			startIndex,
-			currentQueueLength: playlistStore.playingSongs.length,
-			currentPlaylist: playlistStore.current?.raw_id,
-			playingPlaylist: playlistStore.playing?.raw_id,
-			stackTrace: new Error().stack
-		});
-
 		// Устанавливаем плейлист, если передан
 		// ВАЖНО: устанавливаем плейлист ДО setSongs, чтобы playing был обновлен
 		if (playlist) {
@@ -50,51 +40,26 @@ export const useQueue = () => {
 		// Устанавливаем очередь треков (setSongs автоматически фильтрует restricted треки)
 		playlistStore.setSongs(songs);
 
-		console.log("[SET_QUEUE] After setSongs", {
-			newQueueLength: playlistStore.playingSongs.length,
-			currentPlaylist: playlistStore.current?.raw_id,
-			playingPlaylist: playlistStore.playing?.raw_id
-		});
-
 		// Устанавливаем индекс, если передан
 		// Используем playingSongs для получения правильного индекса после фильтрации
 		if (startIndex !== undefined && startIndex >= 0 && startIndex < songs.length) {
 			// Находим трек по индексу в исходном списке
 			const targetSong = songs[startIndex];
-			console.log("[SET_QUEUE] Setting index", {
-				startIndex,
-				targetSongId: targetSong?.full_id,
-				queueLength: playlistStore.playingSongs.length,
-				currentIndex: playlistStore.currentIndex
-			});
 			
 			if (targetSong) {
 				// Ищем этот трек в отфильтрованной очереди
 				const filteredIndex = playlistStore.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
-				console.log("[SET_QUEUE] Found index in queue", {
-					filteredIndex,
-					targetSongId: targetSong.full_id
-				});
 				
 				if (filteredIndex >= 0) {
 					playlistStore.setCurrentIndex(filteredIndex);
-					console.log("[SET_QUEUE] Index set to", filteredIndex);
 				} else {
 					// Если трек не найден (возможно, был отфильтрован), используем первый доступный
-					console.log("[SET_QUEUE] Song not found in queue, setting to 0");
 					playlistStore.setCurrentIndex(0);
 				}
 			} else {
-				console.log("[SET_QUEUE] No target song, setting to 0");
 				playlistStore.setCurrentIndex(0);
 			}
 		}
-		
-		console.log("[SET_QUEUE] Final state", {
-			currentIndex: playlistStore.currentIndex,
-			queueLength: playlistStore.playingSongs.length,
-			playingPlaylistId: playlistStore.playing?.raw_id
-		});
 	};
 
 	/**

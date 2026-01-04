@@ -1,8 +1,8 @@
 <template>
 	<div class="layout" id="default" :style="gridStyle">
-		<header v-if="isTauri" class="layout-header">
-			<Titlebar />
-		</header>
+	<header v-if="isTauri && !isNativeFullscreen" class="layout-header">
+		<Titlebar />
+	</header>
 
 	<div class="layout-body">
 		<ClientOnly>
@@ -27,15 +27,21 @@
 </template>
 
 <script setup lang="ts">
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const mainContainerRef = ref<HTMLElement | null>(null);
 
 provide("layoutMainRef", mainContainerRef);
 
 const { isMobile } = useIsMobile();
+const { isNativeFullscreen } = useNativeFullscreen();
+
+const isTauri = ref(false);
+
+onMounted(() => {
+	isTauri.value = typeof window !== "undefined" && "__TAURI__" in window;
+});
 
 const gridStyle = computed(() => {
-	if (isTauri) {
+	if (isTauri.value && !isNativeFullscreen.value) {
 		return {
 			gridTemplateRows: "30px 1fr auto",
 			"--body-row": "2"

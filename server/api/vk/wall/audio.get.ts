@@ -24,12 +24,6 @@ export default defineEventHandler(async (event) => {
 		return [];
 	});
 
-	console.log(`[Wall Audio API] Post ${postId}, owner ${ownerId}: found ${audios?.length || 0} audios`);
-
-	if (audios && audios.length > 0) {
-		console.log(`[Wall Audio API] First audio sample:`, audios[0]);
-	}
-
 	return {
 		audios: audios || []
 	};

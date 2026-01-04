@@ -1,12 +1,10 @@
-import { BaseRequest } from "~~/server/utils/base";
-import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
-
 import HTMLParser from "node-html-parser";
 
-import { getHeader } from "h3";
+import { BaseRequest } from "~~/server/utils/base";
+import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
+import { IRequest, type TRawResponse, type TGetCatalogSectionPayload } from "~~/server/utils/types";
 import type { EventHandlerRequest, H3Event } from "h3";
-import type { TPlaylist, TMore, TPlaylistCollection } from "~~/server/utils/types";
-import { IRequest, TPayload, TRawResponse, TGetCatalogSectionPayload } from "~~/server/utils/types";
+import type { TPlaylist, TPlaylistCollection } from "~~/server/utils/types";
 
 class PlaylistsRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
@@ -156,7 +154,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					playlists: []
 				};
 			}
-			
+
 			if (payload.length === 1) {
 				const firstElement = payload[0];
 				if (Array.isArray(firstElement)) {
@@ -206,8 +204,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				throw createError({
 					statusCode: 500,
 					message: `Unexpected payload structure. Expected array or object with playlists, got ${typeof payload}`,
-					data: { 
-						payloadType: typeof payload, 
+					data: {
+						payloadType: typeof payload,
 						payloadKeys: payload && typeof payload === "object" ? Object.keys(payload) : null,
 						payloadPreview: JSON.stringify(payload).substring(0, 500)
 					}
@@ -224,8 +222,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		if (typeof pl_objects === "string") {
 			const errorMessage = pl_objects;
 			if (/Access denied/i.test(errorMessage)) {
-			throw createError({
-				statusCode: 403,
+				throw createError({
+					statusCode: 403,
 					message: "Access Denied",
 					data: { errorMessage }
 				});
@@ -373,7 +371,12 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					id: playlistResponse.profiles[0].id,
 					name: `${playlistResponse.profiles[0].first_name || ""} ${playlistResponse.profiles[0].last_name || ""}`.trim()
 				} : undefined,
-				list: []
+				list: [],
+				original: vkPlaylist.original ? {
+					playlist_id: vkPlaylist.original.playlist_id,
+					owner_id: vkPlaylist.original.owner_id,
+					access_key: vkPlaylist.original.access_key || ""
+				} : undefined
 			};
 
 			// Если нужен список треков
@@ -403,7 +406,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					// Получаем полную информацию о треках
 					// audio_id из getIdsBySource уже в правильном формате для reloadAudios
 					const audioIdsList = processedIds.map(item => item.audio_id);
-					
+
 					if (audioIdsList.length > 0) {
 						const rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
 
@@ -413,6 +416,23 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 							withUrls: false
 						});
 					}
+				}
+			}
+
+			// Если follow_hash отсутствует, пытаемся получить его через старый метод
+			// Проверяем, является ли плейлист чужим: либо owner_id не совпадает с user_id, либо плейлист в избранном
+			const isOwnPlaylist = playlist.owner_id === this.event.context.user?.id && !playlist.followed;
+			if (!playlist.follow_hash && !isOwnPlaylist) {
+				const oldPlaylist = await this.getById({
+					owner_id,
+					playlist_id: params.playlist_id,
+					access_hash: params.access_hash,
+					list: false
+				}).catch(() => null);
+
+				if (oldPlaylist && oldPlaylist.follow_hash) {
+					playlist.follow_hash = oldPlaylist.follow_hash;
+					playlist.followed = oldPlaylist.followed;
 				}
 			}
 
@@ -796,21 +816,20 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		return true;
 	}
 
-	public async follow(playlist: TPlaylist): Promise<any> {
-		if (!playlist.follow_hash) {
-			throw createError({
-				statusCode: 403,
-				message: "Access Denied"
-			});
-		}
+	public async follow(params: { playlist_id: number; owner_id: number; access_hash?: string }): Promise<any> {
+		return await this.callVKAPI("audio.followPlaylist", {
+			playlist_id: params.playlist_id,
+			owner_id: params.owner_id,
+			access_key: params.access_hash || "",
+			ref: ""
+		});
+	}
 
-		return await this.request({
-			act: "follow_playlist",
-			al: 1,
-			hash: playlist.follow_hash,
-			playlist_id: playlist.playlist_id,
-			playlist_owner_id: playlist.owner_id
-		} as any);
+	public async unfollow(params: { playlist_id: number; owner_id: number }): Promise<any> {
+		return await this.callVKAPI("audio.deletePlaylist", {
+			playlist_id: params.playlist_id,
+			owner_id: params.owner_id
+		});
 	}
 
 	public async reorder(params: {
@@ -940,7 +959,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	protected async getNewHash(): Promise<string> {
 		const response = await this.mainPage();
 		const newPlaylistHashMatch = response.match(/"newPlaylistHash":"(.*?)"/);
-		
+
 		if (!newPlaylistHashMatch) {
 			return "";
 		}
@@ -999,7 +1018,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		const response = await this.mainPage();
 		const urlMatch = response.match(/\"url\":\"(.*?)\"/);
-		
+
 		if (!urlMatch) {
 			throw createError({
 				statusCode: 500,

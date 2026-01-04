@@ -48,7 +48,8 @@ export class BaseRequest implements IRequest {
 	public http: Http;
 
 	constructor(protected readonly event: H3Event<EventHandlerRequest>) {
-		this.http = getHttpInstance();
+		const userId = event.context.user?.id;
+		this.http = getHttpInstance(userId);
 	}
 
 	public async request<T extends string | Record<string, any> | any[]>(

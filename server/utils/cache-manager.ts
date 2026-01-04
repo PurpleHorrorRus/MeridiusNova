@@ -589,4 +589,71 @@ export class CacheManager {
 			throw error;
 		}
 	}
+
+	private getAlbumCachePath(ownerId: number, playlistId: number): string {
+		const basePath = path.resolve(os.homedir(), ".meridius", "album-cache");
+		return path.resolve(basePath, `${ownerId}_${playlistId}.json`);
+	}
+
+	public async getAlbumCache(ownerId: number, playlistId: number): Promise<{
+		owner_id: number;
+		id: number;
+		title: string;
+		thumb?: {
+			photo_300?: string;
+			photo_600?: string;
+			photo_1200?: string;
+		};
+	} | null> {
+		const cachePath = this.getAlbumCachePath(ownerId, playlistId);
+
+		if (!fs.pathExistsSync(cachePath)) {
+			return null;
+		}
+
+		const [error, data] = await fs.readJson(cachePath).then(
+			(data: unknown) => [null, data] as const,
+			(error: Error) => [error, null] as const
+		);
+
+		if (error) {
+			return null;
+		}
+
+		return data as {
+			owner_id: number;
+			id: number;
+			title: string;
+			thumb?: {
+				photo_300?: string;
+				photo_600?: string;
+				photo_1200?: string;
+			};
+		};
+	}
+
+	public async saveAlbumCache(ownerId: number, playlistId: number, albumData: {
+		owner_id: number;
+		id: number;
+		title: string;
+		thumb?: {
+			photo_300?: string;
+			photo_600?: string;
+			photo_1200?: string;
+		};
+	}): Promise<void> {
+		const cachePath = this.getAlbumCachePath(ownerId, playlistId);
+		const cacheDir = path.dirname(cachePath);
+
+		await ensureCacheDir(cacheDir);
+
+		const [error] = await fs.writeJson(cachePath, albumData, { spaces: 4 }).then(
+			() => [null] as const,
+			(error) => [error, null] as const
+		);
+
+		if (error) {
+			throw error;
+		}
+	}
 }

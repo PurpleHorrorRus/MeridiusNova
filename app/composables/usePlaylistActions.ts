@@ -45,7 +45,17 @@ export const usePlaylistActions = () => {
 			body: {
 				playlist_id: playlist.playlist_id,
 				owner_id: playlist.owner_id,
-				follow_hash: playlist.follow_hash
+				access_hash: playlist.access_hash || ""
+			}
+		});
+	};
+
+	const unfollowPlaylist = async (playlist: TPlaylist) => {
+		return await authenticatedFetch("/api/vk/playlists/unfollow", {
+			method: "POST",
+			body: {
+				playlist_id: playlist.playlist_id,
+				owner_id: playlist.owner_id
 			}
 		});
 	};
@@ -116,16 +126,41 @@ export const usePlaylistActions = () => {
 		return response;
 	};
 
+	const downloadLibrary = async (ownerId: number) => {
+		return await downloadPlaylist({
+			owner_id: ownerId,
+			playlist_id: -1,
+			raw_id: `${ownerId}_-1`,
+			title: "",
+			cover_url: "",
+			description: "",
+			size: 0,
+			listens: 0,
+			last_updated: 0,
+			explicit: false,
+			followed: false,
+			official: false,
+			restricted: false,
+			access_hash: "",
+			follow_hash: "",
+			edit_hash: "",
+			list: [],
+			more: null
+		});
+	};
+
 	return {
 		createPlaylist,
 		editPlaylist,
 		deletePlaylist,
 		followPlaylist,
+		unfollowPlaylist,
 		reorderPlaylist,
 		addSongToPlaylist,
 		removeSongFromPlaylist,
 		reorderSongsInPlaylist,
-		downloadPlaylist
+		downloadPlaylist,
+		downloadLibrary
 	};
 };
 

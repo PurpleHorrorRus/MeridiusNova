@@ -20,9 +20,22 @@
 				</div>
 
 				<div v-if="!isRestricted" class="collection-header-actions">
-					<button @click="handlePlayPause" class="collection-header-play-button" :disabled="isLoading">
+					<button @click="(event) => handlePlayPause(event)" class="collection-header-play-button" :disabled="isLoading">
 						<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="24" :class="{ 'loading-icon': isLoading }" />
 						<span>{{ isLoading ? getString("general.loading") : (isPlaying ? getString("player.pause") : getString("player.play")) }}</span>
+					</button>
+
+					<button @click="handlePlayRandom" class="collection-header-random-button" :disabled="isLoading">
+						<Icon name="mdi:shuffle" size="20" />
+					</button>
+
+					<button
+						v-if="canDownload"
+						@click="handleDownload"
+						class="collection-header-download-button"
+						:disabled="isDownloading"
+					>
+						<Icon :name="isDownloading ? 'mdi:loading' : 'mdi:download'" size="20" :class="{ 'loading-icon': isDownloading }" />
 					</button>
 				</div>
 			</div>
@@ -33,6 +46,7 @@
 <script setup lang="ts">
 import type { TPlaylist } from "~~/server/utils/types";
 import { usePlaylistButton } from "~/composables/usePlaylistButton";
+import { usePlaylistActions } from "~/composables/usePlaylistActions";
 
 const props = defineProps<{
 	playlist: TPlaylist;
@@ -52,9 +66,25 @@ const emit = defineEmits<{
 
 const { getString, translate } = useStrings();
 const { isPlaying, isLoading, handlePlayPause: handlePlayPauseBase } = usePlaylistButton(props.playlist);
+const { downloadLibrary } = usePlaylistActions();
 
 const isRestricted = computed(() => {
 	return Boolean(props.playlist.restricted);
+});
+
+const isDownloading = ref(false);
+
+const canDownload = computed(() => {
+	if (props.playlist.restricted) {
+		return false;
+	}
+
+	// Для пользовательской библиотеки (playlist_id === -1) всегда разрешаем скачивание
+	if (props.playlist.playlist_id === -1) {
+		return true;
+	}
+
+	return props.playlist.size > 0 || (props.playlist.list && props.playlist.list.length > 0);
 });
 
 const userName = computed(() => {
@@ -77,9 +107,26 @@ const headerStyle = computed(() => {
 	return {};
 });
 
-const handlePlayPause = async () => {
+const handlePlayPause = async (event?: MouseEvent) => {
 	emit("play", props.playlist);
-	await handlePlayPauseBase();
+	await handlePlayPauseBase(event);
+};
+
+const handlePlayRandom = async () => {
+	await handlePlayPauseBase(undefined, true);
+};
+
+const handleDownload = async () => {
+	if (isDownloading.value) {
+		return;
+	}
+
+	isDownloading.value = true;
+	await downloadLibrary(props.playlist.owner_id).catch((error) => {
+		console.error("Failed to download library:", error);
+	}).finally(() => {
+		isDownloading.value = false;
+	});
 };
 </script>
 
@@ -199,6 +246,60 @@ const handlePlayPause = async () => {
 	}
 }
 
+.collection-header-random-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	background: transparent;
+	border: 1px solid var(--border, #282828);
+	border-radius: 50%;
+	color: var(--text-secondary, #b3b3b3);
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:hover:not(:disabled) {
+		border-color: var(--text, #fff);
+		color: var(--text, #fff);
+		transform: scale(1.1);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+}
+
+.collection-header-download-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	background: transparent;
+	border: 1px solid var(--border, #282828);
+	border-radius: 50%;
+	color: var(--text-secondary, #b3b3b3);
+	cursor: pointer;
+	transition: all 0.2s;
+
+	&:hover:not(:disabled) {
+		border-color: var(--text, #fff);
+		color: var(--text, #fff);
+		transform: scale(1.1);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.7;
+	}
+
+	.loading-icon {
+		animation: spin 1s linear infinite;
+	}
+}
+
 @keyframes spin {
 	from {
 		transform: rotate(0deg);
@@ -263,6 +364,16 @@ const handlePlayPause = async () => {
 		padding: 12px 24px;
 		font-size: 13px;
 	}
+
+	.collection-header-random-button {
+		width: 44px;
+		height: 44px;
+	}
+
+	.collection-header-download-button {
+		width: 44px;
+		height: 44px;
+	}
 }
 
 @media (max-width: 800px) {
@@ -317,6 +428,26 @@ const handlePlayPause = async () => {
 			height: 20px;
 		}
 	}
+
+	.collection-header-random-button {
+		width: 40px;
+		height: 40px;
+
+		:deep(svg) {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
+	.collection-header-download-button {
+		width: 40px;
+		height: 40px;
+
+		:deep(svg) {
+			width: 18px;
+			height: 18px;
+		}
+	}
 }
 
 @media (max-width: 600px) {
@@ -369,6 +500,16 @@ const handlePlayPause = async () => {
 	.collection-header-play-button {
 		flex: 1;
 		max-width: 200px;
+	}
+
+	.collection-header-random-button {
+		width: 40px;
+		height: 40px;
+	}
+
+	.collection-header-download-button {
+		width: 40px;
+		height: 40px;
 	}
 }
 </style>

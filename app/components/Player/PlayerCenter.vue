@@ -7,8 +7,8 @@
 				</button>
 				
 			<button class="btn-play" @click.stop="toggle">
-				<Icon v-if="paused" name="mdi:play" size="28" />
-				<Icon v-else name="mdi:pause" size="28" />
+				<Icon v-if="paused" name="mdi:play" />
+				<Icon v-else name="mdi:pause" />
 			</button>
 				
 				<button class="btn-control" @click.stop="playNext">
@@ -152,8 +152,8 @@ const formatTime = (seconds: number): string => {
 }
 
 .btn-play {
-	width: 50px;
-	height: 50px;
+	width: 44px;
+	height: 44px;
 	border-radius: 50%;
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	background: rgba(255, 255, 255, 0.15);
@@ -168,25 +168,27 @@ const formatTime = (seconds: number): string => {
 
 	:deep(svg) {
 		pointer-events: none;
+		width: 24px;
+		height: 24px;
 	}
 
 	@media (max-width: 1200px) {
-		width: 46px;
-		height: 46px;
-
-		:deep(svg) {
-			width: 26px;
-			height: 26px;
-		}
-	}
-
-	@media (max-width: 1000px) {
-		width: 42px;
-		height: 42px;
+		width: 40px;
+		height: 40px;
 
 		:deep(svg) {
 			width: 22px;
 			height: 22px;
+		}
+	}
+
+	@media (max-width: 1000px) {
+		width: 38px;
+		height: 38px;
+
+		:deep(svg) {
+			width: 20px;
+			height: 20px;
 		}
 	}
 

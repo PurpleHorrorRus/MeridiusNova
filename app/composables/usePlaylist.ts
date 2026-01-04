@@ -192,17 +192,7 @@ export const usePlaylist = () => {
 		return false;
 	};
 
-	const playPlaylist = async (playlist: TPlaylist, startIndex = 0) => {
-		console.log("[PLAY_PLAYLIST] START", {
-			playlistId: playlist.raw_id,
-			ownerId: playlist.owner_id,
-			playlistIdNum: playlist.playlist_id,
-			startIndex,
-			currentPlayingId: playlistStore.playing?.raw_id,
-			currentIndex: playlistStore.currentIndex,
-			currentQueueLength: playlistStore.playingSongs.length,
-			stackTrace: new Error().stack
-		});
+	const playPlaylist = async (playlist: TPlaylist, startIndex = 0, randomStart = false) => {
 		
 		// Проверяем, не переключаемся ли мы на тот же плейлист
 		const currentPlaying = playlistStore.playing;
@@ -213,34 +203,73 @@ export const usePlaylist = () => {
 			 (!playlist.raw_id && `${currentPlaying.owner_id}_${currentPlaying.playlist_id}` === `${playlist.owner_id}_${playlist.playlist_id}`));
 		
 		// Если плейлист уже играет и треки загружены, просто переключаемся на нужный трек
-		if (isSamePlaylist && currentPlaying.list && currentPlaying.list.length > 0) {
-			const validIndex = startIndex < currentPlaying.list.length ? startIndex : 0;
+		// НО только если очередь тоже установлена (playingSongs не пуста)
+		if (isSamePlaylist && currentPlaying.list && currentPlaying.list.length > 0 && playlistStore.playingSongs.length > 0) {
+			let validIndex = startIndex < currentPlaying.list.length ? startIndex : 0;
+			
+			if (randomStart && currentPlaying.list.length > 0) {
+				validIndex = Math.floor(Math.random() * currentPlaying.list.length);
+			}
+			
 			const targetSong = currentPlaying.list[validIndex];
 			
 			if (targetSong) {
 				const filteredSongs = playlistStore.playingSongs;
 				const foundIndex = filteredSongs.findIndex(s => s.full_id === targetSong.full_id);
-				const actualIndex = foundIndex >= 0 ? foundIndex : validIndex;
+				
+				// Если трек найден в отфильтрованной очереди, используем его индекс
+				// Если не найден (отфильтрован), выбираем случайный из доступных
+				let actualIndex = 0;
+				if (foundIndex >= 0) {
+					actualIndex = foundIndex;
+				} else if (randomStart && filteredSongs.length > 0) {
+					// Если рандомный старт и трек отфильтрован, выбираем случайный из доступных
+					actualIndex = Math.floor(Math.random() * filteredSongs.length);
+				}
 				
 				playlistStore.setCurrentIndex(actualIndex);
 				
-				const song = filteredSongs[actualIndex] || targetSong;
+				const song = filteredSongs[actualIndex];
 				if (song && (!playerStore.song || playerStore.song.full_id !== song.full_id)) {
 					await playerStore.play({ ...song, from: currentPlaying, manual: true } as TSongWithFrom);
 				}
 			}
 			return;
 		}
+		
+		// Если плейлист тот же, но очередь пуста - переустанавливаем очередь
+		if (isSamePlaylist && currentPlaying.list && currentPlaying.list.length > 0 && playlistStore.playingSongs.length === 0) {
+			let validIndex = startIndex < currentPlaying.list.length ? startIndex : 0;
+			
+			if (randomStart && currentPlaying.list.length > 0) {
+				validIndex = Math.floor(Math.random() * currentPlaying.list.length);
+			}
+			
+			await setQueue(currentPlaying.list, currentPlaying, validIndex);
+			
+			// Используем индекс, который был установлен в setQueue
+			const filteredSongs = playlistStore.playingSongs;
+			const actualIndex = playlistStore.currentIndex >= 0 && playlistStore.currentIndex < filteredSongs.length
+				? playlistStore.currentIndex
+				: 0;
+			
+			const song = filteredSongs[actualIndex];
+			if (song) {
+				await playerStore.play({ ...song, from: currentPlaying, manual: true } as TSongWithFrom);
+			}
+			return;
+		}
 
-		// Для библиотеки пользователя (playlist_id === -1) используем переданный плейлист напрямую
-		// так как он уже имеет правильный title (имя и фамилия пользователя)
-		// и не нужно загружать его через API
+		// Для библиотеки пользователя (playlist_id === -1) проверяем, есть ли треки
+		// Если треков нет, загружаем их через API
 		let currentPlaylist: TPlaylist;
-		if (playlist.playlist_id === -1 && playlist.title) {
+		if (playlist.playlist_id === -1 && playlist.title && playlist.list && playlist.list.length > 0) {
+			// Используем переданный плейлист, если в нем уже есть треки
 			currentPlaylist = playlist;
 		} else {
 			// ВСЕГДА загружаем плейлист заново, чтобы получить полный список треков
 			// даже если в playlist.list уже есть треки, они могут быть неполными
+			// Для библиотеки пользователя это особенно важно, так как треки могут не быть загружены
 			currentPlaylist = await loadPlaylist(
 				playlist.owner_id,
 				playlist.playlist_id,
@@ -271,78 +300,26 @@ export const usePlaylist = () => {
 		// Используем треки из currentPlaylist.list, которые уже загружены через loadPlaylist
 		// Треки приходят без URL (withUrls: false), URL будет загружаться в момент проигрывания
 		if (currentPlaylist.list && currentPlaylist.list.length > 0) {
-			const validIndex = startIndex < currentPlaylist.list.length ? startIndex : 0;
-			console.log("[PLAY_PLAYLIST] Before setQueue", {
-				validIndex,
-				listLength: currentPlaylist.list.length,
-				currentIndex: playlistStore.currentIndex,
-				currentQueueLength: playlistStore.playingSongs.length
-			});
+			let validIndex = startIndex < currentPlaylist.list.length ? startIndex : 0;
+			
+			if (randomStart && currentPlaylist.list.length > 0) {
+				validIndex = Math.floor(Math.random() * currentPlaylist.list.length);
+			}
 			
 			await setQueue(currentPlaylist.list, currentPlaylist, validIndex);
 			
-			console.log("[PLAY_PLAYLIST] After setQueue", {
-				currentIndex: playlistStore.currentIndex,
-				queueLength: playlistStore.playingSongs.length,
-				playingPlaylistId: playlistStore.playing?.raw_id
-			});
-			
-			// Берем трек из отфильтрованной очереди по индексу, который был установлен в setQueue
-			// НЕ используем playlistStore.currentIndex, так как он может быть из предыдущего плейлиста
+			// Используем индекс, который был установлен в setQueue
+			// setQueue уже правильно установил индекс после фильтрации restricted треков
 			const filteredSongs = playlistStore.playingSongs;
-			
-			// Находим трек по индексу в исходном списке и ищем его в отфильтрованной очереди
-			const targetSong = currentPlaylist.list[validIndex];
-			let actualIndex = 0;
-			
-			if (targetSong) {
-				const foundIndex = filteredSongs.findIndex(s => s.full_id === targetSong.full_id);
-				console.log("[PLAY_PLAYLIST] Finding song", {
-					targetSongId: targetSong.full_id,
-					foundIndex,
-					filteredSongsLength: filteredSongs.length
-				});
-				
-				if (foundIndex >= 0) {
-					actualIndex = foundIndex;
-				} else if (filteredSongs.length > 0) {
-					// Если трек не найден (возможно, был отфильтрован), используем первый доступный
-					actualIndex = 0;
-				}
-			}
-			
-			console.log("[PLAY_PLAYLIST] Before setCurrentIndex", {
-				actualIndex,
-				currentIndex: playlistStore.currentIndex,
-				queueLength: filteredSongs.length
-			});
-			
-			// Убеждаемся, что индекс установлен правильно
-			playlistStore.setCurrentIndex(actualIndex);
-			
-			console.log("[PLAY_PLAYLIST] After setCurrentIndex", {
-				currentIndex: playlistStore.currentIndex,
-				queueLength: filteredSongs.length
-			});
+			const actualIndex = playlistStore.currentIndex >= 0 && playlistStore.currentIndex < filteredSongs.length
+				? playlistStore.currentIndex
+				: 0;
 			
 			const song = filteredSongs[actualIndex];
-			
-			console.log("[PLAY_PLAYLIST] About to play", {
-				songId: song?.full_id,
-				songTitle: song?.title,
-				actualIndex,
-				currentIndex: playlistStore.currentIndex,
-				queueLength: filteredSongs.length,
-				playlistId: currentPlaylist.raw_id
-			});
 			
 			if (song) {
 				// Добавляем информацию о плейлисте в трек
 				await playerStore.play({ ...song, from: currentPlaylist, manual: true } as TSongWithFrom);
-				console.log("[PLAY_PLAYLIST] Play called", {
-					songId: song.full_id,
-					currentIndex: playlistStore.currentIndex
-				});
 			} else {
 				console.error("[PLAY_PLAYLIST] No song found!", {
 					actualIndex,
@@ -354,13 +331,6 @@ export const usePlaylist = () => {
 			// Если плейлист пустой, очищаем очередь
 			await setQueue([], currentPlaylist);
 		}
-		
-		console.log("[PLAY_PLAYLIST] END", {
-			currentIndex: playlistStore.currentIndex,
-			queueLength: playlistStore.playingSongs.length,
-			playingPlaylistId: playlistStore.playing?.raw_id,
-			currentSongId: playlistStore.currentSong?.full_id
-		});
 	};
 
 	const playFromPlaylist = async (song: TAudio, playlist: TPlaylist) => {
