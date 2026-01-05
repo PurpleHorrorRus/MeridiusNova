@@ -5,4 +5,3 @@ export const isUserLibraryPage = (path: string): boolean => {
 export const isSearchPage = (path: string): boolean => {
 	return path.startsWith("/search");
 };
-

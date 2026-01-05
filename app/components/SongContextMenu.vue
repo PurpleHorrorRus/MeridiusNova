@@ -2,7 +2,7 @@
 	<div
 		v-if="show"
 		class="context-menu-overlay"
-		@click="close"
+		@click="$emit('close')"
 		@contextmenu.prevent
 	>
 		<div
@@ -71,7 +71,7 @@
 			</button>
 
 			<button
-				v-if="songProps.canDownload && isTauri.value"
+				v-if="songProps.canDownload && isTauri"
 				class="context-menu-item"
 				@click="handleDownload"
 			>
@@ -211,17 +211,13 @@ const myPlaylists = computed(() => {
 	});
 });
 
-const close = () => {
-	emit("close");
-};
-
 const handleAdd = async () => {
 	if (!props.audio) {
 		return;
 	}
 
 	await addSong(props.audio);
-	close();
+	emit("close");
 };
 
 const handleDelete = async () => {
@@ -230,7 +226,7 @@ const handleDelete = async () => {
 	}
 
 	await deleteSong(props.audio);
-	close();
+	emit("close");
 };
 
 const handlePlaylistMenuEnter = () => {
@@ -274,7 +270,7 @@ const handleSelectPlaylist = async (playlist: TPlaylist) => {
 
 	await addSongToPlaylist(props.audio, playlist).catch(console.error);
 	showPlaylistSubmenu.value = false;
-	close();
+	emit("close");
 };
 
 const handleEdit = () => {
@@ -283,7 +279,7 @@ const handleEdit = () => {
 	}
 
 	openModal("editTrack", { audio: props.audio });
-	close();
+	emit("close");
 };
 
 const handleLyrics = () => {
@@ -292,7 +288,7 @@ const handleLyrics = () => {
 	}
 
 	openModal("lyrics", { audio: props.audio });
-	close();
+	emit("close");
 };
 
 const handleDownload = async () => {
@@ -301,7 +297,7 @@ const handleDownload = async () => {
 	}
 
 	await downloadAudio(props.audio).catch(console.error);
-	close();
+	emit("close");
 };
 
 const handleShare = () => {
@@ -310,7 +306,7 @@ const handleShare = () => {
 	}
 
 	openModal("shareAudio", { audio: props.audio });
-	close();
+	emit("close");
 };
 
 const handleSimilar = async () => {
@@ -322,7 +318,7 @@ const handleSimilar = async () => {
 	if (result) {
 		navigateToSimilarTracks(props.audio);
 	}
-	close();
+	emit("close");
 };
 
 const handleRemoveFromPlaylist = async () => {
@@ -348,7 +344,7 @@ const handleRemoveFromPlaylist = async () => {
 		}
 	}
 	
-	close();
+	emit("close");
 };
 
 const updatePosition = () => {
@@ -495,16 +491,16 @@ const handleClickOutside = (event: MouseEvent) => {
 		const isOnSong = target.closest(".song");
 		
 		if (isOnSong) {
-			// Предотвращаем всплытие события, чтобы клик на треке не запустил воспроизведение
-			event.stopPropagation();
-		}
-		
-		close();
+		// Предотвращаем всплытие события, чтобы клик на треке не запустил воспроизведение
+		event.stopPropagation();
+	}
+	
+	emit("close");
 	}
 };
 
 useEventListener(document, "click", handleClickOutside);
-useEventListener(document, "contextmenu", close);
+useEventListener(document, "contextmenu", () => emit("close"));
 </script>
 
 <style scoped lang="scss">
@@ -539,7 +535,7 @@ useEventListener(document, "contextmenu", close);
 	color: var(--text, #fff);
 	cursor: pointer;
 	border-radius: 6px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease;
 	text-align: left;
 	font-size: 14px;
 	position: relative;

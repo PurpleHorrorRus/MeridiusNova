@@ -41,12 +41,13 @@
 								class="song-wrapper"
 								:class="{
 									'dragging': dragAndDrop.draggedIndex.value === startIndex + relativeIndex,
-									'drag-over': dragAndDrop.draggedOverIndex.value === startIndex + relativeIndex
+									'drag-shift-up': shouldShiftUp(startIndex + relativeIndex),
+									'drag-shift-down': shouldShiftDown(startIndex + relativeIndex)
 								}"
 							>
 								<VirtualSongItem
 									:index="startIndex + relativeIndex"
-									@height="(height) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
+									@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
 								>
 									<div
 										class="song-drag-handle"
@@ -85,6 +86,7 @@ const route = useRoute();
 const vkStore = useVkStore();
 const ownerId = computed(() => Number(route.params.owner_id));
 const playlistId = computed(() => Number(route.params.playlist_id));
+const accessHash = computed(() => route.query.access_hash as string | undefined);
 const isCollection = computed(() => playlistId.value === -1);
 const { reorderSongsInPlaylist } = usePlaylistActions();
 const { reorderAudio } = useAudioActions();
@@ -217,9 +219,19 @@ provide("playlistAudiosComputed", audios);
 provide("playlistData", data);
 
 const hasMore = computed(() => {
-	// Для обычных плейлистов проверяем more из playlistData
-	if (!isCollection.value && playlistData.value?.more) {
-		return Boolean(playlistData.value.more.section_id && playlistData.value.more.next_from);
+	// Для обычных плейлистов проверяем, есть ли еще треки для загрузки
+	if (!isCollection.value && playlistData.value) {
+		const loadedCount = playlistData.value.list?.length || 0;
+		const totalCount = playlistData.value.size || 0;
+		// Если загружено меньше, чем всего треков, значит есть еще
+		if (totalCount > 0 && loadedCount < totalCount) {
+			return true;
+		}
+		// Если totalCount неизвестен, проверяем more (для обратной совместимости)
+		if (totalCount === 0 && playlistData.value.more) {
+			return Boolean(playlistData.value.more.section_id && playlistData.value.more.next_from);
+		}
+		return false;
 	}
 
 	// Для коллекций проверяем more из data
@@ -244,12 +256,13 @@ const loadMore = async () => {
 
 	let more: TMore | null = null;
 
-	// Для обычных плейлистов используем more из playlistData
+	// Для обычных плейлистов используем offset и count (не more)
 	if (!isCollection.value) {
-		if (!playlistData.value?.more) {
+		if (!playlistData.value) {
 			return;
 		}
-		more = playlistData.value.more;
+		// Для обычных плейлистов не используем more, а используем offset
+		// Продолжаем выполнение без проверки more
 	} else {
 		// Для коллекций используем more из data
 		if (!data.value) {
@@ -260,11 +273,10 @@ const loadMore = async () => {
 			return;
 		}
 		more = payload.more;
-	}
-
-	// Verify more parameters are not empty
-	if (!more.section_id || !more.next_from) {
-		return;
+		// Verify more parameters are not empty
+		if (!more.section_id || !more.next_from) {
+			return;
+		}
 	}
 
 	isLoadingMore.value = true;
@@ -301,19 +313,36 @@ const loadMore = async () => {
 					start_from: ""
 				};
 			}
-		} else if (!isCollection.value && playlistData.value) {
-			// Для обычных плейлистов обновляем playlistData.value.list
-			if (result.audios && result.audios.length > 0) {
-				if (!playlistData.value.list) {
-					playlistData.value.list = [];
-				}
-				playlistData.value.list.push(...result.audios);
-				audios.value.push(...result.audios);
+	} else if (!isCollection.value && playlistData.value) {
+		// Для обычных плейлистов загружаем через /api/vk/playlists с offset
+		const currentOffset = playlistData.value.list?.length || 0;
+
+		const playlistResult = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
+			params: {
+				list: "true",
+				access_hash: playlistData.value.access_hash || accessHash.value,
+				count: "50",
+				offset: String(currentOffset)
+			}
+		}).catch(() => {
+			return null;
+		});
+
+		if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
+			if (!playlistData.value.list) {
+				playlistData.value.list = [];
+			}
+			playlistData.value.list.push(...playlistResult.list);
+			audios.value.push(...playlistResult.list);
+
+			// Обновляем size, если он изменился
+			if (playlistResult.size !== undefined) {
+				playlistData.value.size = playlistResult.size;
 			}
 
-			// Always update more, even if empty (to stop loading)
-			if (result.more) {
-				playlistData.value.more = result.more;
+			// Обновляем more из результата (для обратной совместимости)
+			if (playlistResult.more) {
+				playlistData.value.more = playlistResult.more;
 			} else {
 				playlistData.value.more = {
 					section_id: "",
@@ -321,7 +350,15 @@ const loadMore = async () => {
 					start_from: ""
 				};
 			}
+		} else {
+			// Если больше нет треков, сбрасываем more
+			playlistData.value.more = {
+				section_id: "",
+				next_from: "",
+				start_from: ""
+			};
 		}
+	}
 	}
 
 	isLoadingMore.value = false;
@@ -330,51 +367,57 @@ const loadMore = async () => {
 // loadMore теперь обрабатывается внутри VirtualSongList через IntersectionObserver
 
 const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], fromIndex?: number, toIndex?: number) => {
-	console.log("[handleReorderSongs] Called", { canEdit: canEdit.value, isCollection: isCollection.value, newOrderLength: newOrder.length, originalOrderLength: originalOrder?.length, fromIndex, toIndex });
-	
 	if (!canEdit.value) {
-		console.log("[handleReorderSongs] Cannot edit, returning");
 		return;
 	}
 
 	if (isCollection.value) {
-		console.log("[handleReorderSongs] Processing collection reorder");
 		// Для коллекций используем reorderAudio с audio_id и next_audio_id
 		// API перемещает трек audio_id перед треком next_audio_id (или в конец, если next_audio_id = 0)
 		const original = originalOrder || [...audios.value];
 		
 		// Если у нас есть fromIndex и toIndex, используем их для точного определения перемещенного элемента
 		if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
-			const movedAudio = newOrder[toIndex];
+			const movedAudio = original[fromIndex];
 			if (!movedAudio) {
-				console.warn("[handleReorderSongs] No audio at toIndex", { toIndex });
 				return;
 			}
 
 			// Определяем next_audio_id - это id трека, ПЕРЕД которым нужно вставить перемещаемый трек
 			// VK API: next_audio_id = 0 означает переместить в начало (первое место)
 			// next_audio_id = <id> означает переместить ПЕРЕД треком с этим id
-			// Если перемещаем на позицию toIndex, используем id трека, который сейчас на этой позиции
-			// (он будет сдвинут вниз, а наш трек встанет на его место)
+			// Если перемещаем на позицию toIndex, используем id трека, который будет на позиции toIndex - 1 в новом порядке
 			let nextAudioId = 0;
 			if (toIndex === 0) {
 				// Перемещаем на первое место - используем 0
 				nextAudioId = 0;
 			} else if (toIndex > 0) {
-				// Перемещаем на позицию toIndex - используем id трека, который сейчас на этой позиции
-				const targetAudio = newOrder[toIndex];
-				if (targetAudio) {
+				// Перемещаем на позицию toIndex
+				// В новом порядке на позиции toIndex находится перемещенный элемент
+				// Трек, который будет ПЕРЕД ним (на позиции toIndex - 1 в новом порядке):
+				// Вычисляем, какой трек будет на позиции toIndex - 1 в новом порядке
+				let targetIndexInOriginal: number;
+				if (fromIndex > toIndex) {
+					// Перемещаем вверх: трек на позиции toIndex - 1 в новом порядке
+					// это трек, который был на позиции toIndex - 1 в исходном порядке
+					targetIndexInOriginal = toIndex - 1;
+				} else {
+					// Перемещаем вниз: трек на позиции toIndex - 1 в новом порядке
+					// это трек, который был на позиции toIndex в исходном порядке
+					targetIndexInOriginal = toIndex;
+				}
+				
+				const targetAudio = original[targetIndexInOriginal];
+				if (targetAudio && targetAudio.id !== movedAudio.id) {
 					nextAudioId = targetAudio.id;
+				} else if (targetIndexInOriginal > 0) {
+					// Если трек на вычисленной позиции - это сам перемещаемый элемент, берем предыдущий
+					const prevAudio = original[targetIndexInOriginal - 1];
+					if (prevAudio && prevAudio.id !== movedAudio.id) {
+						nextAudioId = prevAudio.id;
+					}
 				}
 			}
-
-			console.log("[handleReorderSongs] Moving audio in collection", {
-				audio_id: movedAudio.id,
-				next_audio_id: nextAudioId,
-				owner_id: ownerId.value,
-				fromIndex,
-				toIndex
-			});
 
 			try {
 				await reorderAudio({
@@ -383,13 +426,11 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 					owner_id: ownerId.value
 				});
 			} catch (error) {
-				console.error("[handleReorderSongs] Error reordering audio in collection", error);
 				// В случае ошибки возвращаем исходный порядок
 				audios.value = original;
 			}
 		} else {
 			// Fallback: если fromIndex/toIndex не переданы, используем старую логику
-			console.log("[handleReorderSongs] No fromIndex/toIndex, using fallback logic");
 			let hasError = false;
 
 			// Находим элементы, которые изменили свою позицию
@@ -414,7 +455,6 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 
 			// Если нет перемещенных элементов, выходим
 			if (movedItems.length === 0) {
-				console.log("[handleReorderSongs] No items to move");
 				return;
 			}
 
@@ -428,14 +468,6 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 				const nextAudio = moved.newIndex < newOrder.length - 1 ? newOrder[moved.newIndex + 1] : null;
 				const nextAudioId = nextAudio ? nextAudio.id : 0;
 
-				console.log("[handleReorderSongs] Moving audio in collection", {
-					audio_id: moved.audio.id,
-					next_audio_id: nextAudioId,
-					owner_id: ownerId.value,
-					fromIndex: moved.originalIndex,
-					toIndex: moved.newIndex
-				});
-
 				try {
 					await reorderAudio({
 						audio_id: moved.audio.id,
@@ -443,7 +475,6 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 						owner_id: ownerId.value
 					});
 				} catch (error) {
-					console.error("[handleReorderSongs] Error reordering audio in collection", error);
 					hasError = true;
 					break;
 				}
@@ -463,17 +494,10 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 
 		const audioIds = newOrder.map(audioItem => `${audioItem.full_id}_`).join(",");
 
-		console.log("[handleReorderSongs] Reordering playlist songs", {
-			playlist_id: playlistData.value.playlist_id,
-			audioIds,
-			count: newOrder.length
-		});
-
 		await reorderSongsInPlaylist({
 			playlist_id: playlistData.value.playlist_id,
 			Audios: audioIds
 		}).catch((error) => {
-			console.error("[handleReorderSongs] Error reordering songs", error);
 			// В случае ошибки возвращаем исходный порядок
 			if (playlistData.value && playlistData.value.list) {
 				audios.value = [...playlistData.value.list];
@@ -485,6 +509,36 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 	isDisabled: () => !canEdit.value
 });
+
+const shouldShiftUp = (index: number): boolean => {
+	const draggedIndex = dragAndDrop.draggedIndex.value;
+	const draggedOverIndex = dragAndDrop.draggedOverIndex.value;
+	
+	if (draggedIndex === null || draggedOverIndex === null) {
+		return false;
+	}
+	
+	if (draggedIndex === draggedOverIndex) {
+		return false;
+	}
+	
+	return draggedIndex < draggedOverIndex && index > draggedIndex && index <= draggedOverIndex;
+};
+
+const shouldShiftDown = (index: number): boolean => {
+	const draggedIndex = dragAndDrop.draggedIndex.value;
+	const draggedOverIndex = dragAndDrop.draggedOverIndex.value;
+	
+	if (draggedIndex === null || draggedOverIndex === null) {
+		return false;
+	}
+	
+	if (draggedIndex === draggedOverIndex) {
+		return false;
+	}
+	
+	return draggedIndex > draggedOverIndex && index >= draggedOverIndex && index < draggedIndex;
+};
 
 
 </script>
@@ -609,28 +663,20 @@ const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 
 .song-wrapper {
 	position: relative;
-	transition: opacity 0.2s ease;
+	transition: opacity 0.2s ease, transform 0.2s ease;
 	-webkit-user-select: none;
 	user-select: none;
 
 	&.dragging {
-		.song-drag-handle {
-			opacity: 0.5;
-			cursor: move !important;
-		}
+		visibility: hidden;
 	}
 
-	&.drag-over {
-		&::before {
-			content: "";
-			position: absolute;
-			top: 0;
-			left: 0;
-			right: 0;
-			height: 2px;
-			background: var(--secondary, #e9003f);
-			z-index: 10;
-		}
+	&.drag-shift-up {
+		transform: translateY(-56px);
+	}
+
+	&.drag-shift-down {
+		transform: translateY(56px);
 	}
 }
 
@@ -656,8 +702,6 @@ const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 :global(.drag-ghost) {
 	background: var(--bg-secondary, #181818) !important;
 	border-radius: 8px;
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
 }
 
 .playlist-restricted-message {
@@ -712,5 +756,6 @@ const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
 		}
 	}
 }
+
 
 </style>

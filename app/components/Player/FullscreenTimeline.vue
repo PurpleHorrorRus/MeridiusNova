@@ -14,7 +14,7 @@
 			@touchend="handleProgressTouchEnd"
 			@touchcancel="handleProgressTouchEnd"
 		>
-			<div class="fullscreen-timeline-fill" :style="{ width: `${progress}%` }">
+			<div class="fullscreen-timeline-fill" :style="{ width: `${throttledProgress}%` }">
 				<div class="fullscreen-timeline-knob"></div>
 			</div>
 		</div>
@@ -29,96 +29,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { watch } from "vue";
 import { useAudio } from "~/composables/useAudio";
+import { usePlayerTimeline } from "~/composables/usePlayerTimeline";
 
-const { currentTime, duration, progress, seek } = useAudio();
+const { currentTime, duration, progress } = useAudio();
 
-const showTooltip = ref(false);
-const tooltipTime = ref(0);
-const tooltipPosition = ref(0);
+const {
+	throttledProgress,
+	showTooltip,
+	tooltipTime,
+	tooltipPosition,
+	updateThrottledProgress,
+	handleProgressClick,
+	handleProgressHover,
+	handleProgressTouch,
+	handleProgressTouchMove,
+	handleProgressTouchEnd,
+	formatTime
+} = usePlayerTimeline(100);
 
-const formatTime = (seconds: number): string => {
-	if (!isFinite(seconds) || isNaN(seconds)) {
-		return "0:00";
-	}
-
-	const mins = Math.floor(seconds / 60);
-	const secs = Math.floor(seconds % 60);
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
-const handleProgressClick = (event: MouseEvent) => {
-	const target = event.currentTarget as HTMLElement;
-	const rect = target.getBoundingClientRect();
-	const x = event.clientX - rect.left;
-	const percentage = x / rect.width;
-	const newTime = percentage * duration.value;
-
-	seek(newTime);
-};
-
-const handleProgressHover = (event: MouseEvent) => {
-	const currentDuration = duration.value;
-	
-	if (!currentDuration || !isFinite(currentDuration) || currentDuration <= 0) {
-		showTooltip.value = false;
-		return;
-	}
-
-	const target = event.currentTarget as HTMLElement;
-	const rect = target.getBoundingClientRect();
-	const x = event.clientX - rect.left;
-	const percentage = Math.max(0, Math.min(1, x / rect.width));
-
-	tooltipTime.value = percentage * currentDuration;
-	tooltipPosition.value = percentage * 100;
-	showTooltip.value = true;
-};
-
-const handleProgressTouch = (event: TouchEvent) => {
-	const target = event.currentTarget as HTMLElement;
-	const rect = target.getBoundingClientRect();
-	const touch = event.touches[0] || event.changedTouches[0];
-	
-	if (!touch) {
-		return;
-	}
-	
-	const x = touch.clientX - rect.left;
-	const percentage = Math.max(0, Math.min(1, x / rect.width));
-	const newTime = percentage * duration.value;
-
-	seek(newTime);
-};
-
-const handleProgressTouchMove = (event: TouchEvent) => {
-	const currentDuration = duration.value;
-	
-	if (!currentDuration || !isFinite(currentDuration) || currentDuration <= 0) {
-		showTooltip.value = false;
-		return;
-	}
-
-	const target = event.currentTarget as HTMLElement;
-	const rect = target.getBoundingClientRect();
-	const touch = event.touches[0];
-	
-	if (!touch) {
-		return;
-	}
-	
-	const x = touch.clientX - rect.left;
-	const percentage = Math.max(0, Math.min(1, x / rect.width));
-
-	tooltipTime.value = percentage * currentDuration;
-	tooltipPosition.value = percentage * 100;
-	showTooltip.value = true;
-};
-
-const handleProgressTouchEnd = () => {
-	showTooltip.value = false;
-};
+watch(progress, (newProgress) => {
+	updateThrottledProgress(newProgress);
+}, { immediate: true });
 </script>
 
 <style scoped lang="scss">
@@ -172,13 +105,24 @@ const handleProgressTouchEnd = () => {
 	background: rgba(255, 255, 255, 0.9);
 	border-radius: 4px;
 	position: relative;
-	transition: width 0.1s linear;
-	box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: 4px;
+		background: radial-gradient(ellipse at right center, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+		opacity: 1;
+		pointer-events: none;
+	}
 }
 
 .fullscreen-timeline-track:hover .fullscreen-timeline-fill {
 	background: #fff;
-	box-shadow: 0 0 16px rgba(255, 255, 255, 0.7);
+
+	&::before {
+		opacity: 1.2;
+	}
 }
 
 .fullscreen-timeline-knob {
@@ -213,8 +157,8 @@ const handleProgressTouchEnd = () => {
 	margin-bottom: 16px;
 	padding: 8px 12px;
 	background: rgba(0, 0, 0, 0.9);
-	backdrop-filter: blur(10px);
 	border-radius: 8px;
+
 	font-size: 14px;
 	color: #fff;
 	transform: translateX(-50%);

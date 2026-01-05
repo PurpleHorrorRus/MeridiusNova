@@ -17,7 +17,7 @@
 					/>
 					<button
 						v-if="searchQuery"
-						@click="clearSearch"
+						@click="searchQuery = ''"
 						class="search-clear"
 					>
 						<Icon name="mdi:close" size="16" />
@@ -179,10 +179,6 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	}
 };
 
-const clearSearch = () => {
-	searchQuery.value = "";
-};
-
 onMounted(async () => {
 	await load();
 	await loadAccounts();
@@ -221,7 +217,6 @@ const switchAccount = async (account: any) => {
 	border-right: 1px solid var(--border, #2a2a2a);
 	overflow-y: auto;
 	overflow-x: hidden;
-	transition: width 0.3s ease;
 
 	/* Mobile bottom nav takes up space at the bottom */
 	@media (max-width: 600px) {
@@ -461,7 +456,7 @@ const switchAccount = async (account: any) => {
 	padding: 12px 20px;
 	color: var(--text-secondary, #b3b3b3);
 	text-decoration: none;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 	border-left: 2px solid transparent;
 	position: relative;
 

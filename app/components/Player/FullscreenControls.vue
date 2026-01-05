@@ -5,7 +5,7 @@
 				<button
 					class="btn-fullscreen-control"
 					:class="{ active: repeat }"
-					@click.stop="toggleRepeat"
+					@click.stop="playlistStore.toggleRepeat"
 					:title="repeat ? t('player.repeatOn') : t('player.repeat')"
 				>
 					<Icon name="mdi:repeat" size="24" />
@@ -32,7 +32,7 @@
 					v-if="isMobile"
 					class="btn-fullscreen-control"
 					:class="{ active: shuffle }"
-					@click.stop="toggleShuffle"
+					@click.stop="playlistStore.toggleShuffle"
 					:title="t('player.shuffle')"
 				>
 					<Icon name="mdi:shuffle" size="24" />
@@ -43,7 +43,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { useAudio } from "~/composables/useAudio";
 import { usePlaylist } from "~/composables/usePlaylist";
 import { usePlaylistStore } from "~/stores/playlist";
@@ -54,18 +53,8 @@ const { paused, toggle, playNext, playPrevious } = useAudio();
 const { getString } = useStrings();
 const t = getString;
 const playlistStore = usePlaylistStore();
-const { repeat } = usePlaylist();
+const { repeat, shuffle } = usePlaylist();
 const { isMobile } = useIsMobile();
-
-const shuffle = computed(() => playlistStore.shuffle);
-
-const toggleRepeat = () => {
-	playlistStore.toggleRepeat();
-};
-
-const toggleShuffle = () => {
-	playlistStore.toggleShuffle();
-};
 
 </script>
 
@@ -88,20 +77,28 @@ const toggleShuffle = () => {
 	align-items: center;
 	justify-content: center;
 	width: auto;
-	gap: 24px;
+	gap: min(24px, 2.5vh);
 	box-sizing: border-box;
+
+	@media (max-height: 700px) {
+		gap: min(20px, 2vh);
+	}
+
+	@media (max-height: 600px) {
+		gap: min(16px, 1.5vh);
+	}
 
 	@media (max-width: 768px) {
 		width: 100%;
 		flex-direction: row;
 		flex-wrap: nowrap;
-		gap: 12px;
+		gap: min(12px, 1.5vh);
 		align-items: center;
 		justify-content: space-between;
 	}
 
 	@media (max-width: 480px) {
-		gap: 8px;
+		gap: min(8px, 1vh);
 	}
 }
 
@@ -123,11 +120,19 @@ const toggleShuffle = () => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 32px;
+	gap: min(32px, 3.5vh);
 	flex-shrink: 0;
 
+	@media (max-height: 700px) {
+		gap: min(28px, 3vh);
+	}
+
+	@media (max-height: 600px) {
+		gap: min(24px, 2.5vh);
+	}
+
 	@media (max-width: 768px) {
-		gap: 24px;
+		gap: min(24px, 2.5vh);
 		width: auto;
 		justify-content: center;
 		flex: 0;
@@ -135,7 +140,7 @@ const toggleShuffle = () => {
 	}
 
 	@media (max-width: 480px) {
-		gap: 16px;
+		gap: min(16px, 2vh);
 	}
 }
 
@@ -158,37 +163,42 @@ const toggleShuffle = () => {
 }
 
 .btn-control-fullscreen {
+	position: relative;
 	background: rgba(255, 255, 255, 0.1);
 	border: none;
 	border-radius: 50%;
-	width: 56px;
-	height: 56px;
+	width: min(56px, 6vh);
+	aspect-ratio: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.9);
 	cursor: pointer;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(10px);
+	transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+
+	@media (max-height: 700px) {
+		width: min(48px, 5.5vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(44px, 5vh);
+	}
 
 	@media (max-width: 768px) {
-		width: 48px;
-		height: 48px;
+		width: min(48px, 5.5vh);
 	}
 
 	@media (max-width: 480px) {
-		width: 44px;
-		height: 44px;
+		width: min(44px, 5vh);
 	}
 
 	&:hover:not(:disabled) {
 		background: rgba(255, 255, 255, 0.2);
 		color: #fff;
-		transform: scale(1.05);
 	}
 
 	&:active:not(:disabled) {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 
 	&:disabled {
@@ -198,39 +208,48 @@ const toggleShuffle = () => {
 }
 
 .btn-play-fullscreen {
-	width: 80px;
-	height: 80px;
+	position: relative;
+	width: min(80px, 8vh);
+	aspect-ratio: 1;
 	border-radius: 50%;
 	border: 2px solid rgba(255, 255, 255, 0.3);
 	background: rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(15px);
 	color: #fff;
+
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: all 0.2s ease;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+	transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+	overflow: visible;
+
+	@media (max-height: 700px) {
+		width: min(70px, 7.5vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(64px, 7vh);
+	}
 
 	@media (max-width: 768px) {
-		width: 70px;
-		height: 70px;
+		width: min(70px, 7.5vh);
 	}
 
 	@media (max-width: 480px) {
-		width: 64px;
-		height: 64px;
+		width: min(64px, 7vh);
 	}
 
 	&:hover {
-		transform: scale(1.05);
 		background: rgba(255, 255, 255, 0.25);
 		border-color: rgba(255, 255, 255, 0.4);
-		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+
+		&::before {
+			opacity: 1.2;
+		}
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.9;
 	}
 }
 
@@ -239,24 +258,29 @@ const toggleShuffle = () => {
 	background: rgba(255, 255, 255, 0.1);
 	border: none;
 	border-radius: 50%;
-	width: 44px;
-	height: 44px;
+	width: min(44px, 4.5vh);
+	aspect-ratio: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.7);
 	cursor: pointer;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(10px);
+	transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+
+	@media (max-height: 700px) {
+		width: min(40px, 4vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(36px, 3.5vh);
+	}
 
 	@media (max-width: 768px) {
-		width: 40px;
-		height: 40px;
+		width: min(40px, 4vh);
 	}
 
 	@media (max-width: 480px) {
-		width: 36px;
-		height: 36px;
+		width: min(36px, 3.5vh);
 	}
 
 	&:hover:not(.active) {
@@ -270,7 +294,7 @@ const toggleShuffle = () => {
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 }
 </style>

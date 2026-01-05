@@ -144,8 +144,7 @@ const handleLyrics = async () => {
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.7);
 	cursor: pointer;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(10px);
+	transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 
 	@media (max-width: 768px) {
 		width: 40px;
@@ -160,11 +159,10 @@ const handleLyrics = async () => {
 	&:hover {
 		background: rgba(255, 255, 255, 0.15);
 		color: #fff;
-		transform: scale(1.05);
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 }
 </style>

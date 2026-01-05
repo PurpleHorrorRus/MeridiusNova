@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { watch } from "vue";
 import { useLyrics } from "~/composables/useLyrics";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
 import type { TAudio } from "~~/server/api/vk/audio/types";
@@ -46,11 +46,11 @@ const props = defineProps<{
 }>();
 
 const lyrics = useLyrics(() => props.currentSong);
-const lyricsLoading = computed(() => lyrics.loading.value);
-const lyricsText = computed(() => lyrics.lyricsText.value);
-const lyricsInfo = computed(() => lyrics.lyricsInfo.value);
-const canTrack = computed(() => lyrics.canTrack.value);
-const trackActive = computed(() => lyrics.trackActive.value);
+const lyricsLoading = lyrics.loading;
+const lyricsText = lyrics.lyricsText;
+const lyricsInfo = lyrics.lyricsInfo;
+const canTrack = lyrics.canTrack;
+const trackActive = lyrics.trackActive;
 
 watch(() => props.showLyrics, async (newValue) => {
 	if (newValue && props.currentSong) {
@@ -76,8 +76,8 @@ watch(() => props.currentSong, () => {
 	max-width: 500px;
 	max-height: calc(100vh - 80px);
 	background: rgba(0, 0, 0, 0.3);
-	backdrop-filter: blur(20px);
 	border-radius: 24px;
+
 	padding: 24px;
 	overflow: hidden;
 	flex-shrink: 0;
@@ -146,7 +146,7 @@ watch(() => props.currentSong, () => {
 	font-size: 16px;
 	line-height: 1.6;
 	color: rgba(255, 255, 255, 0.6);
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease;
 	padding: 12px 16px;
 	border-radius: 8px;
 	cursor: default;

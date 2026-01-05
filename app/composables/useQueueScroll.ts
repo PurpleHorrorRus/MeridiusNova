@@ -3,7 +3,8 @@ import { watch, nextTick, type Ref } from "vue";
 export const useQueueScroll = (
 	tracksContainerRef: Ref<HTMLElement | null>,
 	currentIndex: Ref<number> | (() => number),
-	isOpen: Ref<boolean> | (() => boolean)
+	isOpen: Ref<boolean> | (() => boolean),
+	virtualListRef?: Ref<{ scrollToIndex: (index: number) => void } | null>
 ) => {
 	const scrollToActiveTrack = async () => {
 		const isOpenValue = typeof isOpen === "function" ? isOpen() : isOpen.value;
@@ -13,13 +14,20 @@ export const useQueueScroll = (
 
 		await nextTick();
 
-		const container = tracksContainerRef.value;
-		if (!container) {
+		const currentIndexValue = typeof currentIndex === "function" ? currentIndex() : currentIndex.value;
+		if (currentIndexValue < 0) {
 			return;
 		}
 
-		const currentIndexValue = typeof currentIndex === "function" ? currentIndex() : currentIndex.value;
-		if (currentIndexValue < 0) {
+		// Если есть виртуальный список, используем его метод scrollToIndex
+		if (virtualListRef?.value) {
+			virtualListRef.value.scrollToIndex(currentIndexValue);
+			return;
+		}
+
+		// Иначе используем стандартный scrollIntoView
+		const container = tracksContainerRef.value;
+		if (!container) {
 			return;
 		}
 

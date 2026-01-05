@@ -1,3 +1,4 @@
+import { watch } from "vue";
 import type { TExploreData } from "~~/server/utils/types";
 
 export const useExplore = () => {

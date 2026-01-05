@@ -62,7 +62,6 @@ export const useAudioActions = () => {
 		next_audio_id: number;
 		owner_id?: number;
 	}) => {
-		console.log("[useAudioActions] reorderAudio called with params:", params);
 		return await authenticatedFetch<{ success: boolean }>("/api/vk/audio/reorder", {
 			method: "POST",
 			body: params

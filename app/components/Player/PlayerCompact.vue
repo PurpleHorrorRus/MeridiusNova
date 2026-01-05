@@ -15,7 +15,7 @@
 			</button>
 		</div>
 
-		<div class="compact-track-info">
+		<div v-if="currentSong" class="compact-track-info">
 			<div class="compact-cover">
 				<img
 					:src="currentSong.cover || currentSong.coverUrl_p || '/no-cover.webp'"
@@ -47,7 +47,7 @@
 			<button
 				class="btn-compact-control"
 				:class="{ active: repeat }"
-				@click="toggleRepeat"
+				@click="playlistStore.toggleRepeat"
 				:title="repeat ? t('player.repeatOn') : t('player.repeat')"
 			>
 				<Icon name="mdi:repeat" size="18" />
@@ -56,7 +56,7 @@
 			<button
 				class="btn-compact-control"
 				:class="{ active: shuffle }"
-				@click="toggleShuffle"
+				@click="playlistStore.toggleShuffle"
 				:title="t('player.shuffle')"
 			>
 				<Icon name="mdi:shuffle" size="18" />
@@ -83,6 +83,7 @@ import { useStrings } from "~/composables/useStrings";
 import { useSongProps } from "~/composables/useSongProps";
 import { useModal } from "~/composables/useModal";
 import { useQueueDrawer } from "~/composables/useQueueDrawer";
+import { formatTime } from "~/composables/usePlayerTime";
 
 const {
 	currentSong,
@@ -98,42 +99,21 @@ const { getString } = useStrings();
 const t = getString;
 
 const playlistStore = usePlaylistStore();
-const { repeat } = usePlaylist();
-
-const shuffle = computed(() => playlistStore.shuffle);
+const { repeat, shuffle } = usePlaylist();
 
 const { generateSongProps } = useSongProps();
 const { openModal } = useModal();
 const { openQueueDrawer, isQueueDrawerOpen } = useQueueDrawer();
 
 const songProps = computed(() => {
-	const song = currentSong.value;
-	if (!song) {
+	if (!currentSong.value) {
 		return {
 			hasLyrics: false
 		};
 	}
 
-	return generateSongProps(song);
+	return generateSongProps(currentSong.value);
 });
-
-const formatTime = (seconds: number): string => {
-	if (!isFinite(seconds) || isNaN(seconds)) {
-		return "0:00";
-	}
-
-	const mins = Math.floor(seconds / 60);
-	const secs = Math.floor(seconds % 60);
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
-const toggleRepeat = () => {
-	playlistStore.toggleRepeat();
-};
-
-const toggleShuffle = () => {
-	playlistStore.toggleShuffle();
-};
 
 const handleLyrics = () => {
 	if (!currentSong.value) {
@@ -248,7 +228,7 @@ const handleLyrics = () => {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.2s ease;
+		transition: background-color 0.2s ease, color 0.2s ease;
 		min-width: 32px;
 		min-height: 32px;
 
@@ -269,22 +249,21 @@ const handleLyrics = () => {
 		border-radius: 50%;
 		border: 1px solid rgba(255, 255, 255, 0.2);
 		background: rgba(255, 255, 255, 0.15);
-		backdrop-filter: blur(10px);
 		color: #fff;
+
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: background-color 0.2s ease, opacity 0.2s ease;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 
 		&:hover {
-			transform: scale(1.05);
 			background: rgba(255, 255, 255, 0.25);
 		}
 
 		&:active {
-			transform: scale(0.95);
+			opacity: 0.9;
 		}
 	}
 
@@ -305,7 +284,7 @@ const handleLyrics = () => {
 		align-items: center;
 		justify-content: center;
 		border-radius: 50%;
-		transition: all 0.2s ease;
+		transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 		width: 32px;
 		height: 32px;
 		flex-shrink: 0;
@@ -321,7 +300,7 @@ const handleLyrics = () => {
 		}
 
 		&:active {
-			transform: scale(0.95);
+			opacity: 0.8;
 		}
 	}
 }

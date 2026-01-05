@@ -1,3 +1,5 @@
+import { isTauri } from "~/utils/tauri";
+
 export const useUpdater = () => {
 	const { settings, updateSection } = useSettings();
 	const checking = ref(false);
@@ -6,10 +8,8 @@ export const useUpdater = () => {
 	const currentVersion = ref<string | null>(null);
 	const updateInfo = ref<any>(null);
 
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
 	const getCurrentVersion = async (): Promise<string | null> => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return null;
 		}
 
@@ -43,7 +43,7 @@ export const useUpdater = () => {
 	};
 
 	const checkForUpdates = async (): Promise<boolean> => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			updateError.value = "Not running in Tauri";
 			return false;
 		}
@@ -124,7 +124,7 @@ export const useUpdater = () => {
 	};
 
 	const installUpdate = async (): Promise<boolean> => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			updateError.value = "Not running in Tauri";
 			return false;
 		}

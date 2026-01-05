@@ -76,6 +76,20 @@ const handleNextClick = () => {
 	justify-content: center;
 	gap: 20px;
 	position: relative;
+	width: 100%;
+	max-width: 100%;
+
+	@media (max-width: 1200px) {
+		gap: 16px;
+	}
+
+	@media (max-width: 1000px) {
+		gap: 14px;
+	}
+
+	@media (max-width: 900px) {
+		gap: 12px;
+	}
 
 	@media (max-width: 768px) {
 		gap: 16px;
@@ -87,25 +101,39 @@ const handleNextClick = () => {
 }
 
 .fullscreen-cover-adjacent {
-	width: 200px;
-	height: 200px;
+	width: min(200px, 15vh, 15vw);
+	aspect-ratio: 1;
 	border-radius: 16px;
 	overflow: visible;
 	opacity: 0.3;
-	transition: all 0.4s ease;
-	flex-shrink: 0;
+	transition: opacity 0.4s ease;
+	flex-shrink: 1;
 	position: relative;
 	z-index: 1;
 
-	@media (max-width: 768px) {
-		width: 150px;
-		height: 150px;
+	@media (max-height: 900px) {
+		width: min(175px, 14vh, 14vw);
+	}
+
+	@media (max-height: 800px) {
+		width: min(150px, 12vh, 12vw);
+	}
+
+	@media (max-height: 700px) {
+		width: min(125px, 11vh, 11vw);
+	}
+
+	@media (min-width: 1200px) and (max-height: 700px) {
+		width: min(180px, 25vh, 25vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(100px, 10vh, 10vw);
 		border-radius: 12px;
 	}
 
-	@media (max-width: 480px) {
-		width: 120px;
-		height: 120px;
+	@media (max-height: 500px) {
+		width: min(90px, 9vh, 9vw);
 		border-radius: 10px;
 	}
 
@@ -121,11 +149,10 @@ const handleNextClick = () => {
 
 		&:hover {
 			opacity: 0.8;
-			transform: scale(1.05);
 		}
 
 		&:active {
-			transform: scale(0.95);
+			opacity: 0.7;
 		}
 	}
 }
@@ -147,39 +174,66 @@ const handleNextClick = () => {
 
 .fullscreen-cover {
 	position: relative;
-	width: 400px;
-	height: 400px;
+	width: min(400px, 30vh, 30vw);
+	aspect-ratio: 1;
 	border-radius: 24px;
 	overflow: hidden;
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-	flex-shrink: 0;
+	flex-shrink: 1;
 	animation: scaleIn 0.4s ease;
-	transition: all 0.4s ease;
 
-	@media (max-width: 768px) {
-		width: 300px;
-		height: 300px;
+	&::before {
+		content: "";
+		position: absolute;
+		top: -20px;
+		left: -20px;
+		right: -20px;
+		bottom: -20px;
+		border-radius: 24px;
+		background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+		opacity: 1;
+		pointer-events: none;
+		z-index: -1;
+	}
+
+	@media (max-height: 900px) {
+		width: min(350px, 28vh, 28vw);
+	}
+
+	@media (max-height: 800px) {
+		width: min(300px, 25vh, 25vw);
+	}
+
+	@media (max-height: 700px) {
+		width: min(250px, 22vh, 22vw);
+	}
+
+	@media (min-width: 1200px) and (max-height: 700px) {
+		width: min(350px, 50vh, 50vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(200px, 20vh, 20vw);
 		border-radius: 20px;
 	}
 
-	@media (max-width: 480px) {
-		width: 240px;
-		height: 240px;
+	@media (max-height: 500px) {
+		width: min(180px, 18vh, 18vw);
 		border-radius: 16px;
 	}
 
 	:global(.fullscreen-player-content.lyrics-open) & {
-		width: 300px;
-		height: 300px;
+		width: min(300px, 28vh, 28vw);
 
-		@media (max-width: 768px) {
-			width: 240px;
-			height: 240px;
+		@media (max-height: 800px) {
+			width: min(250px, 25vh, 25vw);
 		}
 
-		@media (max-width: 480px) {
-			width: 200px;
-			height: 200px;
+		@media (max-height: 700px) {
+			width: min(200px, 22vh, 22vw);
+		}
+
+		@media (max-height: 600px) {
+			width: min(180px, 20vh, 20vw);
 		}
 	}
 }
@@ -227,10 +281,21 @@ const handleNextClick = () => {
 	width: 120%;
 	height: 120%;
 	background-size: cover;
-	filter: blur(40px) saturate(150%);
 	opacity: 0.4;
 	z-index: 1;
 	animation: fadeIn 0.4s ease;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: -20%;
+			left: -20%;
+			right: -20%;
+			bottom: -20%;
+			background: inherit;
+			filter: blur(40px) saturate(150%);
+			pointer-events: none;
+		}
 }
 
 @keyframes fadeIn {

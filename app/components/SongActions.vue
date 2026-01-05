@@ -1,7 +1,7 @@
 <template>
 	<div class="song-actions" @click.stop>
 	<button
-		v-if="canAdd"
+		v-if="songProps.canAdd"
 		class="action-button"
 		@click="handleAdd"
 		title="Добавить в библиотеку"
@@ -104,8 +104,6 @@ const songProps = computed(() => {
 	return result;
 });
 
-const canAdd = computed(() => songProps.value.canAdd);
-
 const canDelete = computed(() => {
 	return canDeleteSong(audio.value, songProps.value);
 });
@@ -177,7 +175,7 @@ const handleSimilar = async () => {
 	cursor: pointer;
 	padding: 4px;
 	border-radius: 4px;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 	display: flex;
 	align-items: center;
 	justify-content: center;

@@ -16,7 +16,7 @@
 							<button
 								v-if="playlistStore.playingSongs.length > 0"
 								class="queue-drawer-clear-button"
-								@click="clearQueue"
+								@click="playlistStore.clear"
 								title="Очистить очередь"
 							>
 								<Icon name="mdi:delete-outline" size="20" />
@@ -67,14 +67,29 @@
 						</div>
 
 						<div ref="tracksContainerRef" class="queue-drawer-tracks">
-							<Song
-								v-for="(audio, index) in playlistStore.playingSongs"
-								:key="`queue-${audio.full_id}-${index}`"
-								:audio="audio"
-								:data-queue-index="index"
-								:class="{ 'queue-drawer-track-active': index === playlistStore.currentIndex }"
-								@click="playFromQueue(audio, index)"
-							/>
+							<VirtualSongList
+								:items="playlistStore.playingSongs"
+								:item-height="56"
+								:overscan="10"
+								:scroll-container="tracksContainerRef"
+								ref="virtualListRef"
+							>
+								<template #default="{ visibleItems, startIndex }">
+									<VirtualSongItem
+										v-for="(audio, relativeIndex) in visibleItems"
+										:key="`queue-${audio.full_id}-${startIndex + relativeIndex}`"
+										:index="startIndex + relativeIndex"
+										@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
+									>
+										<Song
+											:audio="audio"
+											:data-queue-index="startIndex + relativeIndex"
+											:class="{ 'queue-drawer-track-active': (startIndex + relativeIndex) === playlistStore.currentIndex }"
+											@click="playFromQueue(audio, startIndex + relativeIndex)"
+										/>
+									</VirtualSongItem>
+								</template>
+							</VirtualSongList>
 						</div>
 					</div>
 				</div>
@@ -86,6 +101,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import Song from "~/components/Song/Song.vue";
+import VirtualSongList from "~/components/VirtualSongList.vue";
+import VirtualSongItem from "~/components/VirtualSongItem.vue";
 import { useQueueDrawer } from "~/composables/useQueueDrawer";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useAudio } from "~/composables/useAudio";
@@ -100,16 +117,15 @@ const { play } = useAudio();
 const { currentPlaylist, playlistSource, formatListens } = useQueueInfo();
 
 const tracksContainerRef = ref<HTMLElement | null>(null);
+const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
 
+// Скроллим к текущему треку при изменении индекса
 useQueueScroll(
 	tracksContainerRef,
 	() => playlistStore.currentIndex,
-	isQueueDrawerOpen
+	isQueueDrawerOpen,
+	virtualListRef
 );
-
-const clearQueue = () => {
-	playlistStore.clear();
-};
 
 const playFromQueue = async (audio: TAudio, index: number) => {
 	playlistStore.setCurrentIndex(index);
@@ -145,8 +161,9 @@ useEventListener(document, "keydown", handleEscape);
 	right: 0;
 	bottom: 0;
 	background: rgba(0, 0, 0, 0.5);
-	backdrop-filter: blur(4px);
 	z-index: 2000;
+
+	backdrop-filter: blur(4px);
 	display: flex;
 	justify-content: flex-end;
 }
@@ -208,7 +225,7 @@ useEventListener(document, "keydown", handleEscape);
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 
 	&:hover {
 		background: var(--hover, #2a2a2a);
@@ -226,7 +243,7 @@ useEventListener(document, "keydown", handleEscape);
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 
 	&:hover {
 		background: var(--hover, #2a2a2a);

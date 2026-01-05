@@ -1,28 +1,30 @@
 <template>
 	<div class="layout" id="default" :style="gridStyle">
-	<header v-if="isTauri && !isNativeFullscreen" class="layout-header">
-		<Titlebar />
-	</header>
+		<header v-if="isTauri && !isNativeFullscreen" class="layout-header">
+			<Titlebar />
+		</header>
 
-	<div class="layout-body">
-		<ClientOnly>
-			<Sidebar v-if="!isMobile" />
-			<MobileSidebar v-else />
-			<template #fallback>
-				<Sidebar />
-			</template>
-		</ClientOnly>
+		<div class="layout-main-wrapper" :style="mainGridStyle">
+			<div class="layout-body">
+				<ClientOnly>
+					<Sidebar v-if="!isMobile" />
+					<MobileSidebar v-else />
+					<template #fallback>
+						<Sidebar />
+					</template>
+				</ClientOnly>
 
-			<main ref="mainContainerRef" class="layout-main">
-				<slot />
-			</main>
+				<main ref="mainContainerRef" class="layout-main">
+					<slot />
+				</main>
+			</div>
+
+			<Player />
+
+			<Modal />
+
+			<QueueDrawer />
 		</div>
-
-		<Player />
-
-		<Modal />
-
-		<QueueDrawer />
 	</div>
 </template>
 
@@ -31,26 +33,26 @@ const mainContainerRef = ref<HTMLElement | null>(null);
 
 provide("layoutMainRef", mainContainerRef);
 
+// Инициализируем useIsMobile и useIsTauri на верхнем уровне для provide
 const { isMobile } = useIsMobile();
+const { isTauri } = useIsTauri();
 const { isNativeFullscreen } = useNativeFullscreen();
-
-const isTauri = ref(false);
-
-onMounted(() => {
-	isTauri.value = typeof window !== "undefined" && "__TAURI__" in window;
-});
 
 const gridStyle = computed(() => {
 	if (isTauri.value && !isNativeFullscreen.value) {
 		return {
-			gridTemplateRows: "30px 1fr auto",
-			"--body-row": "2"
+			gridTemplateRows: "30px 1fr"
 		};
 	}
 
 	return {
-		gridTemplateRows: "1fr auto",
-		"--body-row": "1"
+		gridTemplateRows: "1fr"
+	};
+});
+
+const mainGridStyle = computed(() => {
+	return {
+		gridTemplateRows: "1fr auto"
 	};
 });
 </script>
@@ -60,17 +62,38 @@ const gridStyle = computed(() => {
 	display: grid;
 	height: 100vh;
 	overflow: hidden;
+	--player-height: 76px;
+	
+	@media (max-width: 800px) {
+		--player-height: 80px;
+	}
+	
+	@media (max-width: 700px) {
+		--player-height: 76px;
+	}
+	
+	@media (max-width: 600px) {
+		--player-height: 72px;
+	}
 }
 
 .layout-header {
 	grid-row: 1;
 	grid-column: 1 / -1;
 	width: 100%;
-	z-index: 100;
+	z-index: 10001;
+	position: relative;
+}
+
+.layout-main-wrapper {
+	grid-row: 2;
+	display: grid;
+	height: 100%;
+	overflow: hidden;
 }
 
 .layout-body {
-	grid-row: var(--body-row, 1);
+	grid-row: 1;
 	display: flex;
 	height: 100%;
 	overflow: hidden;

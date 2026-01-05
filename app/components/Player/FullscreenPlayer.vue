@@ -471,7 +471,6 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 	align-items: center;
 	justify-content: center;
 	gap: 16px;
-	transition: all 0.4s ease;
 	flex-shrink: 0;
 	flex-grow: 0;
 	width: 600px;
@@ -611,8 +610,7 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.9);
 	cursor: pointer;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(10px);
+	transition: background-color 0.2s ease, color 0.2s ease;
 	z-index: 10001;
 
 	@media (max-width: 768px) {
@@ -632,11 +630,10 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 	&:hover {
 		background: rgba(255, 255, 255, 0.2);
 		color: #fff;
-		transform: scale(1.05);
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 }
 

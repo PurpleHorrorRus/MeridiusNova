@@ -105,3 +105,41 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	})
 }
 
+pub fn check_server_availability(remote_url: &str) -> bool {
+	let healthcheck_url = if remote_url.ends_with('/') {
+		format!("{}api/healthcheck", remote_url)
+	} else {
+		format!("{}/api/healthcheck", remote_url)
+	};
+
+	let client = reqwest::blocking::Client::builder()
+		.timeout(std::time::Duration::from_secs(3))
+		.build();
+
+	let is_available = if let Ok(client) = client {
+		match client.get(&healthcheck_url).header("Accept", "application/json").send() {
+			Ok(response) => {
+				if response.status().is_success() {
+					match response.json::<serde_json::Value>() {
+						Ok(json) => {
+							if let Some(status) = json.get("status") {
+								status.as_str() == Some("ok")
+							} else {
+								false
+							}
+						}
+						Err(_) => false,
+					}
+				} else {
+					false
+				}
+			}
+			Err(_) => false,
+		}
+	} else {
+		false
+	};
+
+	is_available
+}
+

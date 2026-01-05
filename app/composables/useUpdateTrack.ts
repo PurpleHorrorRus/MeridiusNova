@@ -6,7 +6,6 @@ import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { useSongsContext } from "~/composables/useSongsContext";
 import { useSearch } from "~/composables/useSearch";
-import { useVkStore } from "~/stores/vk";
 import { isSearchPage, isUserLibraryPage } from "~/utils/route";
 import { inject, triggerRef } from "vue";
 import type { Ref, ComputedRef } from "vue";
@@ -16,7 +15,9 @@ export const useUpdateTrack = () => {
 	const playlistStore = usePlaylistStore();
 	const playerStore = usePlayerStore();
 	const songsContext = useSongsContext();
-	
+	const route = useRoute();
+	const { results } = useSearch();
+
 	// Получаем данные через inject (должно быть на верхнем уровне setup)
 	const collectionData = inject<Ref<TParsedPayload | null> | undefined>("collectionData", undefined);
 	const playlistData = inject<Ref<TParsedPayload | null> | undefined>("playlistData", undefined);
@@ -34,16 +35,13 @@ export const useUpdateTrack = () => {
 				const track = songsContext.value[index];
 				if (track) {
 					const updated = updater(track);
-					
+
 					// Обновляем в исходных данных (если songsContext - это computed)
-					const route = useRoute();
-					
 					// Обновляем в результатах поиска
 					// Удаляем из исходных данных ТОЛЬКО если shouldRemoveFromList === true
 					// Иначе только обновляем (не удаляем)
 					if (isSearchPage(route.path)) {
-						const { results } = useSearch();
-						if (results?.value) {
+						if (results.value) {
 							// Обновляем в categories
 							if (results.value.categories) {
 								for (const category of results.value.categories) {
@@ -77,10 +75,10 @@ export const useUpdateTrack = () => {
 							}
 						}
 					}
-					
+
 					// Флаг, указывающий, обновили ли мы данные напрямую
 					let updatedDirectly = false;
-					
+
 					// Обновляем в данных библиотеки
 					// Библиотека может отображаться на:
 					// 1. /collection - использует useFetch для /api/vk/audio/${user_id}/-1
@@ -88,34 +86,34 @@ export const useUpdateTrack = () => {
 					// Получаем прямой доступ к data через provide/inject (inject вызван на верхнем уровне composable)
 					if (isUserLibraryPage(route.path)) {
 						const injectedData = route.path.startsWith('/collection') ? collectionData : playlistData;
-						
-					// Обновляем в data.value.audios
-					if (injectedData?.value?.audios) {
-						const audioIndex = injectedData.value.audios.findIndex(searchFn);
-						if (audioIndex >= 0) {
-							if (updated === null && shouldRemoveFromList) {
-								// Удаляем: используем splice и triggerRef для реактивности
-								injectedData.value.audios.splice(audioIndex, 1);
-								// Триггерим реактивность вручную, так как useFetch может не отследить splice
-								triggerRef(injectedData as Ref);
-								// Также триггерим computed property audios, если он доступен
-								if (playlistAudiosComputed) {
-									triggerRef(playlistAudiosComputed as any);
+
+						// Обновляем в data.value.audios
+						if (injectedData?.value?.audios) {
+							const audioIndex = injectedData.value.audios.findIndex(searchFn);
+							if (audioIndex >= 0) {
+								if (updated === null && shouldRemoveFromList) {
+									// Удаляем: используем splice и triggerRef для реактивности
+									injectedData.value.audios.splice(audioIndex, 1);
+									// Триггерим реактивность вручную, так как useFetch может не отследить splice
+									triggerRef(injectedData as Ref);
+									// Также триггерим computed property audios, если он доступен
+									if (playlistAudiosComputed) {
+										triggerRef(playlistAudiosComputed as any);
+									}
+									updatedDirectly = true;
+								} else if (updated !== null) {
+									// Обновляем если это не удаление
+									injectedData.value.audios[audioIndex] = updated;
+									updatedDirectly = true;
 								}
-								updatedDirectly = true;
-							} else if (updated !== null) {
-								// Обновляем если это не удаление
-								injectedData.value.audios[audioIndex] = updated;
-								updatedDirectly = true;
 							}
 						}
-					}
-						
+
 						// ВАЖНО: также обновляем playlistInfo.list (если оно есть)
 						// На странице /playlist/:owner_id/:playlist_id computed возвращает СНАЧАЛА playlistInfo.list, если он есть
 						if (playlistInfo?.value?.list && Array.isArray(playlistInfo.value.list)) {
 							const listIndex = playlistInfo.value.list.findIndex(searchFn);
-							
+
 							if (listIndex >= 0) {
 								if (updated === null && shouldRemoveFromList) {
 									// Удаляем
@@ -127,7 +125,7 @@ export const useUpdateTrack = () => {
 							}
 						}
 					}
-					
+
 					// Также обновляем в computed массиве (для немедленной реактивности)
 					// НО только если мы НЕ обновили данные напрямую (иначе будет двойное обновление)
 					if (!updatedDirectly) {
@@ -200,4 +198,3 @@ export const useUpdateTrack = () => {
 		updateTrackInAllPlaces
 	};
 };
-

@@ -35,10 +35,10 @@ import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
 import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
 import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
 
+import { isTauri } from "~/utils/tauri";
+
 const { getString, loadLanguage } = useStrings();
 const { settings, load } = useSettings();
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const activeTab = ref("general");
 
 const { isMobile } = useIsMobile();
@@ -56,7 +56,7 @@ const allTabs = [
 ];
 
 const tabs = computed(() => {
-	if (isTauri) {
+	if (isTauri()) {
 		return allTabs;
 	}
 	

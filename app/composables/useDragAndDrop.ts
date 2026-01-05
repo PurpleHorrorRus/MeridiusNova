@@ -15,16 +15,14 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 	const dragOffset = ref<{ x: number; y: number } | null>(null);
 	const currentDragElement = ref<HTMLElement | null>(null);
 	const ghostElement = ref<HTMLElement | null>(null);
+	const originalElementRect = ref<DOMRect | null>(null);
 
-	const getItemId = options.getItemId || ((item: T) => (item as any).id || (item as any).full_id);
 	const isDisabled = options.isDisabled || (() => false);
 
 	const handleMouseDown = (event: MouseEvent, index: number) => {
 		if (isDisabled() || event.button !== 0) {
 			return;
 		}
-
-		console.log("[DragAndDrop] handleMouseDown", { index });
 
 		const target = event.currentTarget as HTMLElement;
 		if (!target) {
@@ -57,7 +55,6 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			// Начинаем drag только если мышь переместилась на достаточное расстояние
 			if (deltaX > 5 || deltaY > 5) {
 				if (!isDragging.value) {
-					console.log("[DragAndDrop] Starting drag", { index });
 					isDragging.value = true;
 					draggedIndex.value = index;
 
@@ -66,6 +63,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 						const originalElement = currentDragElement.value.querySelector(".song") as HTMLElement;
 						if (originalElement && dragOffset.value) {
 							const rect = originalElement.getBoundingClientRect();
+							originalElementRect.value = rect;
 							const ghost = originalElement.cloneNode(true) as HTMLElement;
 							
 							// Применяем стили к ghost
@@ -83,8 +81,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 							ghost.style.transition = "none";
 							ghost.style.borderRadius = "8px";
 							ghost.style.background = "var(--bg-secondary, #181818)";
-							ghost.style.backdropFilter = "blur(10px)";
-							ghost.style.setProperty("-webkit-backdrop-filter", "blur(10px)");
+
 							ghost.classList.add("drag-ghost");
 							
 							// Отключаем анимации и интерактивные элементы в ghost
@@ -99,7 +96,8 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 							ghostElement.value = ghost;
 						}
 
-						currentDragElement.value.style.opacity = "0.3";
+						currentDragElement.value.style.opacity = "0";
+						currentDragElement.value.style.visibility = "hidden";
 						currentDragElement.value.style.cursor = "move";
 						const songElement = currentDragElement.value.querySelector(".song") as HTMLElement;
 						if (songElement) {
@@ -117,51 +115,71 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 					ghostElement.value.style.top = `${moveEvent.clientY - dragOffset.value.y}px`;
 				}
 
-				// Находим элемент под курсором
-				// Временно скрываем ghost, чтобы найти реальный элемент под ним
-				if (ghostElement.value) {
-					ghostElement.value.style.pointerEvents = "none";
-					ghostElement.value.style.display = "none";
+				// Сначала проверяем, находится ли курсор над исходной позицией элемента
+				// Используем расширенную зону для более стабильного определения
+				let foundIndex: number | null = null;
+				if (originalElementRect.value && draggedIndex.value !== null) {
+					const rect = originalElementRect.value;
+					const tolerance = 10; // Расширяем зону проверки на 10px с каждой стороны
+					const isOverOriginalPosition = 
+						moveEvent.clientX >= rect.left - tolerance &&
+						moveEvent.clientX <= rect.right + tolerance &&
+						moveEvent.clientY >= rect.top - tolerance &&
+						moveEvent.clientY <= rect.bottom + tolerance;
+					
+					if (isOverOriginalPosition) {
+						foundIndex = draggedIndex.value;
+					}
 				}
 				
-				const elementBelow = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
-				
-				if (ghostElement.value) {
-					ghostElement.value.style.display = "";
-					ghostElement.value.style.pointerEvents = "none";
-				}
-				
-				if (elementBelow) {
-					const dragHandle = elementBelow.closest(".song-drag-handle") as HTMLElement;
-					if (dragHandle) {
-						const wrapper = dragHandle.closest(".song-wrapper") as HTMLElement;
-						if (wrapper) {
-							const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
-							const newIndex = allWrappers.indexOf(wrapper);
-							if (newIndex !== -1 && newIndex !== draggedIndex.value) {
-								draggedOverIndex.value = newIndex;
-								console.log("[DragAndDrop] Drag over", { index: newIndex });
+				// Если не нашли исходную позицию, ищем элемент под курсором
+				if (foundIndex === null) {
+					// Временно скрываем ghost, чтобы найти реальный элемент под ним
+					if (ghostElement.value) {
+						ghostElement.value.style.pointerEvents = "none";
+						ghostElement.value.style.display = "none";
+					}
+					
+					const elementBelow = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
+					
+					if (ghostElement.value) {
+						ghostElement.value.style.display = "";
+						ghostElement.value.style.pointerEvents = "none";
+					}
+					
+					if (elementBelow) {
+						const dragHandle = elementBelow.closest(".song-drag-handle") as HTMLElement;
+						if (dragHandle) {
+							const wrapper = dragHandle.closest(".song-wrapper") as HTMLElement;
+							if (wrapper) {
+								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
+								const newIndex = allWrappers.indexOf(wrapper);
+								if (newIndex !== -1) {
+									foundIndex = newIndex;
+								}
 							}
-						}
-					} else {
-						// Пытаемся найти wrapper напрямую
-						const wrapper = elementBelow.closest(".song-wrapper") as HTMLElement;
-						if (wrapper) {
-							const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
-							const newIndex = allWrappers.indexOf(wrapper);
-							if (newIndex !== -1 && newIndex !== draggedIndex.value) {
-								draggedOverIndex.value = newIndex;
-								console.log("[DragAndDrop] Drag over (wrapper)", { index: newIndex });
+						} else {
+							// Пытаемся найти wrapper напрямую
+							const wrapper = elementBelow.closest(".song-wrapper") as HTMLElement;
+							if (wrapper) {
+								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
+								const newIndex = allWrappers.indexOf(wrapper);
+								if (newIndex !== -1) {
+									foundIndex = newIndex;
+								}
 							}
 						}
 					}
+				}
+				
+				// Обновляем draggedOverIndex только если нашли новый индекс
+				if (foundIndex !== null && foundIndex !== draggedOverIndex.value) {
+					draggedOverIndex.value = foundIndex;
 				}
 			}
 		};
 
 		const handleMouseUp = (upEvent: MouseEvent) => {
-			console.log("[DragAndDrop] handleMouseUp", { isDragging: isDragging.value, draggedIndex: draggedIndex.value, draggedOverIndex: draggedOverIndex.value });
-
 			document.removeEventListener("mousemove", handleMouseMove);
 			document.removeEventListener("mouseup", handleMouseUp);
 			document.body.style.cursor = "";
@@ -190,7 +208,6 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 							if (wrapper) {
 								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
 								toIndex = allWrappers.indexOf(wrapper);
-								console.log("[DragAndDrop] Found element under cursor", { toIndex, elementBelow: elementBelow.tagName });
 							}
 						} else {
 							// Пытаемся найти wrapper напрямую
@@ -198,7 +215,6 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 							if (wrapper) {
 								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
 								toIndex = allWrappers.indexOf(wrapper);
-								console.log("[DragAndDrop] Found wrapper under cursor", { toIndex });
 							}
 						}
 					}
@@ -206,16 +222,9 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 
 				const fromIndex = draggedIndex.value;
 
-				console.log("[DragAndDrop] Drop check", { fromIndex, toIndex, isDragging: isDragging.value });
-
 				if (toIndex !== null && toIndex !== -1 && fromIndex !== toIndex) {
-					console.log("[DragAndDrop] Dropping", { fromIndex, toIndex });
 					handleDropInternal(fromIndex, toIndex);
-				} else {
-					console.log("[DragAndDrop] No valid drop target", { fromIndex, toIndex, reason: toIndex === null ? "toIndex is null" : toIndex === -1 ? "toIndex is -1" : "fromIndex === toIndex" });
 				}
-			} else {
-				console.log("[DragAndDrop] Not dragging or no draggedIndex", { isDragging: isDragging.value, draggedIndex: draggedIndex.value });
 			}
 
 			// Удаляем ghost-элемент
@@ -233,6 +242,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			// Сброс состояния
 			if (currentDragElement.value) {
 				currentDragElement.value.style.opacity = "";
+				currentDragElement.value.style.visibility = "";
 				currentDragElement.value.style.cursor = "";
 				const songElement = currentDragElement.value.querySelector(".song") as HTMLElement;
 				if (songElement) {
@@ -246,6 +256,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			dragStartPos.value = null;
 			dragOffset.value = null;
 			currentDragElement.value = null;
+			originalElementRect.value = null;
 		};
 
 		document.addEventListener("mousemove", handleMouseMove);
@@ -256,8 +267,6 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 		if (fromIndex === toIndex) {
 			return;
 		}
-
-		console.log("[DragAndDrop] Moving item", { fromIndex, toIndex, itemsCount: items.value.length });
 
 		const originalItems = [...items.value];
 		const newItems = [...items.value];
@@ -273,10 +282,8 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 		// Обновляем UI сразу для лучшего UX
 		items.value = newItems;
 
-		console.log("[DragAndDrop] Calling onReorder", { newItemsCount: newItems.length, originalItemsCount: originalItems.length, fromIndex, toIndex });
 		try {
 			await onReorder(newItems, originalItems, fromIndex, toIndex);
-			console.log("[DragAndDrop] onReorder completed");
 		} catch (error) {
 			console.error("[DragAndDrop] onReorder failed, reverting", error);
 			// Откатываем изменения в случае ошибки

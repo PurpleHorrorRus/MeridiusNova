@@ -103,10 +103,26 @@ async function ensureTrackDir(trackPath: string): Promise<void> {
 	await ensureCacheDir(getKeysPath(trackPath));
 }
 
+type AlbumCacheData = {
+	title: string;
+};
+
+type AlbumCacheEntry = {
+	data: AlbumCacheData;
+	lastAccess: number;
+};
+
 export class CacheManager {
 	private static instance: CacheManager | null = null;
 
-	private constructor() { }
+	private albumMemoryCache: Map<string, AlbumCacheEntry> = new Map();
+	private readonly ALBUM_MEMORY_CACHE_LIMIT = 1000;
+	private albumCacheLoaded = false;
+	private albumCacheFilePath: string;
+
+	private constructor() {
+		this.albumCacheFilePath = path.resolve(os.homedir(), ".meridius", "cache", "albums-cache.json");
+	}
 
 	public static getInstance(): CacheManager {
 		if (!CacheManager.instance) {
@@ -114,6 +130,11 @@ export class CacheManager {
 		}
 
 		return CacheManager.instance;
+	}
+
+	// Предзагрузка кэша альбомов при старте приложения
+	public async preloadAlbumCache(): Promise<void> {
+		await this.loadAlbumCacheFromDisk();
 	}
 
 	public async isEnabled(): Promise<boolean> {
@@ -590,70 +611,116 @@ export class CacheManager {
 		}
 	}
 
-	private getAlbumCachePath(ownerId: number, playlistId: number): string {
-		const basePath = path.resolve(os.homedir(), ".meridius", "album-cache");
-		return path.resolve(basePath, `${ownerId}_${playlistId}.json`);
+	private getAlbumCacheKey(ownerId: number, playlistId: number): string {
+		return `${ownerId}_${playlistId}`;
 	}
 
-	public async getAlbumCache(ownerId: number, playlistId: number): Promise<{
-		owner_id: number;
-		id: number;
-		title: string;
-		thumb?: {
-			photo_300?: string;
-			photo_600?: string;
-			photo_1200?: string;
-		};
-	} | null> {
-		const cachePath = this.getAlbumCachePath(ownerId, playlistId);
-
-		if (!fs.pathExistsSync(cachePath)) {
-			return null;
+	private async loadAlbumCacheFromDisk(): Promise<void> {
+		if (this.albumCacheLoaded) {
+			return;
 		}
 
-		const [error, data] = await fs.readJson(cachePath).then(
-			(data: unknown) => [null, data] as const,
+		if (!fs.pathExistsSync(this.albumCacheFilePath)) {
+			this.albumCacheLoaded = true;
+			return;
+		}
+
+		const [error, data] = await fs.readFile(this.albumCacheFilePath, "utf8").then(
+			(content: string) => {
+				try {
+					return [null, JSON.parse(content)] as const;
+				} catch (parseError) {
+					return [parseError as Error, null] as const;
+				}
+			},
 			(error: Error) => [error, null] as const
 		);
 
-		if (error) {
-			return null;
+		if (error || !data || typeof data !== "object") {
+			this.albumCacheLoaded = true;
+			return;
 		}
 
-		return data as {
-			owner_id: number;
-			id: number;
-			title: string;
-			thumb?: {
-				photo_300?: string;
-				photo_600?: string;
-				photo_1200?: string;
-			};
-		};
+		const now = Date.now();
+		const cacheData = data as Record<string, AlbumCacheData>;
+
+		// Загружаем альбомы в память, ограничивая количество
+		const entries = Object.entries(cacheData);
+		const sortedEntries = entries
+			.slice(0, this.ALBUM_MEMORY_CACHE_LIMIT)
+			.map(([key, albumData]) => [key, { data: albumData, lastAccess: now }] as const);
+
+		for (const [key, entry] of sortedEntries) {
+			this.albumMemoryCache.set(key, entry);
+		}
+
+		this.albumCacheLoaded = true;
 	}
 
-	public async saveAlbumCache(ownerId: number, playlistId: number, albumData: {
-		owner_id: number;
-		id: number;
-		title: string;
-		thumb?: {
-			photo_300?: string;
-			photo_600?: string;
-			photo_1200?: string;
-		};
-	}): Promise<void> {
-		const cachePath = this.getAlbumCachePath(ownerId, playlistId);
-		const cacheDir = path.dirname(cachePath);
-
+	private async saveAlbumCacheToDisk(): Promise<void> {
+		const cacheDir = path.dirname(this.albumCacheFilePath);
 		await ensureCacheDir(cacheDir);
 
-		const [error] = await fs.writeJson(cachePath, albumData, { spaces: 4 }).then(
-			() => [null] as const,
-			(error) => [error, null] as const
-		);
-
-		if (error) {
-			throw error;
+		// Сохраняем все альбомы из памяти в один JSON файл одной строкой
+		const cacheData: Record<string, AlbumCacheData> = {};
+		for (const [key, entry] of this.albumMemoryCache.entries()) {
+			cacheData[key] = entry.data;
 		}
+
+		// Сохраняем в фоне одной строкой, не блокируя выполнение
+		fs.writeFile(this.albumCacheFilePath, JSON.stringify(cacheData), "utf8").catch(() => {
+			// Ignore background save errors
+		});
+	}
+
+	private evictOldAlbums(): void {
+		if (this.albumMemoryCache.size <= this.ALBUM_MEMORY_CACHE_LIMIT) {
+			return;
+		}
+
+		// Сортируем по lastAccess и удаляем самые старые
+		const entries = Array.from(this.albumMemoryCache.entries());
+		entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+
+		const toRemove = entries.slice(0, entries.length - this.ALBUM_MEMORY_CACHE_LIMIT);
+		for (const [key] of toRemove) {
+			this.albumMemoryCache.delete(key);
+		}
+	}
+
+	public async getAlbumCache(ownerId: number, playlistId: number): Promise<AlbumCacheData | null> {
+		// Загружаем кэш с диска при первом обращении
+		await this.loadAlbumCacheFromDisk();
+
+		const key = this.getAlbumCacheKey(ownerId, playlistId);
+
+		// Проверяем память
+		const memoryEntry = this.albumMemoryCache.get(key);
+		if (memoryEntry) {
+			// Обновляем lastAccess
+			memoryEntry.lastAccess = Date.now();
+			return memoryEntry.data;
+		}
+
+		return null;
+	}
+
+	public async saveAlbumCache(ownerId: number, playlistId: number, albumData: AlbumCacheData): Promise<void> {
+		// Загружаем кэш с диска при первом обращении
+		await this.loadAlbumCacheFromDisk();
+
+		const key = this.getAlbumCacheKey(ownerId, playlistId);
+
+		// Сохраняем в память только title
+		this.albumMemoryCache.set(key, {
+			data: { title: albumData.title },
+			lastAccess: Date.now()
+		});
+
+		// Удаляем старые альбомы, если превышен лимит
+		this.evictOldAlbums();
+
+		// Сохраняем в общий JSON файл одной строкой
+		await this.saveAlbumCacheToDisk();
 	}
 }

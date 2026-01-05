@@ -73,67 +73,115 @@ const getScrollContainer = (): HTMLElement | null => {
 };
 
 const itemHeights = ref<Map<number, number>>(new Map());
+// Кэш для offsets - массив накопленных высот для быстрого доступа
+const offsetsCache = ref<number[]>([]);
+
+// Пересчитываем кэш offsets только при изменении itemHeights или items.length
+const updateOffsetsCache = () => {
+	const itemsLength = props.items.length;
+	if (itemsLength === 0) {
+		offsetsCache.value = [];
+		return;
+	}
+
+	// Предзаполняем кэш высот стандартным значением для всех элементов, которые еще не измерены
+	for (let i = 0; i < itemsLength; i++) {
+		if (!itemHeights.value.has(i)) {
+			itemHeights.value.set(i, props.itemHeight);
+		}
+	}
+
+	const offsets: number[] = [0];
+	let total = 0;
+	for (let i = 0; i < itemsLength; i++) {
+		const height = itemHeights.value.get(i) || props.itemHeight;
+		total += height;
+		offsets.push(total);
+	}
+	offsetsCache.value = offsets;
+};
+
 const totalHeight = computed(() => {
 	if (props.items.length === 0) {
 		return 0;
 	}
-
-	let total = 0;
-	for (let i = 0; i < props.items.length; i++) {
-		const height = itemHeights.value.get(i) || props.itemHeight;
-		total += height;
-	}
-	return total;
+	const cache = offsetsCache.value;
+	return cache.length > 0 ? cache[cache.length - 1] : 0;
 });
 
 const getItemOffset = (index: number): number => {
+	if (index <= 0) return 0;
+	const cache = offsetsCache.value;
+	if (cache.length > index && cache[index] !== undefined) {
+		return cache[index];
+	}
+	// Fallback если кэш не готов
 	let offset = 0;
-	for (let i = 0; i < index; i++) {
+	for (let i = 0; i < index && i < props.items.length; i++) {
 		const height = itemHeights.value.get(i) || props.itemHeight;
 		offset += height;
 	}
 	return offset;
 };
 
+
 const visibleRange = computed(() => {
-	if (props.items.length === 0 || containerHeight.value === 0) {
+	const itemsLength = props.items.length;
+	if (itemsLength === 0 || containerHeight.value === 0) {
 		return { start: 0, end: 0 };
 	}
 
 	const scrollTopValue = scrollTop.value;
 	const containerHeightValue = containerHeight.value;
 	const scrollBottom = scrollTopValue + containerHeightValue;
+	const cache = offsetsCache.value;
 
+	// Используем бинарный поиск для нахождения первого видимого элемента
 	let firstVisibleIndex = -1;
 	let lastVisibleIndex = -1;
 
-	let currentOffset = 0;
-	for (let i = 0; i < props.items.length; i++) {
-		const height = itemHeights.value.get(i) || props.itemHeight;
-		const itemTop = currentOffset;
-		const itemBottom = currentOffset + height;
+	if (cache.length > 0) {
+		// Бинарный поиск для firstVisibleIndex
+		let left = 0;
+		let right = itemsLength - 1;
+		while (left <= right) {
+			const mid = Math.floor((left + right) / 2);
+			const itemTop = cache[mid];
+			if (itemTop === undefined) break;
+			const itemHeight = itemHeights.value.get(mid) || props.itemHeight;
+			const itemBottom = itemTop + itemHeight;
 
-		if (firstVisibleIndex === -1 && itemBottom >= scrollTopValue) {
-			firstVisibleIndex = i;
+			if (itemBottom >= scrollTopValue) {
+				firstVisibleIndex = mid;
+				right = mid - 1;
+			} else {
+				left = mid + 1;
+			}
 		}
 
-		if (itemTop <= scrollBottom) {
-			lastVisibleIndex = i;
-		} else if (firstVisibleIndex !== -1) {
-			break;
+		// Линейный поиск для lastVisibleIndex (обычно недалеко от firstVisibleIndex)
+		if (firstVisibleIndex >= 0) {
+			for (let i = firstVisibleIndex; i < itemsLength; i++) {
+				const itemTop = cache[i];
+				if (itemTop !== undefined && itemTop <= scrollBottom) {
+					lastVisibleIndex = i;
+				} else {
+					break;
+				}
+			}
 		}
-
-		currentOffset = itemBottom;
 	}
 
+	// Fallback если кэш не готов или поиск не дал результатов
 	if (firstVisibleIndex === -1 || lastVisibleIndex === -1) {
-		return { start: 0, end: Math.min(props.items.length - 1, props.overscan * 2) };
+		const fallbackEnd = Math.min(itemsLength - 1, props.overscan * 2);
+		return { start: 0, end: fallbackEnd };
 	}
 
 	const overscanTop = Math.ceil(props.overscan * 0.7);
 	const overscanBottom = Math.floor(props.overscan * 0.3);
 	const start = Math.max(0, firstVisibleIndex - overscanTop);
-	const end = Math.min(props.items.length - 1, lastVisibleIndex + overscanBottom);
+	const end = Math.min(itemsLength - 1, lastVisibleIndex + overscanBottom);
 
 	return { start, end };
 });
@@ -142,7 +190,12 @@ const startIndex = computed(() => visibleRange.value.start);
 const endIndex = computed(() => visibleRange.value.end);
 
 const visibleItems = computed(() => {
-	return props.items.slice(startIndex.value, endIndex.value + 1);
+	const start = startIndex.value;
+	const end = endIndex.value;
+	if (start < 0 || end < 0 || start > props.items.length || end >= props.items.length) {
+		return [];
+	}
+	return props.items.slice(start, end + 1);
 });
 
 const topOffset = computed(() => {
@@ -150,16 +203,26 @@ const topOffset = computed(() => {
 });
 
 const bottomOffset = computed(() => {
-	if (endIndex.value >= props.items.length - 1) {
+	const end = endIndex.value;
+	const itemsLength = props.items.length;
+	
+	if (end >= itemsLength - 1 || end < 0) {
 		return 0;
 	}
 	
-	if (endIndex.value < 0) {
-		return 0;
+	const cache = offsetsCache.value;
+	if (cache.length > itemsLength) {
+		// Используем кэш для быстрого вычисления
+		const total = cache[cache.length - 1];
+		const endOffset = cache[end + 1];
+		if (total !== undefined && endOffset !== undefined) {
+			return Math.max(0, total - endOffset);
+		}
 	}
 	
+	// Fallback если кэш не готов
 	let offset = 0;
-	for (let i = endIndex.value + 1; i < props.items.length; i++) {
+	for (let i = end + 1; i < itemsLength; i++) {
 		const height = itemHeights.value.get(i) || props.itemHeight;
 		offset += height;
 	}
@@ -180,7 +243,11 @@ const bottomSpacerStyle = computed(() => ({
 }));
 
 const showLoadMore = computed(() => {
-	return endIndex.value >= props.items.length - props.overscan;
+	if (!props.hasMore) {
+		return false;
+	}
+	const threshold = Math.max(1, Math.ceil(props.overscan * 0.3));
+	return endIndex.value >= props.items.length - threshold;
 });
 
 let rafId: number | null = null;
@@ -209,10 +276,28 @@ const handleScroll = () => {
 	});
 };
 
+const MAX_CACHE_SIZE = 5000;
+
+const cleanupCache = () => {
+	if (itemHeights.value.size > MAX_CACHE_SIZE) {
+		const itemsToKeep = Math.floor(MAX_CACHE_SIZE * 0.8);
+		const entries = Array.from(itemHeights.value.entries());
+		const sortedEntries = entries.sort((a, b) => a[0] - b[0]);
+		const toKeep = sortedEntries.slice(-itemsToKeep);
+		itemHeights.value.clear();
+		toKeep.forEach(([index, height]) => {
+			itemHeights.value.set(index, height);
+		});
+	}
+};
+
 const updateItemHeight = (index: number, height: number) => {
 	const currentHeight = itemHeights.value.get(index);
 	if (currentHeight !== height && height > 0) {
 		itemHeights.value.set(index, height);
+		cleanupCache();
+		// Обновляем кэш offsets при изменении высоты элемента
+		updateOffsetsCache();
 		nextTick(() => {
 			handleScroll();
 		});
@@ -269,6 +354,9 @@ const initialize = () => {
 	}
 	scrollTop.value = top;
 	
+	// Инициализируем кэш offsets
+	updateOffsetsCache();
+	
 	setupResizeObserver();
 	setupScrollListener();
 	handleScroll();
@@ -279,17 +367,20 @@ onMounted(() => {
 		initialize();
 
 		if (props.loadMore) {
+			const scrollContainerRef = computed(() => getScrollContainer());
 			useIntersectionObserver(
 				loadMoreRef,
 				async (entries) => {
-					if (entries[0]?.isIntersecting && props.hasMore && !props.isLoadingMore && props.loadMore) {
+					const entry = entries[0];
+					if (entry?.isIntersecting && props.hasMore && !props.isLoadingMore && props.loadMore) {
 						await props.loadMore();
 					}
 				},
 				{
 					threshold: 0.1,
-					rootMargin: "200px",
-					enabled: computed(() => props.hasMore && !props.isLoadingMore)
+					rootMargin: "300px",
+					root: scrollContainerRef,
+					enabled: computed(() => props.hasMore && !props.isLoadingMore && showLoadMore.value)
 				}
 			);
 		}
@@ -316,24 +407,29 @@ onBeforeUnmount(() => {
 	}
 });
 
-watch(() => props.items.length, () => {
-	itemHeights.value.clear();
-	nextTick(() => {
-		handleScroll();
-	});
-});
-
-watch(() => props.items, () => {
-	nextTick(() => {
-		handleScroll();
-	});
-}, { deep: false });
-
-watch(itemHeights, () => {
-	nextTick(() => {
-		handleScroll();
-	});
-}, { deep: true });
+// Обновляем кэш offsets при изменении items.length
+watch(() => props.items.length, (newLength, oldLength) => {
+	if (oldLength !== undefined && newLength !== oldLength) {
+		if (newLength < oldLength) {
+			// Удаляем высоты элементов, которых больше нет
+			for (let i = newLength; i < oldLength; i++) {
+				itemHeights.value.delete(i);
+			}
+		}
+		updateOffsetsCache();
+		nextTick(() => {
+			const scrollContainer = getScrollContainer();
+			if (scrollContainer) {
+				scrollTop.value = scrollContainer.scrollTop;
+				containerHeight.value = scrollContainer.clientHeight;
+			}
+			handleScroll();
+		});
+	} else if (oldLength === undefined) {
+		// Первая инициализация
+		updateOffsetsCache();
+	}
+}, { immediate: true });
 
 defineExpose({
 	updateItemHeight,
@@ -358,14 +454,18 @@ defineExpose({
 .virtual-song-list {
 	position: relative;
 	width: 100%;
+	will-change: scroll-position;
 }
 
 .virtual-song-list-spacer {
 	flex-shrink: 0;
+	will-change: height;
 }
 
 .virtual-song-list-content {
 	position: relative;
+	will-change: contents;
+	contain: layout style paint;
 }
 
 .virtual-song-list-load-more {

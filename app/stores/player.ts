@@ -5,6 +5,7 @@ import { Normalizer } from "./player/nodes/normalizer";
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
 import { isMobileCheck } from "~/composables/useIsMobile";
+import { useSettings } from "~/composables/useSettings";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlayerState } from "~~/server/utils/types";
@@ -281,7 +282,6 @@ export const usePlayerStore = defineStore("player", {
 
 			// Don't call stop() during crossfade - let previous track fade out smoothly
 			// Get crossfade config to check if crossfade is enabled
-			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 			const crossfadeConfig = settings.value.player.crossfade;
 
@@ -386,13 +386,11 @@ export const usePlayerStore = defineStore("player", {
 		},
 
 		async loadController(song: TAudio & { crossfade?: boolean }, index: number) {
-			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 			// IMPORTANT: Force refresh of settings or ensure reactivity?
 			// Settings should be reactive.
 			const crossfadeConfig = { ...settings.value.player.crossfade };
 			const normalizerConfig = settings.value.player.normalizer;
-			const equalizerConfig = settings.value.equalizer;
 
 			const controllerData: ControllerData = {
 				controller: new Audio(),
@@ -734,7 +732,6 @@ export const usePlayerStore = defineStore("player", {
 			this.previousVolume = this.volume;
 		}
 
-		const { useSettings } = await import("~/composables/useSettings");
 		const { settings } = useSettings();
 		const volumeDivider = settings.value.player.volumeDivider;
 		const calculatedVolume = this.calculateVolume(this.volume, volumeDivider);

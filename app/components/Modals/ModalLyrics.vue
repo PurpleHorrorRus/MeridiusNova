@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, watch, nextTick } from "vue";
+import { onMounted, watch, nextTick } from "vue";
 import type { TAudio } from "~~/server/utils/types";
 import { useModal } from "~/composables/useModal";
 import { useLyrics } from "~/composables/useLyrics";
@@ -56,10 +56,10 @@ const props = defineProps<{
 const { closeModal } = useModal();
 const lyrics = useLyrics(() => props.audio);
 
-const isLoading = computed(() => lyrics.loading.value);
-const lyricsText = computed(() => lyrics.lyricsText.value);
-const canTrack = computed(() => lyrics.canTrack.value);
-const trackActive = computed(() => lyrics.trackActive.value);
+const isLoading = lyrics.loading;
+const lyricsText = lyrics.lyricsText;
+const canTrack = lyrics.canTrack;
+const trackActive = lyrics.trackActive;
 
 const hasTimestamp = (line: string | { line: string; begin: number }): boolean => {
 	return typeof line === "object" && "begin" in line;
@@ -102,8 +102,8 @@ watch(trackActive, (newValue, oldValue) => {
 	height: 100%;
 	padding: 24px;
 	background: rgba(18, 18, 18, 0.95);
-	backdrop-filter: blur(20px);
 	border-radius: 12px;
+
 	width: 100%;
 	box-sizing: border-box;
 
@@ -146,7 +146,7 @@ watch(trackActive, (newValue, oldValue) => {
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.9);
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 	flex-shrink: 0;
 
 	&:hover {
@@ -155,7 +155,7 @@ watch(trackActive, (newValue, oldValue) => {
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 }
 

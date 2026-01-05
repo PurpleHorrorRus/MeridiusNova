@@ -1,3 +1,4 @@
+import { storeToRefs } from "pinia";
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { useQueue } from "~/composables/useQueue";
@@ -15,6 +16,18 @@ export const usePlaylist = () => {
 	const playlistStore = usePlaylistStore();
 	const playerStore = usePlayerStore();
 	const { setQueue, playFromQueue } = useQueue();
+
+	const {
+		current,
+		playing,
+		playingSongs,
+		currentSong,
+		currentIndex,
+		shuffle,
+		repeat,
+		hasNext,
+		hasPrevious
+	} = storeToRefs(playlistStore);
 
 	const loadPlaylist = async (ownerId: number, playlistId: number, accessHash?: string, sourcePlaylist?: TPlaylist) => {
 		// Для поиска (playlist_id === -1 и owner_id === 0) не загружаем через API
@@ -41,18 +54,14 @@ export const usePlaylist = () => {
 				}
 			});
 			
-			// Сохраняем title и cover_url из исходного плейлиста
-			playlist.title = sourcePlaylist.title;
-			playlist.cover_url = sourcePlaylist.cover_url || playlist.cover_url;
-			
-			// Используем универсальный метод для установки очереди
-			if (playlist.list && playlist.list.length > 0) {
-				setQueue(playlist.list, playlist);
-			} else {
-				setQueue([], playlist);
-			}
-			
-			return playlist;
+		// Сохраняем title и cover_url из исходного плейлиста
+		playlist.title = sourcePlaylist.title;
+		playlist.cover_url = sourcePlaylist.cover_url || playlist.cover_url;
+		
+		// НЕ вызываем setQueue здесь - это будет сделано в playPlaylist
+		// setQueue должен вызываться только при явном воспроизведении плейлиста
+		
+		return playlist;
 		}
 
 		const playlist = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId}/${playlistId}`, {
@@ -62,12 +71,8 @@ export const usePlaylist = () => {
 			}
 		});
 
-		// Используем универсальный метод для установки очереди
-		if (playlist.list && playlist.list.length > 0) {
-			setQueue(playlist.list, playlist);
-		} else {
-			setQueue([], playlist);
-		}
+		// НЕ вызываем setQueue здесь - это будет сделано в playPlaylist
+		// loadPlaylist должен только загружать данные, а не устанавливать очередь
 
 		return playlist;
 	};
@@ -490,15 +495,15 @@ export const usePlaylist = () => {
 	};
 
 	return {
-		current: computed(() => playlistStore.current),
-		playing: computed(() => playlistStore.playing),
-		playingSongs: computed(() => playlistStore.playingSongs),
-		currentSong: computed(() => playlistStore.currentSong),
-		currentIndex: computed(() => playlistStore.currentIndex),
-		shuffle: computed(() => playlistStore.shuffle),
-		repeat: computed(() => playlistStore.repeat),
-		hasNext: computed(() => playlistStore.hasNext),
-		hasPrevious: computed(() => playlistStore.hasPrevious),
+		current,
+		playing,
+		playingSongs,
+		currentSong,
+		currentIndex,
+		shuffle,
+		repeat,
+		hasNext,
+		hasPrevious,
 		loadPlaylist,
 		playPlaylist,
 		playFromPlaylist,

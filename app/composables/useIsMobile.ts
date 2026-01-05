@@ -1,4 +1,7 @@
+import { inject, provide, type Ref } from "vue";
+
 const MOBILE_BREAKPOINT = 768;
+const IS_MOBILE_KEY = Symbol("isMobile");
 
 export const isMobileCheck = (): boolean => {
 	if (typeof window === "undefined") {
@@ -8,6 +11,14 @@ export const isMobileCheck = (): boolean => {
 };
 
 export const useIsMobile = () => {
+	const injected = inject<Ref<boolean> | undefined>(IS_MOBILE_KEY, undefined);
+
+	if (injected) {
+		return {
+			isMobile: injected
+		};
+	}
+
 	const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
 
 	const isMobile = computed(() => {
@@ -35,6 +46,8 @@ export const useIsMobile = () => {
 			window.removeEventListener("resize", handleResize);
 		}
 	});
+
+	provide(IS_MOBILE_KEY, isMobile);
 
 	return {
 		isMobile

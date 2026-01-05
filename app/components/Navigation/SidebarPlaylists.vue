@@ -30,11 +30,11 @@
 								/>
 							</button>
 						</div>
+
 						<span class="nav-item-subitem-text">{{ playlist.title }}</span>
+						
 						<div v-if="playlistPlayingStates[playlist.raw_id]" class="nav-item-subitem-playing-indicator">
-							<span class="playing-bar"></span>
-							<span class="playing-bar"></span>
-							<span class="playing-bar"></span>
+							<Icon name="mdi:volume-high" size="10" />
 						</div>
 					</NuxtLink>
 				</div>
@@ -94,7 +94,7 @@ const handlePlaylistPlay = async (playlist: any) => {
 .nav-item-subitems {
 	display: grid;
 	grid-template-rows: 0fr;
-	transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1), margin 0.4s cubic-bezier(0.4, 0, 0.2, 1), border 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 	opacity: 0;
 	padding-top: 0;
 	padding-bottom: 0;
@@ -152,7 +152,8 @@ const handlePlaylistPlay = async (playlist: any) => {
 
 .nav-item-subitem-wrapper {
 	position: relative;
-	transition: all 0.2s ease;
+	// Анимируем только background при изменении состояния
+	transition: background-color 0.2s ease;
 
 	&.active {
 		background: var(--bg-secondary, #252525);
@@ -190,10 +191,11 @@ const handlePlaylistPlay = async (playlist: any) => {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 6px 20px 6px 8px;
+	padding: 6px 6px 6px 8px;
 	color: var(--text-secondary, #b3b3b3);
 	text-decoration: none;
-	transition: all 0.2s ease;
+	// Анимируем только свойства, которые меняются при hover
+	transition: background-color 0.2s ease, color 0.2s ease;
 	font-size: 12px;
 	position: relative;
 	border-radius: 4px;
@@ -268,6 +270,7 @@ const handlePlaylistPlay = async (playlist: any) => {
 	opacity: 0;
 	transition: opacity 0.2s ease;
 	color: var(--text, #fff);
+
 	backdrop-filter: blur(2px);
 
 	.nav-item-subitem-wrapper:hover & {
@@ -302,47 +305,25 @@ const handlePlaylistPlay = async (playlist: any) => {
 	}
 }
 
+// Статический индикатор воспроизведения плейлиста
 .nav-item-subitem-playing-indicator {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	justify-content: center;
 	margin-left: auto;
 	margin-right: 8px;
-	height: 12px;
+	width: 16px;
+	height: 16px;
+	background: var(--secondary, #e9003f);
+	border-radius: 50%;
+	flex-shrink: 0;
 
 	@media (max-width: 600px) {
 		display: none;
 	}
-}
 
-.playing-bar {
-	width: 3px;
-	height: 100%;
-	background: var(--secondary, #e9003f);
-	border-radius: 2px;
-	animation: playing-wave 1.2s ease-in-out infinite;
-
-	&:nth-child(1) {
-		animation-delay: 0s;
-	}
-
-	&:nth-child(2) {
-		animation-delay: 0.2s;
-	}
-
-	&:nth-child(3) {
-		animation-delay: 0.4s;
-	}
-}
-
-@keyframes playing-wave {
-	0%, 100% {
-		height: 30%;
-		transform: scaleY(0.3);
-	}
-	50% {
-		height: 100%;
-		transform: scaleY(1);
+	:deep(svg) {
+		color: var(--text, #fff);
 	}
 }
 

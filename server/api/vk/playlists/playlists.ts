@@ -1,4 +1,5 @@
 import HTMLParser from "node-html-parser";
+import Bluebird from "bluebird";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
@@ -381,40 +382,73 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 			// Если нужен список треков
 			if (params.list !== false && playlist.size > 0) {
+				const startTime = Date.now();
 				const playlistAccessKey = vkPlaylist.access_key || params.access_hash || "";
 				const entity_id = `${vkPlaylist.owner_id}_${vkPlaylist.id}_${playlistAccessKey}`;
 
+				const getIdsStartTime = Date.now();
 				const audioIds = await this.getIdsBySource({
 					source: "playlist",
 					entity_id
 				}).catch(() => []);
+				const getIdsTime = Date.now() - getIdsStartTime;
 
 				if (audioIds.length > 0) {
 					// Получаем полную информацию о треках через reloadAudios
 					const { getAudioRequestsInstance } = await import("~~/server/api/vk/audio/audio");
 					const audioRequests = getAudioRequestsInstance(this.event);
 
-					// Применяем offset и count если указаны
-					let processedIds = audioIds;
-					if (params.offset) {
-						processedIds = processedIds.slice(params.offset);
-					}
-					if (params.count) {
-						processedIds = processedIds.slice(0, params.count);
-					}
-
 					// Получаем полную информацию о треках
 					// audio_id из getIdsBySource уже в правильном формате для reloadAudios
-					const audioIdsList = processedIds.map(item => item.audio_id);
+					const audioIdsList = audioIds.map(item => item.audio_id);
 
 					if (audioIdsList.length > 0) {
-						const rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
+						// Для больших списков разбиваем getById на батчи и выполняем параллельно
+						// Увеличиваем размер батча и параллелизм для лучшей производительности
+						const batchSize = 300;
+						let rawAudios: any[] = [];
 
-						// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
-						playlist.list = await audioRequests.parseAudios(rawAudios, {
-							count: params.count,
-							withUrls: false
-						});
+						if (audioIdsList.length > batchSize) {
+							const getByIdStartTime = Date.now();
+							const batches: string[][] = [];
+							for (let i = 0; i < audioIdsList.length; i += batchSize) {
+								batches.push(audioIdsList.slice(i, i + batchSize));
+							}
+
+							// Увеличиваем concurrency для параллельного выполнения большего количества батчей
+							const batchResults = await Bluebird.map(batches, batch => 
+								audioRequests.getById({ ids: batch.join(",") })
+							, { concurrency: 10 });
+							rawAudios = batchResults.flat();
+							const getByIdTime = Date.now() - getByIdStartTime;
+
+							// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
+							const parseStartTime = Date.now();
+							playlist.list = await audioRequests.parseAudios(rawAudios, {
+								withUrls: false
+							});
+							const parseTime = Date.now() - parseStartTime;
+							const totalTime = Date.now() - startTime;
+						} else {
+							const getByIdStartTime = Date.now();
+							rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
+							const getByIdTime = Date.now() - getByIdStartTime;
+
+							// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
+							const parseStartTime = Date.now();
+							playlist.list = await audioRequests.parseAudios(rawAudios, {
+								withUrls: false
+							});
+							const parseTime = Date.now() - parseStartTime;
+							const totalTime = Date.now() - startTime;
+						}
+
+						// Все треки загружены, more не нужен
+						playlist.more = null;
+					} else {
+						// Нет треков
+						playlist.list = [];
+						playlist.more = null;
 					}
 				}
 			}
@@ -639,17 +673,15 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		if (params.list) {
 			if (!payload.list) {
 				playlist.list = [];
+				playlist.more = null;
 			} else {
-				const count = params.count || 50;
-				const offset = params.offset || 0;
-				const needSplice = offset > 0 || payload.list.length > count;
-				const list = needSplice ? payload.list.slice(offset, offset + count) : payload.list;
-
 				// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
-				playlist.list = await getAudioRequestsInstance(this.event).parseAudios(list, {
-					count: params.count,
+				playlist.list = await getAudioRequestsInstance(this.event).parseAudios(payload.list, {
 					withUrls: false
 				});
+
+				// Все треки загружены, more не нужен
+				playlist.more = null;
 			}
 		}
 

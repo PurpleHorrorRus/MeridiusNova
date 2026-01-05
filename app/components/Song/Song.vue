@@ -22,10 +22,9 @@
 			<div v-if="isTableMode" class="song-cover-overlay">
 				<Icon :name="isPlaying && playerIsPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
 			</div>
+
 			<div v-if="isPlaying && playerIsPlaying" class="song-cover-playing-indicator">
-				<span class="playing-bar"></span>
-				<span class="playing-bar"></span>
-				<span class="playing-bar"></span>
+				<Icon name="mdi:volume-high" size="10" />
 			</div>
 		</div>
 
@@ -494,7 +493,8 @@ const handleTouchCancel = () => {
 	gap: 12px;
 	padding: 10px 12px;
 	border-radius: 8px;
-	transition: all 0.3s ease;
+	// Анимируем только свойства, которые меняются при hover
+	transition: background-color 0.3s ease;
 	min-height: 56px;
 	position: relative;
 	overflow: hidden;
@@ -534,16 +534,6 @@ const handleTouchCancel = () => {
 			opacity: 0;
 		}
 
-		.song-actions {
-			opacity: 1;
-			pointer-events: auto;
-			max-width: 200px;
-
-			.table-mode & {
-				max-width: none;
-			}
-		}
-
 		.song-info-title {
 			color: var(--text, #fff);
 		}
@@ -560,6 +550,13 @@ const handleTouchCancel = () => {
 			opacity: 0;
 		}
 
+		.song-info-title {
+			color: var(--secondary, #e9003f);
+		}
+	}
+
+	// Общие стили для .song-actions при hover (объединены для избежания дублирования)
+	&:hover:not(.restricted) {
 		.song-actions {
 			opacity: 1;
 			pointer-events: auto;
@@ -568,10 +565,6 @@ const handleTouchCancel = () => {
 			.table-mode & {
 				max-width: none;
 			}
-		}
-
-		.song-info-title {
-			color: var(--secondary, #e9003f);
 		}
 	}
 
@@ -639,7 +632,7 @@ const handleTouchCancel = () => {
 		justify-content: center;
 		font-size: 14px;
 		color: var(--text-secondary, #b3b3b3);
-		transition: all 0.3s ease;
+		transition: opacity 0.3s ease, color 0.3s ease;
 		width: 40px;
 		flex-shrink: 0;
 
@@ -656,7 +649,7 @@ const handleTouchCancel = () => {
 		flex-shrink: 0;
 		width: 50px;
 		height: 50px;
-		transition: all 0.3s ease;
+		// Анимация не нужна - размеры не меняются
 
 		.table-mode & {
 			width: 40px;
@@ -694,15 +687,19 @@ const handleTouchCancel = () => {
 		bottom: 4px;
 		right: 4px;
 		display: flex;
-		align-items: flex-end;
-		gap: 2px;
-		height: 12px;
-		z-index: 0;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		z-index: 1;
 		pointer-events: none;
-		padding: 2px 4px;
-		background: rgba(0, 0, 0, 0.5);
-		border-radius: 4px;
-		backdrop-filter: blur(4px);
+		background: var(--secondary, #e9003f);
+		border-radius: 50%;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+		
+		:deep(svg) {
+			color: var(--text, #fff);
+		}
 	}
 
 	&-info {
@@ -818,7 +815,7 @@ const handleTouchCancel = () => {
 		flex-shrink: 0;
 		max-width: 0;
 		overflow: hidden;
-		transition: opacity 0.3s ease, max-width 0.3s ease;
+		transition: opacity 0.3s ease;
 
 		&:hover {
 			opacity: 1;
@@ -846,37 +843,6 @@ const handleTouchCancel = () => {
 		color: var(--text-secondary, #b3b3b3);
 		opacity: 0.7;
 		transition: opacity 0.3s ease;
-	}
-}
-
-.playing-bar {
-	width: 3px;
-	height: 100%;
-	background: var(--secondary, #e9003f);
-	border-radius: 2px;
-	animation: playing-wave 1.2s ease-in-out infinite;
-
-	&:nth-child(1) {
-		animation-delay: 0s;
-	}
-
-	&:nth-child(2) {
-		animation-delay: 0.2s;
-	}
-
-	&:nth-child(3) {
-		animation-delay: 0.4s;
-	}
-}
-
-@keyframes playing-wave {
-	0%, 100% {
-		height: 30%;
-		transform: scaleY(0.3);
-	}
-	50% {
-		height: 100%;
-		transform: scaleY(1);
 	}
 }
 

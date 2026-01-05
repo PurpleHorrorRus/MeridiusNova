@@ -214,8 +214,14 @@ const toMutableArtist = (artist: { cover?: string; coverUrl_p?: string; coverUrl
 const { general, loading: generalLoading, error: generalError, loadGeneral } = useGeneral();
 const { explore: exploreData, loading: exploreLoading, error: exploreError, loadExplore } = useExplore();
 
-const pending = computed(() => generalLoading.value || exploreLoading.value);
-const error = computed(() => generalError.value || exploreError.value);
+const pending = computed(() => {
+	return generalLoading.value || exploreLoading.value;
+});
+
+const error = computed(() => {
+	return generalError.value || exploreError.value;
+});
+
 const isRefreshing = ref(false);
 
 const handleRefresh = async () => {
@@ -238,7 +244,10 @@ const handleRefresh = async () => {
 
 // Find recommendations (type === "recommendations" with popup param)
 const recommendations = computed(() => {
-	if (!general.value || general.value.length === 0) return null;
+	if (!general.value || general.value.length === 0) {
+		return null;
+	}
+
 	return general.value.find(category => {
 		if (category.type !== "recommendations") return false;
 		if (!category.params) return false;
@@ -279,13 +288,18 @@ const userPlaylistsCategory = computed(() => {
 
 // Find vibes
 const vibes = computed(() => {
-	if (!general.value || general.value.length === 0) return null;
+	if (!general.value || general.value.length === 0) {
+		return null;
+	}
+
 	return general.value.find(category => category.type === "vibes");
 });
 
 // Filter general collections (exclude recommendations, vibes, and first user playlists)
 const generalCollections = computed(() => {
-	if (!general.value) return [];
+	if (!general.value) {
+		return [];
+	}
 	
 	let filtered = [...general.value];
 	
@@ -326,17 +340,23 @@ const generalCollections = computed(() => {
 // Explore playlists collections
 const exploreCollections = computed(() => {
 	if (!exploreData.value || !exploreData.value.playlists) return [];
+	
 	// Проверяем, что playlists - это массив, а не объект
 	return exploreData.value.playlists.filter(c => {
-		if (!c.playlists) return false;
+		if (!c.playlists) {
+			return false;
+		}
+
 		// Если playlists - это массив
 		if (Array.isArray(c.playlists)) {
 			return c.playlists.length > 0;
 		}
+
 		// Если playlists - это объект, проверяем, есть ли в нем элементы
 		if (typeof c.playlists === "object") {
 			return Object.keys(c.playlists).length > 0;
 		}
+
 		return false;
 	});
 });

@@ -1,11 +1,11 @@
+import { storeToRefs } from "pinia";
 import { useSettingsStore } from "~/stores/settings";
 import type { TSettings } from "~~/server/utils/types";
 
 export const useSettings = () => {
 	const settingsStore = useSettingsStore();
 
-	const settings = computed(() => settingsStore.settings);
-	const loaded = computed(() => settingsStore.loaded);
+	const { settings, loaded } = storeToRefs(settingsStore);
 
 	const load = () => settingsStore.load();
 	const save = () => settingsStore.save();

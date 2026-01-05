@@ -89,14 +89,7 @@ const handlePlayerAreaClick = (event: MouseEvent) => {
 	height: 56px;
 	border-radius: 12px;
 	flex-shrink: 0;
-	transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease, transform 0.2s ease;
 	cursor: pointer;
-
-	@media (min-width: 801px) {
-		&:hover {
-			transform: scale(1.05);
-		}
-	}
 
 	@media (max-width: 1200px) {
 		width: 48px;
@@ -136,7 +129,7 @@ const handlePlayerAreaClick = (event: MouseEvent) => {
 	position: relative;
 	z-index: 2;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-	transition: border-radius 0.3s ease;
+	// Убрана анимация для производительности
 }
 
 .cover-glow {
@@ -151,7 +144,7 @@ const handlePlayerAreaClick = (event: MouseEvent) => {
 	opacity: 0.6;
 	z-index: 1;
 	border-radius: 50%;
-	transition: width 0.3s ease, height 0.3s ease;
+	// Убрана анимация для производительности
 }
 
 .track-info {

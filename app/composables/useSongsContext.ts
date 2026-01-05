@@ -1,4 +1,4 @@
-import { inject, provide, ref, computed, type Ref, type ComputedRef } from "vue";
+import { inject, provide, ref, computed, watch, type Ref, type ComputedRef } from "vue";
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const SongsContextKey = Symbol("songs-context");
@@ -6,6 +6,7 @@ const SongsContextKey = Symbol("songs-context");
 export const provideSongsContext = (songs: TAudio[] | Ref<TAudio[]> | ComputedRef<TAudio[]>) => {
 	// Если передан массив, создаем ref, иначе используем переданный ref/computed
 	const songsRef = Array.isArray(songs) ? ref(songs) : songs;
+	
 	provide(SongsContextKey, songsRef);
 };
 

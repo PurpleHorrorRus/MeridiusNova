@@ -2,6 +2,7 @@ import type { TPlaylist, TAudio } from "~~/server/utils/types";
 import { createAudioBody } from "~/utils/audio-api";
 import { refreshDownloadsQueue } from "~/utils/downloads";
 import { authenticatedFetch } from "~/utils/api";
+import { isTauri } from "~/utils/tauri";
 
 export const usePlaylistActions = () => {
 	const createPlaylist = async (params: {
@@ -104,8 +105,7 @@ export const usePlaylistActions = () => {
 	};
 
 	const downloadPlaylist = async (playlist: TPlaylist) => {
-		const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-		const clientType = isTauri ? "tauri" : "browser";
+		const clientType = isTauri() ? "tauri" : "browser";
 
 		const response = await authenticatedFetch<{ success: boolean; downloadId?: string }>("/api/vk/playlists/download", {
 			method: "POST",

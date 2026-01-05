@@ -8,12 +8,12 @@ export const useQueueInfo = () => {
 	const { current, playing } = usePlaylist();
 
 	const currentPlaylist = computed(() => {
-		if (playlistStore.playing) {
-			return playlistStore.playing;
+		if (playing.value) {
+			return playing.value;
 		}
 
-		if (playlistStore.current && playlistStore.playingSongs.length > 0) {
-			return playlistStore.current;
+		if (current.value && playlistStore.playingSongs.length > 0) {
+			return current.value;
 		}
 
 		return null;

@@ -1,6 +1,6 @@
 <template>
 	<div class="auth-page">
-		<div v-if="isTauri" class="auth-titlebar-wrapper">
+		<div v-if="isTauri()" class="auth-titlebar-wrapper">
 			<Titlebar />
 		</div>
 		<div class="auth-content">
@@ -63,7 +63,7 @@ definePageMeta({
 	layout: false
 });
 
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+import { isTauri } from "~/utils/tauri";
 const vkStore = useVkStore();
 const authInit = useAuthInit();
 const { isMobile } = useIsMobile();
@@ -200,13 +200,7 @@ const check = async () => {
 	}
 };
 
-onMounted(() => {
-	if (typeof window !== "undefined") {
-		document.addEventListener("visibilitychange", handleVisibilityChange);
-		window.addEventListener("focus", handleFocus);
-	}
-
-	watch(pending, (pending: boolean) => {
+const stopPendingWatcher = watch(pending, (pending: boolean) => {
 		if (!pending && data.value?.url && !errorMessage.value) {
 			const checkInterval = isMobile.value ? 1500 : 3000;
 			intervalId.value = setInterval(check, checkInterval);
@@ -215,7 +209,7 @@ onMounted(() => {
 		}
 	}, { immediate: true });
 
-	watch(isExpired, (expired) => {
+const stopIsExpiredWatcher = watch(isExpired, (expired) => {
 		if (expired) {
 			stopInterval();
 		} else if (!pending.value && data.value?.url && !intervalId.value && !errorMessage.value) {
@@ -224,15 +218,24 @@ onMounted(() => {
 		}
 	});
 
-	watch(errorMessage, (error) => {
+const stopErrorMessageWatcher = watch(errorMessage, (error) => {
 		if (error) {
 			stopInterval();
 		}
 	});
+
+onMounted(() => {
+	if (typeof window !== "undefined") {
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		window.addEventListener("focus", handleFocus);
+	}
 });
 
 onBeforeUnmount(() => {
 	stopInterval();
+	stopPendingWatcher();
+	stopIsExpiredWatcher();
+	stopErrorMessageWatcher();
 	
 	if (typeof window !== "undefined") {
 		document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -352,6 +355,7 @@ onBeforeUnmount(() => {
 	gap: 16px;
 	background: rgba(18, 18, 18, 0.95);
 	border-radius: 16px;
+
 	backdrop-filter: blur(8px);
 
 	p {
@@ -370,15 +374,14 @@ onBeforeUnmount(() => {
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background 0.2s ease, transform 0.1s ease;
+	transition: background 0.2s ease, opacity 0.1s ease;
 
 	&:hover {
 		background: var(--primary-hover, #ff1a5c);
-		transform: scale(1.05);
 	}
 
 	&:active {
-		transform: scale(0.98);
+		opacity: 0.9;
 	}
 }
 

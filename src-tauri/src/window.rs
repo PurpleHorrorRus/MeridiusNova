@@ -11,7 +11,7 @@ pub fn handle_window_events(window: &tauri::Window, event: &tauri::WindowEvent) 
 			if let Some(state) = window.app_handle().try_state::<ServerState>() {
 				if let Ok(mut child_lock) = state.child.lock() {
 					if let Some(child) = child_lock.take() {
-						println!("Terminating server sidecar...");
+						println!("[Sidecar] Terminating server sidecar...");
 						let _ = child.kill();
 					}
 				}

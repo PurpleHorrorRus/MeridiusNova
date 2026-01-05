@@ -19,7 +19,7 @@
 					/>
 					<button
 						v-if="searchQuery"
-						@click="clearSearch"
+						@click="searchQuery = ''"
 						class="search-clear"
 					>
 						<Icon name="mdi:close" size="14" />
@@ -58,14 +58,16 @@ import { useUpdater } from "~/composables/useUpdater";
 import { useModal } from "~/composables/useModal";
 import { useEventListener } from "~/composables/useEventListener";
 
+import { isTauri } from "~/utils/tauri";
+
 const { getString } = useStrings();
 const { openSettings } = useModal();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const appWindow = ref<any>(null);
 const { updateAvailable, checkForUpdates } = useUpdater();
 
 const searchQuery = ref("");
+const updateCheckInterval = ref<ReturnType<typeof setInterval> | null>(null);
 
 const windowWidth = ref(0);
 
@@ -86,19 +88,22 @@ onMounted(async () => {
 		useEventListener(window, "resize", handleResize);
 	}
 
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { getCurrentWindow } = await import("@tauri-apps/api/window");
 		appWindow.value = getCurrentWindow();
 
 		await checkForUpdates();
 
-		const checkInterval = setInterval(async () => {
+		updateCheckInterval.value = setInterval(async () => {
 			await checkForUpdates();
 		}, 10 * 60 * 1000);
+	}
+});
 
 		onUnmounted(() => {
-			clearInterval(checkInterval);
-		});
+	if (updateCheckInterval.value) {
+		clearInterval(updateCheckInterval.value);
+		updateCheckInterval.value = null;
 	}
 });
 
@@ -109,10 +114,6 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 			navigateTo(`/search?q=${encodeURIComponent(query)}`);
 		}
 	}
-};
-
-const clearSearch = () => {
-	searchQuery.value = "";
 };
 
 const handleMouseDown = (event: MouseEvent) => {
@@ -143,7 +144,7 @@ const handleMaximize = async () => {
 };
 
 const handleClose = async () => {
-	if (!appWindow.value || !isTauri || !import.meta.client) {
+	if (!appWindow.value || !isTauri() || !import.meta.client) {
 		return;
 	}
 
@@ -220,14 +221,13 @@ const handleClose = async () => {
 			background: var(--secondary, #e9003f);
 			border-radius: 4px;
 			cursor: pointer;
-			transition: all 0.2s ease;
+			transition: transform 0.2s ease, background-color 0.2s ease;
 			font-size: 12px;
 			font-weight: 500;
 			color: var(--text, #fff);
 
 			&:hover {
 				background: var(--primary-hover, #ff1a5c);
-				transform: translateY(-1px);
 			}
 
 			.update-text {

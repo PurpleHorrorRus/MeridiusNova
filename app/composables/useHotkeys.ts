@@ -1,7 +1,6 @@
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+import { isTauri } from "~/utils/tauri";
 
 const hotkeyCooldowns = new Map<string, number>();
 const COOLDOWN_TIME = 200;
@@ -114,7 +113,7 @@ export const useHotkeys = () => {
 	};
 
 	const registerHotkeys = async () => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 
@@ -139,7 +138,7 @@ export const useHotkeys = () => {
 	};
 
 	const unregisterHotkeys = async () => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 
@@ -148,7 +147,7 @@ export const useHotkeys = () => {
 	};
 
 	const registerHotkey = async (action: string, accelerator: string) => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return false;
 		}
 
@@ -173,7 +172,7 @@ export const useHotkeys = () => {
 	};
 
 	const unregisterHotkey = async (action: string) => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 

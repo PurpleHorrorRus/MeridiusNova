@@ -4,7 +4,7 @@
 			<h1 class="modal-settings-title">{{ getString("settings.title") }}</h1>
 			<button
 				class="modal-settings-close"
-				@click="handleClose"
+				@click="modalStore.close"
 			>
 				<Icon name="mdi:close" size="24" />
 			</button>
@@ -43,11 +43,11 @@ import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
 
 import { useModalStore } from "~/stores/modal";
 
+import { isTauri } from "~/utils/tauri";
+
 const { getString, loadLanguage } = useStrings();
 const { settings, load } = useSettings();
 const modalStore = useModalStore();
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const activeTab = ref("general");
 
 const allTabs = [
@@ -63,7 +63,7 @@ const allTabs = [
 ];
 
 const tabs = computed(() => {
-	return isTauri ? allTabs : allTabs.filter(tabItem => tabItem.id !== "hotkeys");
+	return isTauri() ? allTabs : allTabs.filter(tabItem => tabItem.id !== "hotkeys");
 });
 
 const components: Record<string, any> = {
@@ -82,12 +82,8 @@ const currentComponent = computed(() => {
 	return components[activeTab.value] || SettingsGeneral;
 });
 
-const handleClose = () => {
-	modalStore.close();
-};
-
 watch(() => tabs.value, (newTabs) => {
-	if (!isTauri && activeTab.value === "hotkeys") {
+	if (!isTauri() && activeTab.value === "hotkeys") {
 		activeTab.value = "general";
 	}
 }, { immediate: true });
@@ -99,7 +95,7 @@ onMounted(async () => {
 		await loadLanguage(lang);
 	}
 
-	if (!isTauri && activeTab.value === "hotkeys") {
+	if (!isTauri() && activeTab.value === "hotkeys") {
 		activeTab.value = "general";
 	}
 });
@@ -144,7 +140,7 @@ onMounted(async () => {
 	cursor: pointer;
 	padding: 8px;
 	border-radius: 6px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -234,7 +230,7 @@ onMounted(async () => {
 	border-left: 3px solid transparent;
 	color: var(--text-secondary, #b3b3b3);
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 	font-size: 14px;
 	text-align: left;
 	width: 100%;

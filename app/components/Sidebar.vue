@@ -17,7 +17,7 @@
 				/>
 
 				<div class="sidebar-bottom-section">
-					<Downloads v-if="!isTauri" :show-label="true" :icon-size="24" />
+					<Downloads v-if="!isTauri()" :show-label="true" :icon-size="24" />
 
 					<SidebarSettingsButton />
 
@@ -40,7 +40,7 @@
 					/>
 
 					<div class="sidebar-bottom-section">
-						<Downloads v-if="!isTauri" :show-label="true" :icon-size="24" />
+						<Downloads v-if="!isTauri()" :show-label="true" :icon-size="24" />
 
 						<SidebarSettingsButton />
 
@@ -64,14 +64,13 @@ import SidebarSettingsButton from "~/components/Navigation/SidebarSettingsButton
 import SidebarUser from "~/components/Navigation/SidebarUser.vue";
 import Downloads from "~/components/Downloads/Downloads.vue";
 import { loadUserAccounts } from "~/utils/accounts";
+import { isTauri } from "~/utils/tauri";
 
-const { playPlaylist } = usePlaylist();
+const { playPlaylist, playing } = usePlaylist();
 
 const vkStore = useVkStore();
 const { settings, load } = useSettings();
-const { playing } = usePlaylist();
 const playerStore = usePlayerStore();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const userId = computed(() => vkStore.user_id || 0);
 const accounts = ref<any[]>([]);
@@ -117,11 +116,8 @@ const handlePlaylistPlay = async (playlist: any) => {
 	}
 };
 
-watch([playing, () => playerStore.paused], () => {
-	updatePlaylistStates();
-}, { immediate: true });
-
-watch(() => playerStore.isPlaying, () => {
+// Объединяем watchers для оптимизации производительности
+watch([playing, () => playerStore.paused, () => playerStore.isPlaying], () => {
 	updatePlaylistStates();
 }, { immediate: true });
 
@@ -188,7 +184,6 @@ if (typeof window !== "undefined") {
 	border-right: 1px solid var(--border, #2a2a2a);
 	overflow-y: auto;
 	overflow-x: hidden;
-	transition: width 0.3s ease;
 
 	@media (max-width: 600px) {
 		padding-bottom: 60px;

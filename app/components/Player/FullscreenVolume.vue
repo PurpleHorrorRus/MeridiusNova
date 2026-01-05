@@ -86,7 +86,6 @@ const { isMobile } = useIsMobile();
 	overflow: visible;
 	display: block;
 	cursor: pointer;
-	transition: height 0.2s ease;
 
 	&:hover {
 		height: 6px;

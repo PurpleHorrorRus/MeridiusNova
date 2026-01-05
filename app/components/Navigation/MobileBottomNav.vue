@@ -80,7 +80,7 @@ const getCustomActive = (path: string): boolean => {
 	color: var(--text-secondary, #b3b3b3);
 	text-decoration: none;
 	padding: 8px 0;
-	transition: all 0.2s;
+	transition: color 0.2s;
 	flex: 1;
 	text-align: center;
 	position: relative;

@@ -116,26 +116,36 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
-	gap: 12px;
+	gap: min(12px, 1.5vh);
 	width: 100%;
-	margin-bottom: 16px;
+	margin-bottom: min(16px, 2vh);
 	flex-wrap: nowrap;
 
+	@media (max-height: 700px) {
+		gap: min(10px, 1.2vh);
+		margin-bottom: min(14px, 1.8vh);
+	}
+
+	@media (max-height: 600px) {
+		gap: min(8px, 1vh);
+		margin-bottom: min(12px, 1.5vh);
+	}
+
 	@media (max-width: 768px) {
-		gap: 8px;
-		margin-bottom: 12px;
+		gap: min(8px, 1vh);
+		margin-bottom: min(12px, 1.5vh);
 		width: auto;
 	}
 
 	@media (max-width: 480px) {
-		gap: 6px;
-		margin-bottom: 8px;
+		gap: min(6px, 0.8vh);
+		margin-bottom: min(8px, 1vh);
 	}
 
 	&.fullscreen-top-buttons-desktop {
 		width: auto;
 		margin-bottom: 0;
-		gap: 12px;
+		gap: min(12px, 1.5vh);
 		justify-content: flex-start;
 		flex-shrink: 0;
 	}
@@ -145,34 +155,38 @@ const emit = defineEmits<{
 	background: rgba(255, 255, 255, 0.1);
 	border: none;
 	border-radius: 50%;
-	width: 44px;
-	height: 44px;
+	width: min(44px, 4.5vh);
+	aspect-ratio: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.7);
 	cursor: pointer;
-	transition: all 0.2s ease;
-	backdrop-filter: blur(10px);
+	transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+
+	@media (max-height: 700px) {
+		width: min(40px, 4vh);
+	}
+
+	@media (max-height: 600px) {
+		width: min(36px, 3.5vh);
+	}
 
 	@media (max-width: 768px) {
-		width: 40px;
-		height: 40px;
+		width: min(40px, 4vh);
 	}
 
 	@media (max-width: 480px) {
-		width: 36px;
-		height: 36px;
+		width: min(36px, 3.5vh);
 	}
 
 	&:hover {
 		background: rgba(255, 255, 255, 0.15);
 		color: #fff;
-		transform: scale(1.05);
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.8;
 	}
 }
 </style>

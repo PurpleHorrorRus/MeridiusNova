@@ -35,7 +35,6 @@ defineProps<{
 	height: 100%;
 	background: var(--secondary, #e9003f);
 	border-radius: 2px;
-	transition: width 0.3s ease;
 }
 
 .download-progress-text {

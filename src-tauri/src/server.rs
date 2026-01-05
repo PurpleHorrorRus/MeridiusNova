@@ -12,22 +12,30 @@ pub fn spawn_sidecar_server(
 	host: String,
 	port: u16,
 ) -> tauri_plugin_shell::process::CommandChild {
+	println!("[Sidecar] Spawning sidecar server on {}:{}", host, port);
+	println!("[Sidecar] Process ID: {}", std::process::id());
+	
 	let app_handle_clone = app_handle.clone();
 	let host_clone = host.clone();
 	let port_clone = port;
 
-	tauri::async_runtime::block_on(async move {
+	let child = tauri::async_runtime::block_on(async move {
 		let shell = app_handle_clone.shell();
 		let (_rx, child) = shell
 			.sidecar("server")
-			.unwrap()
+			.expect("Failed to get sidecar")
+			.arg("--tauri")
 			.arg("--host")
 			.arg(host_clone)
 			.arg("--port")
 			.arg(port_clone.to_string())
 			.spawn()
 			.expect("Failed to spawn server sidecar");
+		
+		println!("[Sidecar] Server sidecar spawned successfully");
+		println!("[Sidecar] Sidecar PID: {:?}", child.pid());
 		child
-	})
-}
+	});
 
+	child
+}

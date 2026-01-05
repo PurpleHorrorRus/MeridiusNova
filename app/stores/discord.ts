@@ -3,6 +3,7 @@ import { ActivityType } from "discord-api-types/v10";
 
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
+import { useSettings } from "~/composables/useSettings";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
@@ -32,7 +33,6 @@ export const useDiscordStore = defineStore("discord", {
 				return true;
 			}
 
-			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 
 			if (!settings.general.discord.enable) {
@@ -67,7 +67,6 @@ export const useDiscordStore = defineStore("discord", {
 		},
 
 		async setActivity(song?: TAudio) {
-			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 
 			if (!settings.value.general.discord.enable) {
@@ -140,7 +139,6 @@ export const useDiscordStore = defineStore("discord", {
 
 		async throttle(): Promise<number> {
 			const now = Date.now();
-			const { useSettings } = await import("~/composables/useSettings");
 			const { settings } = useSettings();
 			const delay = 2000; // 2 секунды задержка по умолчанию
 			const defaultDelay = 500; // 500мс минимальная задержка

@@ -268,7 +268,7 @@ onMounted(async () => {
 	padding: 6px 16px;
 	color: var(--text-secondary, #b3b3b3);
 	text-decoration: none;
-	transition: all 0.2s;
+	transition: color 0.2s, opacity 0.2s;
 	position: relative;
 	width: 100%;
 	font-size: 13px;

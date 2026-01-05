@@ -39,7 +39,7 @@
 					</label>
 				</div>
 
-				<div v-if="isTauri" class="settings-item">
+				<div v-if="isTauri()" class="settings-item">
 					<label class="settings-label">{{ getString("settings.downloads.folder") }}</label>
 					<div class="settings-input-group">
 						<input
@@ -82,12 +82,12 @@
 </template>
 
 <script setup lang="ts">
-const { getString } = useStrings();
+import { isTauri } from "~/utils/tauri";
 import { useFFmpegStore } from "~/stores/ffmpeg";
 
+const { getString } = useStrings();
 const ffmpegStore = useFFmpegStore();
 const { settings, updateSection } = useSettings();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
@@ -112,7 +112,7 @@ const updateDownloadEnable = (event: Event) => {
 };
 
 const chooseDownloadPath = async () => {
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { open } = await import("@tauri-apps/plugin-dialog");
 		const selected = await open({
 			directory: true,
@@ -122,11 +122,6 @@ const chooseDownloadPath = async () => {
 		if (selected && typeof selected === "string") {
 			updateSection("download", { path: selected });
 		}
-	} else if (import.meta.client) {
-		const os = await import("os");
-		const path = await import("path");
-		const defaultPath = path.join(os.homedir(), "Music");
-		updateSection("download", { path: defaultPath });
 	}
 };
 

@@ -3,7 +3,7 @@
 		<div class="settings-section">
 			<h2 class="section-title">{{ getString("settings.optimization.title") }}</h2>
 			<div class="settings-items">
-				<div v-if="isTauri" class="settings-item">
+				<div v-if="isTauri()" class="settings-item">
 					<label class="settings-label">
 						<input
 							type="checkbox"
@@ -15,7 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="isTauri && hardwareAccelerationHint" class="settings-tip">
+				<div v-if="isTauri() && hardwareAccelerationHint" class="settings-tip">
 					{{ hardwareAccelerationHint }}
 				</div>
 
@@ -60,7 +60,7 @@
 			</div>
 		</div>
 
-		<div v-if="!isTauri" class="settings-section">
+		<div v-if="!isTauri()" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.downloads.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -103,10 +103,10 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from "~/utils/tauri";
+
 const { getString } = useStrings();
 const { settings, updateSection } = useSettings();
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const lang = computed(() => settings.value.general.lang as "ru" | "en");
 const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
@@ -200,7 +200,7 @@ const updateTemplate = (event: Event) => {
 	background: var(--bg-secondary, #1a1a1a);
 	border: 1px solid var(--border, #282828);
 	border-radius: 10px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	max-width: 100%;
 	box-sizing: border-box;
@@ -248,7 +248,6 @@ const updateTemplate = (event: Event) => {
 	border-radius: 3px;
 	outline: none;
 	cursor: pointer;
-	transition: all 0.2s ease;
 
 	&:hover {
 		height: 8px;
@@ -261,7 +260,7 @@ const updateTemplate = (event: Event) => {
 		background: var(--secondary, #e9003f);
 		border-radius: 50%;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: transform 0.2s ease;
 		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
 	}
 
@@ -310,7 +309,7 @@ const updateTemplate = (event: Event) => {
 	font-size: 14px;
 	font-weight: 500;
 	outline: none;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 
 	@media (max-width: 768px) {
 		width: 100%;

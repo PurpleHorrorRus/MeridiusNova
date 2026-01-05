@@ -1,3 +1,5 @@
+import { isTauri } from "~/utils/tauri";
+
 export const useHotkeysStore = defineStore("hotkeys", {
 	state: (): {
 		registered: Record<string, string>;
@@ -11,9 +13,8 @@ export const useHotkeysStore = defineStore("hotkeys", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri) {
+			if (isTauri()) {
 				const { unregister, register } = await import("@tauri-apps/plugin-global-shortcut");
 
 				if (this.registered[action]) {
@@ -36,9 +37,8 @@ export const useHotkeysStore = defineStore("hotkeys", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri && this.registered[action]) {
+			if (isTauri() && this.registered[action]) {
 				const { unregister } = await import("@tauri-apps/plugin-global-shortcut");
 				await unregister(this.registered[action]);
 				delete this.registered[action];

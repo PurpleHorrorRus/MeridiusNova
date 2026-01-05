@@ -1,6 +1,6 @@
 <template>
 	<div class="settings-tab-player">
-		<div v-if="isTauri" class="settings-section">
+		<div v-if="isTauri()" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.audioOutput") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -203,7 +203,7 @@
 			</div>
 		</div>
 
-		<div v-if="isTauri" class="settings-section">
+		<div v-if="isTauri()" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.step.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -299,10 +299,11 @@
 import { usePlayerStore } from "~/stores/player";
 import { useSettingsStore } from "~/stores/settings";
 
+import { isTauri } from "~/utils/tauri";
+
 const { getString, i18n } = useStrings();
 const { settings, updateSection } = useSettings();
 const playerStore = usePlayerStore();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 interface AudioDevice {
 	deviceId: string;

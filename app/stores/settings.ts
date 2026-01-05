@@ -265,16 +265,21 @@ const defaultSettings: TSettings = {
 	}
 };
 
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+import { isTauri } from "~/utils/tauri";
 
 const loadSettingsFromTauri = async (): Promise<Partial<TSettings> | null> => {
-	if (!isTauri || !import.meta.client) {
+	if (!isTauri() || !import.meta.client) {
 		return null;
 	}
 
 	const { Store } = await import("@tauri-apps/plugin-store");
 	const store = await Store.load(".settings.dat");
 	const saved = await store.get<Partial<TSettings>>("settings");
+
+	// Закрываем store после использования для освобождения памяти
+	await store.close().catch(() => {
+		// Игнорируем ошибки при закрытии
+	});
 
 	return saved || null;
 };
@@ -284,13 +289,11 @@ const loadSettingsFromServer = async (): Promise<Partial<TSettings> | null> => {
 		return null;
 	}
 
-	const response = await $fetch<Partial<TSettings> | null>("/api/settings");
-
-	return response;
+	return await $fetch<Partial<TSettings> | null>("/api/settings");
 };
 
 const saveSettingsToTauri = async (settings: TSettings): Promise<void> => {
-	if (!isTauri || !import.meta.client) {
+	if (!isTauri() || !import.meta.client) {
 		return;
 	}
 
@@ -298,6 +301,11 @@ const saveSettingsToTauri = async (settings: TSettings): Promise<void> => {
 	const store = await Store.load(".settings.dat");
 	await store.set("settings", settings);
 	await store.save();
+	
+	// Закрываем store после использования для освобождения памяти
+	await store.close().catch(() => {
+		// Игнорируем ошибки при закрытии
+	});
 };
 
 const saveSettingsToServer = async (settings: TSettings): Promise<void> => {
@@ -348,7 +356,7 @@ export const useSettingsStore = defineStore("settings", {
 			if (import.meta.client) {
 				let saved: Partial<TSettings> | null = null;
 
-				if (isTauri) {
+				if (isTauri()) {
 					saved = await loadSettingsFromTauri();
 				} else {
 					saved = await loadSettingsFromServer();
@@ -367,7 +375,7 @@ export const useSettingsStore = defineStore("settings", {
 				return;
 			}
 
-			if (isTauri) {
+			if (isTauri()) {
 				await saveSettingsToTauri(this.settings);
 			} else {
 				await saveSettingsToServer(this.settings);

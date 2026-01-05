@@ -16,7 +16,7 @@
 						<div class="download-item-icons">
 							<Icon :name="statusIcon" :size="14" :class="['download-item-status-icon', `status-${status}`]" />
 							<button
-								v-if="status === 'completed' && isTauri"
+								v-if="status === 'completed' && isTauri()"
 								class="download-item-explorer-button"
 								@click.stop="openInExplorer"
 								:title="getString('downloads.openInExplorer')"
@@ -60,9 +60,10 @@ const props = defineProps<{
 	download: TDownload;
 }>();
 
+import { isTauri } from "~/utils/tauri";
+
 const { getString } = useStrings();
 const config = useRuntimeConfig();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const isExternalServer = computed(() => config.public.externalServer === true);
 
 const status = computed(() => props.download.status);
@@ -126,7 +127,7 @@ const statusIcon = computed(() => {
 });
 
 const openInExplorer = async () => {
-	if (!isTauri || status.value !== "completed") {
+	if (!isTauri() || status.value !== "completed") {
 		return;
 	}
 

@@ -2,14 +2,14 @@
 	<div class="vk-mix" :class="{ playing: isPlaying && !paused, loading: loading }">
 		<div class="vk-mix-background">
 			<div class="vk-mix-accent-line"></div>
-			<div class="vk-mix-shapes" v-if="isPlaying && !paused">
+			<div class="vk-mix-shapes">
 				<div class="shape shape-circle shape-1"></div>
 				<div class="shape shape-circle shape-2"></div>
 				<div class="shape shape-square shape-3"></div>
 				<div class="shape shape-square shape-4"></div>
 				<div class="shape shape-diamond shape-5"></div>
 			</div>
-			<div class="vk-mix-pulse" v-if="isPlaying && !paused"></div>
+			<div class="vk-mix-pulse"></div>
 		</div>
 
 		<button
@@ -60,7 +60,9 @@ const isPlaying = computed(() => {
 	return playlistStore.playing?.playlist_id === -9 || String(playlistStore.playing?.owner_id) === "vkmix";
 });
 
-const paused = computed(() => playerStore.paused);
+const paused = computed(() => {
+	return playerStore.paused;
+});
 
 const handlePlay = async () => {
 	if (isPlaying.value) {
@@ -134,7 +136,22 @@ const handlePlay = async () => {
 	border-radius: 16px;
 	overflow: hidden;
 	padding: 40px 32px;
-	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+		contain: layout style;
+
+	&::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		border-radius: 16px;
+		opacity: 0;
+		transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+		pointer-events: none;
+		z-index: -1;
+		background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+	}
 
 	&.playing {
 		background: linear-gradient(
@@ -146,12 +163,16 @@ const handlePlay = async () => {
 			rgba(30, 20, 40, 0.8) 100%
 		);
 		background-size: 200% 200%;
-		animation: backgroundShift 15s ease-in-out infinite;
+	}
+
+	&:not(.playing) {
+		animation: none;
 	}
 
 	&:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+		&::after {
+			opacity: 1;
+		}
 	}
 
 	&.playing {
@@ -169,12 +190,17 @@ const handlePlay = async () => {
 
 	&-background {
 		position: absolute;
-		inset: 0;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		width: 100%;
 		height: 100%;
 		z-index: 0;
 		opacity: 0;
 		transition: opacity 0.6s ease;
+		overflow: hidden;
+		contain: layout style paint;
 
 		.vk-mix.playing & {
 			opacity: 1;
@@ -210,7 +236,10 @@ const handlePlay = async () => {
 
 	&-shapes {
 		position: absolute;
-		inset: 0;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		width: 100%;
 		height: 100%;
 		overflow: hidden;
@@ -221,6 +250,7 @@ const handlePlay = async () => {
 		position: absolute;
 		border: 2px solid rgba(233, 0, 63, 0.25);
 		opacity: 0;
+		animation: none;
 
 		.vk-mix.playing & {
 			opacity: 1;
@@ -228,12 +258,18 @@ const handlePlay = async () => {
 
 		&.shape-circle {
 			border-radius: 50%;
-			animation: shapeFloat 6s ease-in-out infinite;
+
+			.vk-mix.playing & {
+				animation: shapeFloat 6s ease-in-out infinite;
+			}
 		}
 
 		&.shape-square {
 			transform: rotate(45deg);
-			animation: shapeRotate 8s linear infinite;
+
+			.vk-mix.playing & {
+				animation: shapeRotate 8s linear infinite;
+			}
 		}
 
 		&.shape-diamond {
@@ -243,7 +279,10 @@ const handlePlay = async () => {
 			border-left: 15px solid transparent;
 			border-right: 15px solid transparent;
 			border-bottom: 15px solid rgba(233, 0, 63, 0.25);
-			animation: shapeBounce 4s ease-in-out infinite;
+
+			.vk-mix.playing & {
+				animation: shapeBounce 4s ease-in-out infinite;
+			}
 		}
 
 		&.shape-1 {
@@ -289,16 +328,23 @@ const handlePlay = async () => {
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		transform: translate(-50%, -50%);
 		width: 200px;
 		height: 200px;
 		border-radius: 50%;
 		border: 1px solid rgba(233, 0, 63, 0.15);
 		opacity: 0;
-		animation: pulseExpand 3s ease-out infinite;
+		transform: translate(-50%, -50%);
+		transform-origin: center center;
+		contain: strict;
+		pointer-events: none;
+		z-index: 0;
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
 
 		.vk-mix.playing & {
 			opacity: 1;
+			animation: pulseExpand 3s ease-out infinite;
 		}
 	}
 
@@ -315,29 +361,51 @@ const handlePlay = async () => {
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease, border-color 0.3s ease;
 		overflow: visible;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 50%;
+			background: rgba(0, 0, 0, 0.3);
+			opacity: 1;
+			transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			pointer-events: none;
+			z-index: -1;
+		}
 
 		.vk-mix.playing & {
 			background: linear-gradient(135deg, rgba(233, 0, 63, 0.25) 0%, rgba(255, 26, 92, 0.2) 100%);
 			border-color: rgba(233, 0, 63, 0.3);
-			box-shadow: 0 4px 20px rgba(233, 0, 63, 0.2);
+
+			&::before {
+				background: rgba(233, 0, 63, 0.2);
+			}
 		}
 
 		&:hover {
-			transform: scale(1.05);
 			border-color: rgba(255, 255, 255, 0.25);
-			box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+
+			&::before {
+				opacity: 1.33;
+			}
 
 			.vk-mix.playing & {
 				border-color: rgba(233, 0, 63, 0.4);
-				box-shadow: 0 6px 24px rgba(233, 0, 63, 0.25);
+
+				&::before {
+					background: rgba(233, 0, 63, 0.25);
+				}
 			}
 		}
 
 		&:active {
-			transform: scale(0.96);
+			opacity: 0.9;
 		}
 
 		&:disabled {
@@ -358,15 +426,21 @@ const handlePlay = async () => {
 
 	&-play-icon {
 		margin-left: 2px;
-		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 	}
 
 	&-play-ripple {
 		position: absolute;
-		inset: -20px;
+		top: -20px;
+		left: -20px;
+		right: -20px;
+		bottom: -20px;
 		border-radius: 50%;
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		animation: ripple 2s ease-out infinite;
+		animation: none;
+
+		.vk-mix.playing & {
+			animation: ripple 2s ease-out infinite;
+		}
 	}
 
 	&-info {
@@ -377,7 +451,8 @@ const handlePlay = async () => {
 		align-items: center;
 		gap: 10px;
 		text-align: center;
-		animation: fadeInUp 0.6s ease-out;
+		opacity: 0;
+		animation: fadeInUp 0.6s ease-out forwards;
 	}
 
 	&-title {
@@ -386,11 +461,10 @@ const handlePlay = async () => {
 		color: var(--text, #fff);
 		letter-spacing: -0.5px;
 		text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-		transition: all 0.3s ease;
+		transition: color 0.3s ease;
 
 		.vk-mix.playing & {
 			color: #fff;
-			text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 		}
 	}
 
@@ -398,7 +472,8 @@ const handlePlay = async () => {
 		font-size: 15px;
 		color: var(--text-secondary, #b3b3b3);
 		letter-spacing: 0.2px;
-		transition: all 0.3s ease;
+		// Анимируем только color
+		transition: color 0.3s ease;
 
 		.vk-mix.playing & {
 			color: rgba(255, 255, 255, 0.85);
@@ -407,14 +482,28 @@ const handlePlay = async () => {
 
 	&-loading {
 		position: absolute;
-		inset: 0;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 3;
 		background: rgba(0, 0, 0, 0.3);
-		backdrop-filter: blur(4px);
 		border-radius: 16px;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.2);
+			filter: blur(4px);
+			pointer-events: none;
+		}
 	}
 
 	.spinner {
@@ -424,58 +513,61 @@ const handlePlay = async () => {
 		border-top-color: var(--secondary, #e9003f);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
+		will-change: transform;
+	}
+
+	&:not(.loading) .spinner {
+		animation: none;
 	}
 }
 
 @keyframes accentPulse {
 	0%, 100% {
 		opacity: 0.6;
-		transform: scaleY(1);
 	}
 
 	50% {
 		opacity: 1;
-		transform: scaleY(1.05);
 	}
 }
 
 @keyframes shapeFloat {
 	0%, 100% {
-		transform: translateY(0) translateX(0) scale(1);
+		transform: translate(0, 0);
 		opacity: 0.3;
 	}
 
 	50% {
-		transform: translateY(-20px) translateX(15px) scale(1.1);
+		transform: translate(15px, -20px);
 		opacity: 0.5;
 	}
 }
 
 @keyframes shapeRotate {
 	0% {
-		transform: rotate(45deg) translateY(0);
+		transform: rotate(45deg) translate(0, 0);
 		opacity: 0.25;
 	}
 
 	50% {
-		transform: rotate(225deg) translateY(-15px);
+		transform: rotate(225deg) translate(0, -15px);
 		opacity: 0.4;
 	}
 
 	100% {
-		transform: rotate(405deg) translateY(0);
+		transform: rotate(405deg) translate(0, 0);
 		opacity: 0.25;
 	}
 }
 
 @keyframes shapeBounce {
 	0%, 100% {
-		transform: translateY(0) rotate(0deg);
+		transform: translate(0, 0) rotate(0deg);
 		opacity: 0.3;
 	}
 
 	50% {
-		transform: translateY(-25px) rotate(180deg);
+		transform: translate(0, -25px) rotate(180deg);
 		opacity: 0.5;
 	}
 }
@@ -496,15 +588,6 @@ const handlePlay = async () => {
 	}
 }
 
-@keyframes backgroundShift {
-	0%, 100% {
-		background-position: 0% 50%;
-	}
-
-	50% {
-		background-position: 100% 50%;
-	}
-}
 
 @keyframes ripple {
 	0% {
@@ -521,12 +604,10 @@ const handlePlay = async () => {
 @keyframes fadeInUp {
 	from {
 		opacity: 0;
-		transform: translateY(10px);
 	}
 
 	to {
 		opacity: 1;
-		transform: translateY(0);
 	}
 }
 

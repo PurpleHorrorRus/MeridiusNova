@@ -15,7 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="settings.cache.enable && !isExternalServer && isTauri" class="settings-item">
+				<div v-if="settings.cache.enable && !isExternalServer && isTauri()" class="settings-item">
 					<label class="settings-label">{{ getString("settings.cache.path") }}</label>
 					<div class="settings-input-group">
 						<input
@@ -29,7 +29,7 @@
 						<button
 							@click="chooseCachePath"
 							class="settings-button"
-							:disabled="!isTauri"
+							:disabled="!isTauri()"
 						>
 							{{ getString("settings.cache.choose") }}
 						</button>
@@ -102,10 +102,10 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from "~/utils/tauri";
+
 const { getString } = useStrings();
 const { settings, updateSection } = useSettings();
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 const config = useRuntimeConfig();
 
@@ -140,7 +140,7 @@ const updateCacheEnable = (event: Event) => {
 };
 
 const chooseCachePath = async () => {
-	if (!isTauri || !import.meta.client) {
+	if (!isTauri() || !import.meta.client) {
 		return;
 	}
 
@@ -159,7 +159,7 @@ const chooseCachePath = async () => {
 };
 
 const updateCachePath = (event: Event) => {
-	if (!isTauri) {
+	if (!isTauri()) {
 		const target = event.target as HTMLInputElement;
 		updateSection("cache", { path: target.value });
 	}
@@ -420,13 +420,11 @@ onUnmounted(() => {
 .cache-progress-filled {
 	height: 100%;
 	background: var(--secondary, #e9003f);
-	transition: width 0.3s ease;
 }
 
 .cache-progress-empty {
 	height: 100%;
 	background: var(--bg-tertiary, #2a2a2a);
-	transition: width 0.3s ease;
 }
 
 .cache-progress-text {

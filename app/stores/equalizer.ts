@@ -164,22 +164,42 @@ export const useEqualizerStore = defineStore("equalizer", {
 			}
 
 			// Disconnect from sourceNode
-			sourceNode.disconnect();
+			try {
+				sourceNode.disconnect();
+			} catch (e) {
+				// Игнорируем ошибки, если уже отключено
+			}
 
 			// Disconnect gain nodes
-			nodes.outputGain.disconnect();
-			nodes.equalizerGain.disconnect();
+			try {
+				nodes.outputGain.disconnect();
+			} catch (e) {
+				// Игнорируем ошибки
+			}
+			
+			try {
+				nodes.equalizerGain.disconnect();
+			} catch (e) {
+				// Игнорируем ошибки
+			}
 
 			// Disconnect analyser
 			if (nodes.analyser) {
-				nodes.analyser.disconnect();
+				try {
+					nodes.analyser.disconnect();
+				} catch (e) {
+					// Игнорируем ошибки
+				}
 			}
 
 			// Disconnect filter chain
-			const lastFrequency = nodes.frequencies[nodes.frequencies.length - 1];
-			if (lastFrequency) {
-				lastFrequency.disconnect();
-			}
+			nodes.frequencies.forEach(filter => {
+				try {
+					filter.disconnect();
+				} catch (e) {
+					// Игнорируем ошибки
+				}
+			});
 
 			// Remove from map
 			this.nodesMap.delete(sourceNode);

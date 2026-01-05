@@ -2,7 +2,7 @@
 	<div
 		v-if="!isMobile && !showQueue && !showLyrics && songsCount > 0 && playlistSource.title"
 		class="fullscreen-queue-preview"
-		@click.stop="toggleQueue"
+		@click.stop="$emit('toggleQueue')"
 	>
 		<div class="fullscreen-queue-preview-cover">
 			<img
@@ -34,13 +34,9 @@ defineProps<{
 	songsCount: number;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
 	toggleQueue: [];
 }>();
-
-const toggleQueue = () => {
-	emit("toggleQueue");
-};
 </script>
 
 <style scoped lang="scss">
@@ -51,10 +47,10 @@ const toggleQueue = () => {
 	padding: 12px 16px;
 	margin-top: 16px;
 	background: rgba(255, 255, 255, 0.05);
-	backdrop-filter: blur(10px);
 	border-radius: 12px;
+
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	width: 100%;
 	max-width: 600px;
@@ -63,11 +59,10 @@ const toggleQueue = () => {
 	&:hover {
 		background: rgba(255, 255, 255, 0.1);
 		border-color: rgba(255, 255, 255, 0.2);
-		transform: translateY(-2px);
 	}
 
 	&:active {
-		transform: translateY(0);
+		opacity: 0.8;
 	}
 }
 

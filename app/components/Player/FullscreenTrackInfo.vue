@@ -23,7 +23,7 @@ defineProps<{
 	width: 100%;
 	max-width: 600px;
 	padding: 0 20px;
-	transition: all 0.4s ease;
+	transition: opacity 0.4s ease, transform 0.4s ease;
 	margin-bottom: 0;
 	box-sizing: border-box;
 	height: 160px;

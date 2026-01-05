@@ -5,7 +5,7 @@
 				<h2 class="fullscreen-queue-title">Очередь проигрывания</h2>
 				<button
 					class="fullscreen-queue-close"
-					@click.stop="toggleQueue"
+					@click.stop="$emit('toggleQueue')"
 				>
 					<Icon name="mdi:close" size="24" />
 				</button>
@@ -48,14 +48,29 @@
 				</div>
 
 				<div ref="tracksContainerRef" class="fullscreen-queue-tracks">
-					<Song
-						v-for="(audio, index) in playingSongs"
-						:key="`queue-${audio.full_id}-${index}`"
-						:audio="audio"
-						:data-queue-index="index"
-						:class="{ 'fullscreen-queue-track-active': index === currentIndex }"
-						@click="playFromQueue(audio, index)"
-					/>
+					<VirtualSongList
+						:items="playingSongs"
+						:item-height="56"
+						:overscan="10"
+						:scroll-container="tracksContainerRef"
+						ref="virtualListRef"
+					>
+						<template #default="{ visibleItems, startIndex }">
+							<VirtualSongItem
+								v-for="(audio, relativeIndex) in visibleItems"
+								:key="`queue-${audio.full_id}-${startIndex + relativeIndex}`"
+								:index="startIndex + relativeIndex"
+								@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
+							>
+								<Song
+									:audio="audio"
+									:data-queue-index="startIndex + relativeIndex"
+									:class="{ 'fullscreen-queue-track-active': (startIndex + relativeIndex) === currentIndex }"
+									@click="playFromQueue(audio, startIndex + relativeIndex)"
+								/>
+							</VirtualSongItem>
+						</template>
+					</VirtualSongList>
 				</div>
 			</div>
 		</div>
@@ -69,6 +84,8 @@ import { usePlaylistStore } from "~/stores/playlist";
 import { useAudio } from "~/composables/useAudio";
 import { useQueueScroll } from "~/composables/useQueueScroll";
 import Song from "~/components/Song/Song.vue";
+import VirtualSongList from "~/components/VirtualSongList.vue";
+import VirtualSongItem from "~/components/VirtualSongItem.vue";
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const { currentPlaylist: queueCurrentPlaylist, playlistSource, formatListens } = useQueueInfo();
@@ -87,17 +104,15 @@ const emit = defineEmits<{
 }>();
 
 const tracksContainerRef = ref<HTMLElement | null>(null);
+const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
 const showQueueRef = computed(() => props.showQueue);
 
 useQueueScroll(
 	tracksContainerRef,
 	() => props.currentIndex,
-	showQueueRef
+	showQueueRef,
+	virtualListRef
 );
-
-const toggleQueue = () => {
-	emit("toggleQueue");
-};
 
 const handleQueueCoverClick = () => {
 	if (!playlistSource.value.canNavigate || !playlistSource.value.link) {
@@ -126,15 +141,13 @@ const playFromQueue = async (audio: TAudio, index: number) => {
 	height: 60%;
 	max-height: 600px;
 	background: rgba(0, 0, 0, 0.85);
-	backdrop-filter: blur(20px);
 	border-top: 1px solid rgba(255, 255, 255, 0.1);
+
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
 	z-index: 10001;
 	padding-bottom: env(safe-area-inset-bottom, 0);
-	will-change: transform;
-	transform: translateZ(0);
 
 	@media (max-width: 768px) {
 		height: 70%;
@@ -189,7 +202,7 @@ const playFromQueue = async (audio: TAudio, index: number) => {
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 
 	&:hover {
 		background: rgba(255, 255, 255, 0.1);

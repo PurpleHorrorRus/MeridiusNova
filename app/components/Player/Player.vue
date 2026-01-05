@@ -14,7 +14,7 @@
 			<PlayerRight />
 			<PlayerCompact />
 		</div>
-		
+
 		<FullscreenPlayer 
 			:is-fullscreen="isFullscreen" 
 			@toggle-fullscreen="toggleFullscreen"
@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onUnmounted } from "vue";
 import { useEventListener } from "~/composables/useEventListener";
 import { storeToRefs } from "pinia";
 import { useAudio } from "~/composables/useAudio";
@@ -231,14 +231,15 @@ onUnmounted(() => {
 	padding-top: 6px;
 	gap: 20px;
 	background: rgba(22, 22, 22, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+
 	backdrop-filter: blur(25px) saturate(180%);
 	-webkit-backdrop-filter: blur(25px) saturate(180%);
-	border: 1px solid rgba(255, 255, 255, 0.08);
 	border-radius: 20px;
 	box-shadow: 
 		0 20px 40px -10px rgba(0, 0, 0, 0.5),
 		0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-	transition: all 0.3s ease;
+	// Анимация не нужна - свойства не меняются при hover
 	touch-action: pan-y;
 	
 	@media (max-width: 800px) {

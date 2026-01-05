@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { useAudio } from "~/composables/useAudio";
+import { formatTime } from "~/composables/usePlayerTime";
 
 const {
 	paused,
@@ -39,16 +40,6 @@ const {
 	playNext,
 	playPrevious
 } = useAudio();
-
-const formatTime = (seconds: number): string => {
-	if (!isFinite(seconds) || isNaN(seconds)) {
-		return "0:00";
-	}
-
-	const mins = Math.floor(seconds / 60);
-	const secs = Math.floor(seconds % 60);
-	return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
 </script>
 
 <style scoped lang="scss">
@@ -114,7 +105,7 @@ const formatTime = (seconds: number): string => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease;
 	min-width: 44px;
 	min-height: 44px;
 
@@ -157,13 +148,13 @@ const formatTime = (seconds: number): string => {
 	border-radius: 50%;
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	background: rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(10px);
 	color: #fff;
+
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 
 	:deep(svg) {
@@ -193,14 +184,13 @@ const formatTime = (seconds: number): string => {
 	}
 
 	&:hover {
-		transform: scale(1.05);
 		background: rgba(255, 255, 255, 0.25);
 		border-color: rgba(255, 255, 255, 0.3);
 		box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 	}
 
 	&:active {
-		transform: scale(0.95);
+		opacity: 0.9;
 	}
 }
 

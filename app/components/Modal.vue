@@ -87,8 +87,9 @@ useEventListener(document, "keydown", handleEscape);
 	align-items: center;
 	justify-content: center;
 	z-index: 10002;
-	backdrop-filter: blur(2px);
 	padding: 40px;
+
+	backdrop-filter: blur(2px);
 
 	@media (max-width: 1024px) {
 		padding: 24px;
@@ -170,7 +171,6 @@ useEventListener(document, "keydown", handleEscape);
 
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
-	transform: scale(0.95);
 	opacity: 0;
 }
 </style>

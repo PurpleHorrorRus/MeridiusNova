@@ -1,3 +1,5 @@
+import { isTauri } from "~/utils/tauri";
+
 export const useFFmpegStore = defineStore("ffmpeg", {
 	state: (): {
 		path: string;
@@ -23,9 +25,8 @@ export const useFFmpegStore = defineStore("ffmpeg", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri) {
+			if (isTauri()) {
 				const { join } = await import("@tauri-apps/api/path");
 				const { exists } = await import("@tauri-apps/plugin-fs");
 				const { appDataDir } = await import("@tauri-apps/api/path");

@@ -37,10 +37,6 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 		}
 	}
 };
-
-const clearSearch = () => {
-	searchQuery.value = "";
-};
 </script>
 
 <style scoped lang="scss">

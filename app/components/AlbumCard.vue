@@ -95,17 +95,14 @@ const handlePlayPause = async () => {
 	flex-direction: column;
 	width: 100%;
 	padding: 0;
-	transition: all 0.2s ease;
 
 	&:hover {
-		transform: translateY(-4px);
-
 		.album-card-overlay {
 			opacity: 1;
 		}
 
-		.album-card-cover {
-			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		.album-card-cover::after {
+			opacity: 0.4;
 		}
 	}
 
@@ -117,8 +114,21 @@ const handlePlayPause = async () => {
 		aspect-ratio: 2 / 1;
 		background-size: cover;
 		background-position: center;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		transition: box-shadow 0.2s ease;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 4px;
+			opacity: 0.2;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: 1;
+			background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+		}
 	}
 
 	&-overlay {
@@ -136,6 +146,7 @@ const handlePlayPause = async () => {
 	}
 
 	&-play-button {
+		position: relative;
 		background: var(--secondary, #e9003f);
 		border: none;
 		border-radius: 50%;
@@ -146,13 +157,30 @@ const handlePlayPause = async () => {
 		justify-content: center;
 		color: white;
 		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.4);
+		transition: background-color 0.2s ease;
+		overflow: visible;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 50%;
+			background: rgba(233, 0, 63, 0.4);
+			opacity: 1;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: -1;
+		}
 
 		&:hover:not(:disabled) {
-			transform: scale(1.1);
-			box-shadow: 0 6px 16px rgba(233, 0, 63, 0.5);
 			background: var(--primary-hover, #ff1a5c);
+
+			&::before {
+				opacity: 1.25;
+			}
 		}
 
 		&:disabled {
@@ -162,6 +190,7 @@ const handlePlayPause = async () => {
 
 		.loading-icon {
 			animation: spin 1s linear infinite;
+			will-change: transform;
 		}
 	}
 

@@ -1,4 +1,5 @@
 import type { TAudio } from "~~/server/api/vk/audio/types";
+import { isTauri } from "~/utils/tauri";
 
 interface StreamerPaths {
 	performer: string;
@@ -23,41 +24,27 @@ export const useStreamerStore = defineStore("streamer", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri) {
-				const { join } = await import("@tauri-apps/api/path");
-				const { exists, create } = await import("@tauri-apps/plugin-fs");
-
-				const rootExists = await exists(rootPath);
-
-				if (!rootExists) {
-					await create(rootPath);
-				}
-
-				this.paths = {
-					performer: await join(rootPath, "performer.txt"),
-					title: await join(rootPath, "title.txt"),
-					song: await join(rootPath, "song.txt"),
-					url: await join(rootPath, "url.txt"),
-					cover: await join(rootPath, "cover.jpg")
-				};
-			} else {
-				const path = await import("path");
-				const fs = await import("fs-extra");
-
-				if (!fs.pathExistsSync(rootPath)) {
-					await fs.mkdirp(rootPath);
-				}
-
-				this.paths = {
-					performer: path.resolve(rootPath, "performer.txt"),
-					title: path.resolve(rootPath, "title.txt"),
-					song: path.resolve(rootPath, "song.txt"),
-					url: path.resolve(rootPath, "url.txt"),
-					cover: path.resolve(rootPath, "cover.jpg")
-				};
+			if (!isTauri()) {
+				return false;
 			}
+
+			const { join } = await import("@tauri-apps/api/path");
+			const { exists, create } = await import("@tauri-apps/plugin-fs");
+
+			const rootExists = await exists(rootPath);
+
+			if (!rootExists) {
+				await create(rootPath);
+			}
+
+			this.paths = {
+				performer: await join(rootPath, "performer.txt"),
+				title: await join(rootPath, "title.txt"),
+				song: await join(rootPath, "song.txt"),
+				url: await join(rootPath, "url.txt"),
+				cover: await join(rootPath, "cover.jpg")
+			};
 
 			this.initialized = true;
 			return true;
@@ -68,9 +55,8 @@ export const useStreamerStore = defineStore("streamer", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri) {
+			if (isTauri()) {
 				const { writeTextFile, writeFile } = await import("@tauri-apps/plugin-fs");
 
 				await writeTextFile(this.paths.performer, song.performer || "");

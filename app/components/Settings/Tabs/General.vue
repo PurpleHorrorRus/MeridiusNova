@@ -17,7 +17,7 @@
 			</div>
 		</div>
 
-	<div v-if="isTauri" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.window.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -46,7 +46,7 @@
 		</div>
 	</div>
 
-	<div v-if="isTauri" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.discord.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -87,7 +87,7 @@
 		</div>
 	</div>
 
-	<div v-if="isTauri" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.streamer.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -127,7 +127,7 @@
 		</div>
 	</div>
 
-	<div v-if="isTauri" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -196,7 +196,7 @@
 		</div>
 	</div>
 
-	<div v-if="isTauri" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.updates.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -270,7 +270,7 @@ const {
 	installUpdate: installUpdateHandler
 } = useUpdater();
 
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+import { isTauri } from "~/utils/tauri";
 
 const streamerHint = computed(() => {
 	const lang = settings.value.general.lang as "ru" | "en";
@@ -286,9 +286,8 @@ const updateLang = async (event: Event) => {
 
 const updateStartup = async (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { invoke } = await import("@tauri-apps/api/core");
 		await invoke("set_startup", { enable: target.checked });
 	}
@@ -371,9 +370,7 @@ const updateStreamerPath = (event: Event) => {
 };
 
 const chooseStreamerPath = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { open } = await import("@tauri-apps/plugin-dialog");
 		const selected = await open({
 			directory: true,
@@ -449,9 +446,7 @@ const checkServer = async () => {
 };
 
 const connectToServer = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { save } = useSettings();
 		await save();
 		
@@ -520,7 +515,7 @@ const installUpdate = async () => {
 	background: var(--bg-secondary, #1a1a1a);
 	border: 1px solid var(--border, #282828);
 	border-radius: 10px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	max-width: 100%;
 	box-sizing: border-box;
@@ -576,7 +571,7 @@ const installUpdate = async () => {
 	font-weight: 500;
 	cursor: pointer;
 	outline: none;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	min-width: 200px;
 	max-width: 100%;
 	box-sizing: border-box;
@@ -646,7 +641,7 @@ const installUpdate = async () => {
 	font-size: 14px;
 	font-weight: 500;
 	outline: none;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	min-width: 0;
 	max-width: 100%;
 	box-sizing: border-box;
@@ -680,7 +675,7 @@ const installUpdate = async () => {
 	font-size: 14px;
 	font-weight: 500;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: transform 0.2s ease, background-color 0.2s ease;
 	white-space: nowrap;
 	flex-shrink: 0;
 

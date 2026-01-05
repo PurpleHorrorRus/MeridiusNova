@@ -1,4 +1,5 @@
 import type { IDownloadProgress, TDownload } from "~~/server/utils/download-manager";
+import { isTauri } from "~/utils/tauri";
 
 export const useDownloadsStore = defineStore("downloads", {
 	state: (): {
@@ -84,9 +85,7 @@ export const useDownloadsStore = defineStore("downloads", {
 				return;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-			if (isTauri) {
+			if (isTauri()) {
 				return;
 			}
 

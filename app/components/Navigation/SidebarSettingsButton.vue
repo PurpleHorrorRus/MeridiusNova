@@ -26,7 +26,7 @@ const { openSettings } = useModal();
 	border: none;
 	border-top: 1px solid var(--border, #2a2a2a);
 	cursor: pointer;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 	text-align: left;
 	width: 100%;
 

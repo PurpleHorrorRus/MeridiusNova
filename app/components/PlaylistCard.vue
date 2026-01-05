@@ -72,30 +72,21 @@ const handlePlayPause = async (event?: MouseEvent) => {
 <style scoped lang="scss">
 .playlist-card {
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease;
 	padding: 8px;
 	border-radius: 8px;
 	background: transparent;
 
 	&:hover {
-		transform: translateY(-4px);
 		background: var(--bg-secondary, #181818);
 
-		.playlist-card-cover {
-			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		.playlist-card-cover::after {
+			opacity: 1;
 		}
 
 		.playlist-card-overlay {
 			opacity: 1;
 		}
-
-		.playlist-card-play-button {
-			transform: scale(1.05);
-		}
-	}
-
-	&:active {
-		transform: translateY(-2px);
 	}
 
 	&-cover {
@@ -106,8 +97,25 @@ const handlePlayPause = async (event?: MouseEvent) => {
 		aspect-ratio: 1;
 		width: 100%;
 		background: var(--bg-secondary, #181818);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		transition: box-shadow 0.2s ease;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 8px;
+			opacity: 0.2;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: 1;
+			background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+		}
+
+		&:hover::after {
+			opacity: 0.4;
+		}
 
 		@media (max-width: 480px) {
 			margin-bottom: 10px;
@@ -130,6 +138,7 @@ const handlePlayPause = async (event?: MouseEvent) => {
 	}
 
 	&-play-button {
+		position: relative;
 		background: var(--secondary, #e9003f);
 		border: none;
 		border-radius: 50%;
@@ -140,9 +149,23 @@ const handlePlayPause = async (event?: MouseEvent) => {
 		justify-content: center;
 		color: white;
 		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.4);
-		transform: scale(0.95);
+		transition: background-color 0.2s ease;
+		overflow: visible;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 50%;
+			background: rgba(233, 0, 63, 0.4);
+			opacity: 1;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: -1;
+		}
 
 		@media (max-width: 480px) {
 			width: 52px;
@@ -159,13 +182,15 @@ const handlePlayPause = async (event?: MouseEvent) => {
 		}
 
 		&:hover:not(:disabled) {
-			transform: scale(1.1);
-			box-shadow: 0 6px 16px rgba(233, 0, 63, 0.5);
 			background: var(--primary-hover, #ff1a5c);
+
+			&::before {
+				opacity: 1.25;
+			}
 		}
 
 		&:active:not(:disabled) {
-			transform: scale(1.05);
+			opacity: 0.9;
 		}
 
 		&:disabled {
@@ -175,6 +200,7 @@ const handlePlayPause = async (event?: MouseEvent) => {
 
 		.loading-icon {
 			animation: spin 1s linear infinite;
+			will-change: transform;
 		}
 	}
 

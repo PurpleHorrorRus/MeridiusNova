@@ -2,7 +2,7 @@
 	<div
 		v-if="isMobile && !showQueue && songsCount > 0"
 		class="fullscreen-queue-indicator"
-		@click.stop="toggleQueue"
+		@click.stop="$emit('toggleQueue')"
 	>
 		<div class="fullscreen-queue-indicator-handle"></div>
 		<div class="fullscreen-queue-indicator-content">
@@ -40,13 +40,9 @@ defineProps<{
 	songsCount: number;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
 	toggleQueue: [];
 }>();
-
-const toggleQueue = () => {
-	emit("toggleQueue");
-};
 </script>
 
 <style scoped lang="scss">
@@ -57,11 +53,11 @@ const toggleQueue = () => {
 	right: 0;
 	width: 100%;
 	background: rgba(0, 0, 0, 0.7);
-	backdrop-filter: blur(20px);
 	border-top: 1px solid rgba(255, 255, 255, 0.1);
+
 	border-radius: 20px 20px 0 0;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	z-index: 50;
 	padding-bottom: env(safe-area-inset-bottom, 0);
 	box-sizing: border-box;
@@ -136,11 +132,11 @@ const toggleQueue = () => {
 .fullscreen-queue-indicator-icon {
 	color: rgba(255, 255, 255, 0.7);
 	flex-shrink: 0;
-	transition: transform 0.2s ease;
+	transition: opacity 0.2s ease;
 }
 
 .fullscreen-queue-indicator:hover .fullscreen-queue-indicator-icon {
-	transform: translateY(-2px);
+	opacity: 1;
 }
 </style>
 

@@ -42,7 +42,7 @@
 			<button
 				class="btn-player-control"
 				:class="{ active: repeat }"
-				@click="toggleRepeat"
+				@click="playlistStore.toggleRepeat"
 				:title="repeat ? t('player.repeatOn') : t('player.repeat')"
 			>
 				<Icon name="mdi:repeat" size="20" />
@@ -51,7 +51,7 @@
 			<button
 				class="btn-player-control"
 				:class="{ active: shuffle }"
-				@click="toggleShuffle"
+				@click="playlistStore.toggleShuffle"
 				:title="t('player.shuffle')"
 			>
 				<Icon name="mdi:shuffle" size="20" />
@@ -130,7 +130,8 @@ const { handleAdd: addSong } = useSongAdd();
 const {
 	repeat,
 	current,
-	playing
+	playing,
+	shuffle
 } = usePlaylist();
 
 const showSpeedMenu = ref(false);
@@ -159,8 +160,6 @@ const showVolumePercentHandler = () => {
 watch(volumeSlider.volume, () => {
 	showVolumePercentHandler();
 });
-
-const shuffle = computed(() => playlistStore.shuffle);
 
 const queueTracksCountText = computed(() => {
 	const count = playlistStore.playingSongs.length;
@@ -198,14 +197,6 @@ const deleteTitle = computed(() => {
 
 	return getDeleteTitle(currentSong.value);
 });
-
-const toggleRepeat = () => {
-	playlistStore.toggleRepeat();
-};
-
-const toggleShuffle = () => {
-	playlistStore.toggleShuffle();
-};
 
 const handleSpeedMouseEnter = () => {
 	if (speedMenuTimeout) {
@@ -314,7 +305,7 @@ onUnmounted(() => {
 	align-items: center;
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.6);
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 	border-radius: 50%;
 
 	@media (max-width: 1200px) {
@@ -396,7 +387,7 @@ onUnmounted(() => {
 	font-size: 12px;
 	font-weight: 500;
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease;
 
 	@media (max-width: 1200px) {
 		padding: 3px 8px;
@@ -420,8 +411,8 @@ onUnmounted(() => {
 	right: 0;
 	margin-bottom: 12px;
 	background: rgba(30, 30, 30, 0.9);
-	backdrop-filter: blur(12px);
 	border-radius: 12px;
+
 	padding: 6px;
 	display: flex;
 	flex-direction: column;
@@ -440,7 +431,7 @@ onUnmounted(() => {
 	cursor: pointer;
 	border-radius: 6px;
 	text-align: left;
-	transition: all 0.15s ease;
+	transition: background-color 0.15s ease, color 0.15s ease;
 
 	&:hover {
 		background: rgba(255, 255, 255, 0.1);
@@ -599,13 +590,12 @@ onUnmounted(() => {
 
 .fade-enter-active,
 .fade-leave-active {
-	transition: opacity 0.2s ease, transform 0.2s ease;
+	transition: opacity 0.2s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
 	opacity: 0;
-	transform: translateY(5px);
 }
 </style>
 

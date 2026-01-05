@@ -43,7 +43,7 @@ const isActive = computed(() => {
 	padding: 8px 16px;
 	border-radius: 20px;
 	text-decoration: none;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 	font-size: 14px;
 	font-weight: 500;
 	white-space: nowrap;
