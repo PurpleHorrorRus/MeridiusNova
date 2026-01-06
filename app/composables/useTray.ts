@@ -22,7 +22,7 @@ export const useTray = () => {
 		}
 
 		let iconPath: string | null = null;
-		
+
 		const dir = await resourceDir();
 
 		if (await platform() === "windows") {

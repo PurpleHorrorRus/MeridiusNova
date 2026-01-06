@@ -19,3 +19,4 @@ src-tauri/keys.pub
 .env
 package-lock.json
 Makefile
+server.exe

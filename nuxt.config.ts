@@ -1,10 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-const isTauri = process.env.TAURI_PLATFORM !== undefined || process.env.TAURI_FAMILY !== undefined || process.env.TAURI !== undefined;
+const isTauri = process.env.TAURI_PLATFORM !== undefined
+	|| process.env.TAURI_FAMILY !== undefined
+	|| process.env.TAURI !== undefined;
 
 export default defineNuxtConfig({
 	ssr: true,
 	compatibilityDate: "2025-07-15",
 	devtools: { enabled: true },
+
 	modules: [
 		"@pinia/nuxt",
 		"pinia-plugin-persistedstate/nuxt",
@@ -20,13 +23,13 @@ export default defineNuxtConfig({
 		"/": { ssr: false },
 		"/auth": { ssr: false },
 		"/settings": { ssr: false },
-		
+
 		// SWR для страниц с данными, требующих аутентификации
 		"/general": { swr: true },
 		"/artists": { swr: true },
 		"/collection": { swr: true },
 		"/discover/**": { swr: true },
-		
+
 		// SWR для динамических страниц
 		"/playlist/**": { swr: true },
 		"/artist/**": { swr: true },
@@ -46,8 +49,10 @@ export default defineNuxtConfig({
 			providers: {
 				ipx: {}
 			},
+
 			format: ["webp", "avif"],
 			quality: 80,
+
 			screens: {
 				xs: 320,
 				sm: 640,
@@ -58,6 +63,7 @@ export default defineNuxtConfig({
 			}
 		})
 	},
+
 	css: ["~/assets/css/variables.scss"],
 
 	fonts: {
@@ -69,11 +75,13 @@ export default defineNuxtConfig({
 				subsets: ["latin", "cyrillic"]
 			}
 		],
+
 		defaults: {
 			weights: [400, 500, 600, 700],
 			styles: ["normal"],
 			subsets: ["latin", "cyrillic"]
 		},
+
 		experimental: {
 			processCSSVariables: true
 		}
@@ -86,8 +94,10 @@ export default defineNuxtConfig({
 
 	nitro: {
 		compressPublicAssets: true,
+
 		prerender: {
 			crawlLinks: false,
+
 			ignore: [
 				"/general",
 				"/artists",
@@ -102,43 +112,27 @@ export default defineNuxtConfig({
 		optimizeDeps: {
 			exclude: ["cssstyle", "jsdom"]
 		},
+
 		ssr: {
 			noExternal: [],
 			resolve: {
 				conditions: ["node"]
 			}
 		},
+
 		build: {
-			chunkSizeWarningLimit: 600,
+			chunkSizeWarningLimit: 650,
+
 			commonjsOptions: {
 				transformMixedEsModules: true,
 				exclude: [/cssstyle/, /jsdom/]
-			},
-			rollupOptions: {
-				output: {
-					manualChunks: (id) => {
-						if (id.includes("node_modules")) {
-							if (id.includes("hls.js")) {
-								return "hls-vendor";
-							}
-							if (id.includes("@tauri-apps")) {
-								return "tauri-vendor";
-							}
-							if (id.includes("@nuxt/icon")) {
-								return undefined;
-							}
-							if (id.includes("@nuxt")) {
-								return "nuxt-vendor";
-							}
-							return "vendor";
-						}
-					}
-				}
 			}
 		},
+
 		esbuild: {
 			charset: "utf8"
 		},
+
 		server: {
 			hmr: {
 				port: 24679
