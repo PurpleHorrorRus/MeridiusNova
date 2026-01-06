@@ -22,16 +22,13 @@ export const useTray = () => {
 		}
 
 		let iconPath: string | null = null;
-		try {
-			const dir = await resourceDir();
-			const platformName = await platform();
-			if (platformName === "windows") {
-				iconPath = await join(dir, "icons", "tray.ico");
-			} else {
-				iconPath = await join(dir, "icons", "tray.png");
-			}
-		} catch {
-			iconPath = null;
+		
+		const dir = await resourceDir();
+
+		if (await platform() === "windows") {
+			iconPath = await join(dir, "icons", "tray.ico");
+		} else {
+			iconPath = await join(dir, "icons", "tray.png");
 		}
 
 		const handleMenuClick = async (id: string) => {
