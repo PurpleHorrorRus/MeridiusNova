@@ -78,13 +78,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import type { TPlaylist } from "~~/server/utils/types";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 
 const props = defineProps<{
 	playlist: TPlaylist;
 }>();
 
-const { closeModal } = useModal();
+const modalStore = useModalStore();
 
 const toWall = ref(true);
 const friendSearch = ref("");
@@ -152,7 +152,7 @@ const handleShare = async () => {
 	loading.value = false;
 
 	if (result) {
-		closeModal();
+		modalStore.close();
 	}
 };
 

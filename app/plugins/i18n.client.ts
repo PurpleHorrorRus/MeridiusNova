@@ -64,10 +64,11 @@ export default defineNuxtPlugin({
 	name: "i18n",
 	enforce: "post",
 	async setup() {
-		const { settings, load, loaded } = useSettings();
+		const settingsStore = useSettingsStore();
+		const { settings, loaded } = storeToRefs(settingsStore);
 
 		if (!loaded.value) {
-			await load();
+			await settingsStore.load();
 		}
 
 		const currentLocale = settings.value.general.lang || "ru";

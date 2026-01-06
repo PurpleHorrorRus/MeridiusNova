@@ -23,7 +23,7 @@
 							type="text"
 							class="settings-input"
 							:placeholder="getString('settings.cache.pathPlaceholder')"
-							:readonly="isTauri"
+							:readonly="isTauri()"
 							@input="updateCachePath"
 						/>
 						<button
@@ -103,9 +103,11 @@
 
 <script setup lang="ts">
 import { isTauri } from "~/utils/tauri";
+import { authenticatedFetch } from "~/utils/api";
 
 const { getString } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const config = useRuntimeConfig();
 
@@ -130,7 +132,7 @@ const cacheProgressPercentRounded = computed(() => {
 
 const updateCacheEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("cache", { enable: target.checked });
+	settingsStore.updateSection("cache", { enable: target.checked });
 
 	if (target.checked) {
 		loadCacheStats();
@@ -152,7 +154,7 @@ const chooseCachePath = async () => {
 	}).catch(() => null);
 
 	if (selected) {
-		updateSection("cache", {
+		settingsStore.updateSection("cache", {
 			path: selected as string
 		});
 	}
@@ -161,7 +163,7 @@ const chooseCachePath = async () => {
 const updateCachePath = (event: Event) => {
 	if (!isTauri()) {
 		const target = event.target as HTMLInputElement;
-		updateSection("cache", { path: target.value });
+		settingsStore.updateSection("cache", { path: target.value });
 	}
 };
 
@@ -170,13 +172,12 @@ const updateMaxSize = (event: Event) => {
 	const value = parseInt(target.value, 10);
 
 	if (!isNaN(value) && value >= 100 && value <= 100000) {
-		updateSection("cache", { maxSize: value });
+		settingsStore.updateSection("cache", { maxSize: value });
 	}
 };
 
 const loadCacheStats = async () => {
 	try {
-		const { authenticatedFetch } = await import("~/utils/api");
 		const stats = await authenticatedFetch<{ enabled: boolean; size: number; tracks: number; sizeMB: number; maxSize: number; maxSizeMB: number }>("/api/cache/stats");
 		
 		if (stats && stats.enabled) {
@@ -197,7 +198,6 @@ const clearCache = async () => {
 	clearing.value = true;
 
 	try {
-		const { authenticatedFetch } = await import("~/utils/api");
 		await authenticatedFetch("/api/cache/clear", {
 			method: "POST"
 		});

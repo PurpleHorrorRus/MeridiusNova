@@ -39,20 +39,13 @@
 </template>
 
 <script setup lang="ts">
-import { useAudio } from "~/composables/useAudio";
-import { useQueue } from "~/composables/useQueue";
-
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
-
-import type { TPlaylist, TVkMixResponse } from "~~/server/utils/types";
+import type { TVkMixResponse } from "~~/server/utils/types";
 
 const { getString } = useStrings();
-
-const { play } = useAudio();
 const playerStore = usePlayerStore();
 const playlistStore = usePlaylistStore();
-const { setQueue } = useQueue();
 
 const loading = ref(false);
 
@@ -91,8 +84,8 @@ const handlePlay = async () => {
 
 	playlistStore.setVkMixSectionId(result.sectionId);
 
-	// Используем универсальный метод для установки очереди
-	setQueue([result.song], {
+	// Используем прямой вызов store для установки очереди
+	await playlistStore.setQueue([result.song], {
 		owner_id: 0,
 		playlist_id: -9,
 		raw_id: "vkmix_-9",
@@ -113,12 +106,10 @@ const handlePlay = async () => {
 	}, 0);
 
 	// Добавляем информацию о VK Mix в трек
-	const songWithFrom = {
+	await playerStore.play({
 		...result.song,
 		from: "vkmix"
-	};
-
-	await play(songWithFrom);
+	} as TAudio & { from?: string });
 };
 </script>
 

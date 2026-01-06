@@ -521,6 +521,7 @@ export type TSettings = {
 			opacity: number;
 		};
 		sidebarPlaylistsExpanded: boolean;
+		sidebarLibraryExpanded: boolean;
 	};
 	optimization: {
 		fetchRestriction: number;

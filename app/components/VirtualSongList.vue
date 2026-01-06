@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, inject, type Ref } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, inject, shallowRef, type Ref } from "vue";
 import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
 import { useEventListener } from "~/composables/useEventListener";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
@@ -66,92 +66,110 @@ const getScrollContainer = (): HTMLElement | null => {
 	if (props.scrollContainer) {
 		return props.scrollContainer;
 	}
+
 	if (layoutMainRef.value) {
 		return layoutMainRef.value;
 	}
+
 	return containerRef.value;
 };
 
 const itemHeights = ref<Map<number, number>>(new Map());
 // Кэш для offsets - массив накопленных высот для быстрого доступа
+// Используем обычный ref для реактивности в computed
 const offsetsCache = ref<number[]>([]);
+// Храним ссылку на предыдущий массив items для определения полной смены плейлиста
+const previousItemsRef = shallowRef<any[]>([]);
+
+// Индекс с которого нужно пересчитать offsets (для оптимизации)
+let invalidatedFromIndex = 0;
 
 // Пересчитываем кэш offsets только при изменении itemHeights или items.length
-const updateOffsetsCache = () => {
-	const itemsLength = props.items.length;
-	if (itemsLength === 0) {
+const updateOffsetsCache = (fromIndex: number = 0) => {
+	if (props.items.length === 0) {
 		offsetsCache.value = [];
 		return;
 	}
 
 	// Предзаполняем кэш высот стандартным значением для всех элементов, которые еще не измерены
-	for (let i = 0; i < itemsLength; i++) {
+	for (let i = fromIndex; i < props.items.length; i++) {
 		if (!itemHeights.value.has(i)) {
 			itemHeights.value.set(i, props.itemHeight);
 		}
 	}
 
-	const offsets: number[] = [0];
-	let total = 0;
-	for (let i = 0; i < itemsLength; i++) {
-		const height = itemHeights.value.get(i) || props.itemHeight;
-		total += height;
-		offsets.push(total);
+	// Если кэш пуст или нужно пересчитать с начала
+	if (offsetsCache.value.length === 0 || fromIndex === 0) {
+		const offsets: number[] = [0];
+		let total = 0;
+		for (let i = 0; i < props.items.length; i++) {
+			total += itemHeights.value.get(i) || props.itemHeight;
+			offsets.push(total);
+		}
+		offsetsCache.value = offsets;
+		invalidatedFromIndex = props.items.length;
+	} else {
+		// Обновляем только измененную часть кэша
+		const offsets = offsetsCache.value;
+		const baseOffset = fromIndex > 0 ? offsets[fromIndex] || 0 : 0;
+		let total = baseOffset;
+		
+		// Обрезаем массив до нужной длины
+		if (offsets.length > fromIndex + 1) {
+			offsets.length = fromIndex + 1;
+		}
+		
+		// Пересчитываем offsets начиная с fromIndex
+		for (let i = fromIndex; i < props.items.length; i++) {
+			total += itemHeights.value.get(i) || props.itemHeight;
+			offsets.push(total);
+		}
+		
+		invalidatedFromIndex = props.items.length;
 	}
-	offsetsCache.value = offsets;
 };
 
 const totalHeight = computed(() => {
 	if (props.items.length === 0) {
 		return 0;
 	}
-	const cache = offsetsCache.value;
-	return cache.length > 0 ? cache[cache.length - 1] : 0;
+	return offsetsCache.value.length > 0 ? offsetsCache.value[offsetsCache.value.length - 1] : 0;
 });
 
 const getItemOffset = (index: number): number => {
 	if (index <= 0) return 0;
-	const cache = offsetsCache.value;
-	if (cache.length > index && cache[index] !== undefined) {
-		return cache[index];
+	if (offsetsCache.value.length > index && offsetsCache.value[index] !== undefined) {
+		return offsetsCache.value[index];
 	}
 	// Fallback если кэш не готов
 	let offset = 0;
 	for (let i = 0; i < index && i < props.items.length; i++) {
-		const height = itemHeights.value.get(i) || props.itemHeight;
-		offset += height;
+		offset += itemHeights.value.get(i) || props.itemHeight;
 	}
 	return offset;
 };
 
 
 const visibleRange = computed(() => {
-	const itemsLength = props.items.length;
-	if (itemsLength === 0 || containerHeight.value === 0) {
+	if (props.items.length === 0 || containerHeight.value === 0) {
 		return { start: 0, end: 0 };
 	}
-
-	const scrollTopValue = scrollTop.value;
-	const containerHeightValue = containerHeight.value;
-	const scrollBottom = scrollTopValue + containerHeightValue;
-	const cache = offsetsCache.value;
 
 	// Используем бинарный поиск для нахождения первого видимого элемента
 	let firstVisibleIndex = -1;
 	let lastVisibleIndex = -1;
 
-	if (cache.length > 0) {
+	if (offsetsCache.value && offsetsCache.value.length > 0) {
 		// Бинарный поиск для firstVisibleIndex
 		let left = 0;
-		let right = itemsLength - 1;
+		let right = props.items.length - 1;
 		while (left <= right) {
 			const mid = Math.floor((left + right) / 2);
-			const itemTop = cache[mid];
+			const itemTop = offsetsCache.value[mid];
 			if (itemTop === undefined) break;
-			const itemHeight = itemHeights.value.get(mid) || props.itemHeight;
-			const itemBottom = itemTop + itemHeight;
+			const itemBottom = itemTop + (itemHeights.value.get(mid) || props.itemHeight);
 
-			if (itemBottom >= scrollTopValue) {
+			if (itemBottom >= scrollTop.value) {
 				firstVisibleIndex = mid;
 				right = mid - 1;
 			} else {
@@ -161,9 +179,9 @@ const visibleRange = computed(() => {
 
 		// Линейный поиск для lastVisibleIndex (обычно недалеко от firstVisibleIndex)
 		if (firstVisibleIndex >= 0) {
-			for (let i = firstVisibleIndex; i < itemsLength; i++) {
-				const itemTop = cache[i];
-				if (itemTop !== undefined && itemTop <= scrollBottom) {
+			for (let i = firstVisibleIndex; i < props.items.length; i++) {
+				const itemTop = offsetsCache.value[i];
+				if (itemTop !== undefined && itemTop <= (scrollTop.value + containerHeight.value)) {
 					lastVisibleIndex = i;
 				} else {
 					break;
@@ -174,80 +192,65 @@ const visibleRange = computed(() => {
 
 	// Fallback если кэш не готов или поиск не дал результатов
 	if (firstVisibleIndex === -1 || lastVisibleIndex === -1) {
-		const fallbackEnd = Math.min(itemsLength - 1, props.overscan * 2);
-		return { start: 0, end: fallbackEnd };
+		return { start: 0, end: Math.min(props.items.length - 1, props.overscan * 2) };
 	}
 
-	const overscanTop = Math.ceil(props.overscan * 0.7);
-	const overscanBottom = Math.floor(props.overscan * 0.3);
-	const start = Math.max(0, firstVisibleIndex - overscanTop);
-	const end = Math.min(itemsLength - 1, lastVisibleIndex + overscanBottom);
-
-	return { start, end };
+	return {
+		start: Math.max(0, firstVisibleIndex - Math.ceil(props.overscan * 0.7)),
+		end: Math.min(props.items.length - 1, lastVisibleIndex + Math.floor(props.overscan * 0.3))
+	};
 });
 
 const startIndex = computed(() => visibleRange.value.start);
-const endIndex = computed(() => visibleRange.value.end);
 
 const visibleItems = computed(() => {
-	const start = startIndex.value;
-	const end = endIndex.value;
-	if (start < 0 || end < 0 || start > props.items.length || end >= props.items.length) {
+	const range = visibleRange.value;
+	if (range.start < 0 || range.end < 0 || range.start > props.items.length || range.end >= props.items.length) {
 		return [];
 	}
-	return props.items.slice(start, end + 1);
-});
-
-const topOffset = computed(() => {
-	return getItemOffset(startIndex.value);
+	
+	const result: typeof props.items = [];
+	for (let i = range.start; i <= range.end && i < props.items.length; i++) {
+		if (props.items[i]) {
+			result.push(props.items[i]);
+		}
+	}
+	return result;
 });
 
 const bottomOffset = computed(() => {
-	const end = endIndex.value;
-	const itemsLength = props.items.length;
-	
-	if (end >= itemsLength - 1 || end < 0) {
+	if (visibleRange.value.end >= props.items.length - 1 || visibleRange.value.end < 0) {
 		return 0;
 	}
 	
-	const cache = offsetsCache.value;
-	if (cache.length > itemsLength) {
-		// Используем кэш для быстрого вычисления
-		const total = cache[cache.length - 1];
-		const endOffset = cache[end + 1];
+	if (offsetsCache.value.length > props.items.length) {
+		const total = offsetsCache.value[offsetsCache.value.length - 1];
+		const endOffset = offsetsCache.value[visibleRange.value.end + 1];
 		if (total !== undefined && endOffset !== undefined) {
 			return Math.max(0, total - endOffset);
 		}
 	}
 	
-	// Fallback если кэш не готов
 	let offset = 0;
-	for (let i = end + 1; i < itemsLength; i++) {
-		const height = itemHeights.value.get(i) || props.itemHeight;
-		offset += height;
+	for (let i = visibleRange.value.end + 1; i < props.items.length; i++) {
+		offset += itemHeights.value.get(i) || props.itemHeight;
 	}
-	
+
 	return Math.max(0, offset);
 });
 
 const spacerStyle = computed(() => ({
-	height: `${topOffset.value}px`
+	height: `${getItemOffset(visibleRange.value.start)}px`
 }));
 
-const contentStyle = computed(() => ({
-	position: "relative" as const
-}));
+const contentStyle = { position: "relative" as const };
 
 const bottomSpacerStyle = computed(() => ({
 	height: `${bottomOffset.value}px`
 }));
 
 const showLoadMore = computed(() => {
-	if (!props.hasMore) {
-		return false;
-	}
-	const threshold = Math.max(1, Math.ceil(props.overscan * 0.3));
-	return endIndex.value >= props.items.length - threshold;
+	return props.hasMore && visibleRange.value.end >= props.items.length - Math.max(1, Math.ceil(props.overscan * 0.3));
 });
 
 let rafId: number | null = null;
@@ -259,6 +262,7 @@ const handleScroll = () => {
 
 	rafId = requestAnimationFrame(() => {
 		const scrollContainer = getScrollContainer();
+
 		if (!scrollContainer) {
 			rafId = null;
 			return;
@@ -281,26 +285,53 @@ const MAX_CACHE_SIZE = 5000;
 const cleanupCache = () => {
 	if (itemHeights.value.size > MAX_CACHE_SIZE) {
 		const itemsToKeep = Math.floor(MAX_CACHE_SIZE * 0.8);
-		const entries = Array.from(itemHeights.value.entries());
-		const sortedEntries = entries.sort((a, b) => a[0] - b[0]);
-		const toKeep = sortedEntries.slice(-itemsToKeep);
+
+		// Сортируем и оставляем только нужные элементы без промежуточных массивов
+		const sortedEntries = Array.from(itemHeights.value.entries()).sort((a, b) => a[0] - b[0]);
 		itemHeights.value.clear();
-		toKeep.forEach(([index, height]) => {
-			itemHeights.value.set(index, height);
-		});
+
+		// Используем slice напрямую без промежуточной переменной
+		for (let i = sortedEntries.length - itemsToKeep; i < sortedEntries.length; i++) {
+			if (sortedEntries[i]) {
+				itemHeights.value.set(sortedEntries[i]![0], sortedEntries[i]![1]);
+			}
+		}
 	}
 };
 
+// Полная очистка кэша при смене плейлиста
+const clearCache = () => {
+	itemHeights.value.clear();
+	offsetsCache.value = [];
+	previousItemsRef.value = [];
+	invalidatedFromIndex = 0;
+	if (updateCacheRafId !== null) {
+		cancelAnimationFrame(updateCacheRafId);
+		updateCacheRafId = null;
+	}
+};
+
+let updateCacheRafId: number | null = null;
+
 const updateItemHeight = (index: number, height: number) => {
-	const currentHeight = itemHeights.value.get(index);
-	if (currentHeight !== height && height > 0) {
+	if (itemHeights.value.get(index) !== height && height > 0) {
 		itemHeights.value.set(index, height);
 		cleanupCache();
-		// Обновляем кэш offsets при изменении высоты элемента
-		updateOffsetsCache();
-		nextTick(() => {
-			handleScroll();
-		});
+		
+		// Отмечаем что нужно обновить кэш с этого индекса
+		if (index < invalidatedFromIndex) {
+			invalidatedFromIndex = index;
+		}
+		
+		// Debounce обновление кэша через requestAnimationFrame
+		if (updateCacheRafId === null) {
+			updateCacheRafId = requestAnimationFrame(() => {
+				updateOffsetsCache(invalidatedFromIndex);
+				invalidatedFromIndex = props.items.length;
+				updateCacheRafId = null;
+				handleScroll();
+			});
+		}
 	}
 };
 
@@ -331,6 +362,7 @@ const setupScrollListener = () => {
 	}
 
 	const scrollContainer = getScrollContainer();
+
 	if (!scrollContainer) {
 		return;
 	}
@@ -346,16 +378,16 @@ const initialize = () => {
 		return;
 	}
 
-	const height = scrollContainer.clientHeight;
-	const top = scrollContainer.scrollTop;
-
-	if (height > 0) {
-		containerHeight.value = height;
+	if (scrollContainer.clientHeight > 0) {
+		containerHeight.value = scrollContainer.clientHeight;
 	}
-	scrollTop.value = top;
+
+	scrollTop.value = scrollContainer.scrollTop;
 	
 	// Инициализируем кэш offsets
-	updateOffsetsCache();
+	invalidatedFromIndex = 0;
+	updateOffsetsCache(0);
+	invalidatedFromIndex = props.items.length;
 	
 	setupResizeObserver();
 	setupScrollListener();
@@ -367,45 +399,59 @@ onMounted(() => {
 		initialize();
 
 		if (props.loadMore) {
-			const scrollContainerRef = computed(() => getScrollContainer());
-			useIntersectionObserver(
-				loadMoreRef,
-				async (entries) => {
-					const entry = entries[0];
-					if (entry?.isIntersecting && props.hasMore && !props.isLoadingMore && props.loadMore) {
-						await props.loadMore();
-					}
-				},
-				{
-					threshold: 0.1,
-					rootMargin: "300px",
-					root: scrollContainerRef,
-					enabled: computed(() => props.hasMore && !props.isLoadingMore && showLoadMore.value)
+			useIntersectionObserver(loadMoreRef, async entries => {
+				if (entries[0] && props.hasMore && !props.isLoadingMore && props.loadMore) {
+					await props.loadMore();
 				}
-			);
+			}, {
+				threshold: 0.1,
+				rootMargin: "300px",
+				root: getScrollContainer(),
+				enabled: computed(() => props.hasMore && !props.isLoadingMore && showLoadMore.value)
+			});
 		}
 
-		setTimeout(() => {
-			initialize();
-		}, 100);
+		setTimeout(initialize, 100);
 	});
 });
 
 watch(layoutMainRef, () => {
-	nextTick(() => {
-		initialize();
-	});
+	nextTick(initialize);
 });
 
 onBeforeUnmount(() => {
 	if (resizeObserver.value) {
 		resizeObserver.value.disconnect();
+		resizeObserver.value = null;
 	}
 	if (currentScrollContainer) {
 		currentScrollContainer.removeEventListener("scroll", handleScroll);
 		currentScrollContainer = null;
 	}
+	// Очищаем кэш при размонтировании для освобождения памяти
+	clearCache();
 });
+
+// Определяем, полностью ли сменился плейлист (не просто изменилась длина)
+const isPlaylistChanged = (newItems: any[], oldItems: any[]): boolean => {
+	if ((oldItems.length === 0 && newItems.length > 0) || (newItems.length === 0 && oldItems.length > 0)) {
+		return true;
+	}
+	
+	// Если длина сильно изменилась (больше чем на 50%), считаем что плейлист сменился
+	if (Math.abs(newItems.length - oldItems.length) > Math.max(oldItems.length * 0.5, 100)) {
+		return true;
+	}
+	
+	// Проверяем первые и последние элементы напрямую без промежуточных переменных
+	if (newItems.length > 0 && oldItems.length > 0) {
+		return (newItems[0]?.full_id && oldItems[0]?.full_id && newItems[0].full_id !== oldItems[0].full_id) ||
+			(newItems[newItems.length - 1]?.full_id && oldItems[oldItems.length - 1]?.full_id && 
+			 newItems[newItems.length - 1].full_id !== oldItems[oldItems.length - 1].full_id);
+	}
+	
+	return false;
+};
 
 // Обновляем кэш offsets при изменении items.length
 watch(() => props.items.length, (newLength, oldLength) => {
@@ -416,20 +462,53 @@ watch(() => props.items.length, (newLength, oldLength) => {
 				itemHeights.value.delete(i);
 			}
 		}
-		updateOffsetsCache();
+
+		invalidatedFromIndex = Math.min(invalidatedFromIndex, newLength);
+		updateOffsetsCache(invalidatedFromIndex);
+		invalidatedFromIndex = props.items.length;
+
 		nextTick(() => {
 			const scrollContainer = getScrollContainer();
+
 			if (scrollContainer) {
 				scrollTop.value = scrollContainer.scrollTop;
 				containerHeight.value = scrollContainer.clientHeight;
+				handleScroll();
 			}
-			handleScroll();
 		});
 	} else if (oldLength === undefined) {
 		// Первая инициализация
-		updateOffsetsCache();
+		invalidatedFromIndex = 0;
+		updateOffsetsCache(0);
+		invalidatedFromIndex = props.items.length;
 	}
 }, { immediate: true });
+
+// Отслеживаем полную смену плейлиста для очистки кэша
+watch(() => props.items, (newItems) => {
+	if (isPlaylistChanged(newItems, previousItemsRef.value)) {
+		// Полностью очищаем кэш при смене плейлиста для освобождения памяти
+		clearCache();
+		invalidatedFromIndex = 0;
+		updateOffsetsCache(0);
+		invalidatedFromIndex = props.items.length;
+
+		nextTick(() => {
+			const scrollContainer = getScrollContainer();
+			if (scrollContainer) {
+				scrollTop.value = 0;
+				containerHeight.value = scrollContainer.clientHeight;
+				handleScroll();
+			}
+		});
+	} else {
+		// Обновляем кэш даже если плейлист не сменился полностью (например, добавили/удалили треки)
+		invalidatedFromIndex = 0;
+		updateOffsetsCache(0);
+		invalidatedFromIndex = props.items.length;
+	}
+	previousItemsRef.value = newItems;
+}, { deep: false });
 
 defineExpose({
 	updateItemHeight,

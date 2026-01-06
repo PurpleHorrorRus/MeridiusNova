@@ -42,9 +42,6 @@ export default defineEventHandler(async (event) => {
 		if (platform === "win32") {
 			const appData = process.env.APPDATA || path.join(homeDir, "AppData", "Roaming");
 			return path.join(appData, "com.infinite.meridius", "ffmpeg");
-		} else if (platform === "darwin") {
-			const appData = path.join(homeDir, "Library", "Application Support", "com.infinite.meridius");
-			return path.join(appData, "ffmpeg");
 		} else {
 			const appData = process.env.XDG_DATA_HOME || path.join(homeDir, ".local", "share");
 			return path.join(appData, "com.infinite.meridius", "ffmpeg");

@@ -74,12 +74,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useAudio } from "~/composables/useAudio";
-import { usePlaylist } from "~/composables/usePlaylist";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useIsMobile } from "~/composables/useIsMobile";
 import { useLyrics } from "~/composables/useLyrics";
-import { useQueueInfo } from "~/composables/useQueueInfo";
 import FullscreenCover from "~/components/Player/FullscreenCover.vue";
 import FullscreenTrackInfo from "~/components/Player/FullscreenTrackInfo.vue";
 import FullscreenVolume from "~/components/Player/FullscreenVolume.vue";
@@ -101,9 +98,10 @@ const emit = defineEmits<{
 	toggleFullscreen: [];
 }>();
 
-const { currentSong, playNext, playPrevious } = useAudio();
+const playerStore = usePlayerStore();
 const playlistStore = usePlaylistStore();
-const { hasNext, hasPrevious, repeat } = usePlaylist();
+const { song: currentSong } = storeToRefs(playerStore);
+const { hasNext, hasPrevious, repeat } = storeToRefs(playlistStore);
 const { isMobile } = useIsMobile();
 
 const showLyrics = ref(false);
@@ -172,6 +170,14 @@ watch(currentSong, () => {
 
 const toggleQueue = () => {
 	showQueue.value = !showQueue.value;
+};
+
+const playPrevious = async () => {
+	await playerStore.prev();
+};
+
+const playNext = async () => {
+	await playerStore.next({ manual: true });
 };
 
 const handleContentClick = (event: MouseEvent) => {
@@ -335,7 +341,7 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 						}
 					} else {
 						if (hasNext.value || repeat.value) {
-							playNext();
+							playerStore.next({ manual: true });
 						}
 					}
 				}

@@ -1,35 +1,35 @@
 <template>
 	<div class="player-compact" @click.stop>
 		<div class="compact-controls">
-			<button class="btn-control-compact" @click.stop="playPrevious">
+			<button class="btn-control-compact" @click.stop="playerStore.prev()">
 				<Icon name="mdi:skip-previous" size="20" />
 			</button>
 			
-			<button class="btn-play-compact" @click.stop="toggle">
+			<button class="btn-play-compact" @click.stop="playerStore.toggle()">
 				<Icon v-if="paused" name="mdi:play" size="24" />
 				<Icon v-else name="mdi:pause" size="24" />
 			</button>
 			
-			<button class="btn-control-compact" @click.stop="playNext">
+			<button class="btn-control-compact" @click.stop="playerStore.next({ manual: true })">
 				<Icon name="mdi:skip-next" size="20" />
 			</button>
 		</div>
 
-		<div v-if="currentSong" class="compact-track-info">
+		<div v-if="playerStore.song" class="compact-track-info">
 			<div class="compact-cover">
 				<img
-					:src="currentSong.cover || currentSong.coverUrl_p || '/no-cover.webp'"
-					:alt="currentSong.title"
+					:src="playerStore.song.cover || playerStore.song.coverUrl_p || '/no-cover.webp'"
+					:alt="playerStore.song.title"
 					class="compact-cover-image"
 				/>
 			</div>
 			<div class="compact-track-details">
-				<div class="compact-artist">{{ currentSong.performer || currentSong.artist }}</div>
-				<div class="compact-title">{{ currentSong.title }}</div>
+				<div class="compact-artist">{{ playerStore.song.performer || playerStore.song.artist }}</div>
+				<div class="compact-title">{{ playerStore.song.title }}</div>
 				<div class="compact-time">
-					<span class="compact-time-current">{{ formatTime(currentTime) }}</span>
+					<span class="compact-time-current">{{ playerStore.formatTime(currentTime) }}</span>
 					<span class="compact-time-separator">/</span>
-					<span class="compact-time-duration">{{ formatTime(duration) }}</span>
+					<span class="compact-time-duration">{{ playerStore.formatTime(duration) }}</span>
 				</div>
 			</div>
 		</div>
@@ -64,8 +64,8 @@
 
 			<button
 				class="btn-compact-control"
-				:class="{ active: isQueueDrawerOpen }"
-				@click="openQueueDrawer"
+				:class="{ active: playerStore.isQueueDrawerOpen }"
+				@click="playerStore.openQueueDrawer"
 				:title="t('player.queue') || 'Очередь воспроизведения'"
 			>
 				<Icon name="mdi:playlist-music" size="18" />
@@ -76,51 +76,39 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useAudio } from "~/composables/useAudio";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { storeToRefs } from "pinia";
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+import { useModalStore } from "~/stores/modal";
 import { useStrings } from "~/composables/useStrings";
-import { useSongProps } from "~/composables/useSongProps";
-import { useModal } from "~/composables/useModal";
-import { useQueueDrawer } from "~/composables/useQueueDrawer";
-import { formatTime } from "~/composables/usePlayerTime";
 
-const {
-	currentSong,
-	paused,
-	currentTime,
-	duration,
-	toggle,
-	playNext,
-	playPrevious
-} = useAudio();
+const playerStore = usePlayerStore();
+const playlistStore = usePlaylistStore();
+const modalStore = useModalStore();
+const { paused, currentTime, duration } = storeToRefs(playerStore);
+const { repeat, shuffle } = storeToRefs(playlistStore);
 
 const { getString } = useStrings();
 const t = getString;
 
-const playlistStore = usePlaylistStore();
-const { repeat, shuffle } = usePlaylist();
-
-const { generateSongProps } = useSongProps();
-const { openModal } = useModal();
-const { openQueueDrawer, isQueueDrawerOpen } = useQueueDrawer();
-
 const songProps = computed(() => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return {
 			hasLyrics: false
 		};
 	}
 
-	return generateSongProps(currentSong.value);
+	return {
+		hasLyrics: Boolean(playerStore.song.hasLyrics)
+	};
 });
 
 const handleLyrics = () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
-	openModal("lyrics", { audio: currentSong.value });
+	modalStore.openModal("lyrics", { audio: playerStore.song });
 };
 </script>
 

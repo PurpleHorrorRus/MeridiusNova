@@ -1,5 +1,5 @@
 <template>
-	<div class="player-left" @click="handlePlayerAreaClick">
+	<div v-if="currentSong" class="player-left" @click="handlePlayerAreaClick">
 		<div class="cover-wrapper">
 			<img
 				:src="currentSong.cover || currentSong.coverUrl_p || '/no-cover.webp'"
@@ -13,21 +13,18 @@
 		</div>
 		
 		<div class="track-info">
-			<div class="track-title" :title="currentSong.title">
-				{{ currentSong.title }}
-			</div>
-			<div class="track-artist" :title="currentSong.performer || currentSong.artist">
-				{{ currentSong.performer || currentSong.artist }}
-			</div>
+			<div class="track-title" :title="currentSong.title" v-text="currentSong.title" />
+			<div class="track-artist" :title="currentSong.performer || currentSong.artist" v-text="currentSong.performer || currentSong.artist" />
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useAudio } from "~/composables/useAudio";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
 
-const { currentSong } = useAudio();
+const playerStore = usePlayerStore();
+const { song: currentSong } = storeToRefs(playerStore);
 
 const props = defineProps<{
 	isFullscreen: boolean;

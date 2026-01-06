@@ -1,10 +1,12 @@
 import { ref } from "vue";
 import { throttle } from "lodash";
-import { useAudio } from "~/composables/useAudio";
-import { formatTime } from "~/composables/usePlayerTime";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
 
 export const usePlayerTimeline = (throttleDelay: number = 150) => {
-	const { duration, progress, seek } = useAudio();
+	const playerStore = usePlayerStore();
+	const { duration, progress } = storeToRefs(playerStore);
+	const seek = (time: number) => playerStore.seek(time);
 
 	const throttledProgress = ref(0);
 	const showTooltip = ref(false);
@@ -98,7 +100,7 @@ export const usePlayerTimeline = (throttleDelay: number = 150) => {
 		handleProgressTouch,
 		handleProgressTouchMove,
 		handleProgressTouchEnd,
-		formatTime
+		formatTime: (seconds: number) => playerStore.formatTime(seconds)
 	};
 };
 

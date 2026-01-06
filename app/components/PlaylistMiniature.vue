@@ -43,7 +43,7 @@
 import { ref, computed } from "vue";
 import type { TPlaylist } from "~~/server/utils/types";
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { usePlaylistStore } from "~/stores/playlist";
 
 const props = defineProps<{
 	playlist: TPlaylist;
@@ -53,7 +53,7 @@ const isExpanded = ref(false);
 const loading = ref(false);
 const tracks = ref<TAudio[]>([]);
 
-const { playPlaylist } = usePlaylist();
+const playlistStore = usePlaylistStore();
 
 const handleClick = () => {
 	navigateTo(`/playlist/${props.playlist.owner_id}/${props.playlist.playlist_id}`);

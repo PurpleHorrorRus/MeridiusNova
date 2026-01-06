@@ -42,9 +42,9 @@ import { ref, watch, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { useEqualizerStore } from "~/stores/equalizer";
 import { useSpectrumAnalyzer } from "~/composables/useSpectrumAnalyzer";
 import { useEventListener } from "~/composables/useEventListener";
-import { useAudio } from "~/composables/useAudio";
 import { useStrings } from "~/composables/useStrings";
-import { useSettings } from "~/composables/useSettings";
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
 
 interface Props {
 	levels: number[];
@@ -61,13 +61,14 @@ const emit = defineEmits<Emits>();
 const { getString } = useStrings();
 const equalizerStore = useEqualizerStore();
 const { getAnalyser } = useSpectrumAnalyzer();
-const { isPlaying, currentSong } = useAudio();
+const playerStore = usePlayerStore();
 
 const graphCanvas = ref<HTMLCanvasElement | null>(null);
 let animationFrameId: number | null = null;
 const analyserData = ref<Uint8Array | null>(null);
 
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const spectrumVisualizationEnabled = computed(() => settings.value.equalizer.spectrumVisualization);
 
 const UPDATE_INTERVAL = 40;
@@ -105,7 +106,7 @@ onMounted(() => {
 	nextTick(() => {
 		resizeCanvas();
 		useEventListener(window, "resize", resizeCanvas);
-		if (spectrumVisualizationEnabled.value && isPlaying.value) {
+		if (spectrumVisualizationEnabled.value && playerStore.isPlaying) {
 			startSpectrumAnalysis();
 		}
 	});
@@ -137,17 +138,17 @@ watch(() => props.levels, () => {
 }, { deep: true });
 
 const restartSpectrumAnalysis = () => {
-	if (!isPlaying.value || !spectrumVisualizationEnabled.value) {
+	if (!playerStore.isPlaying || !spectrumVisualizationEnabled.value) {
 		return;
 	}
 	
 	stopSpectrumAnalysis();
 	analyserData.value = null;
 	adaptiveMaxValue = 100;
-	currentSongId = currentSong.value?.full_id;
+	currentSongId = playerStore.song?.full_id;
 	
 	const tryStartAnalysis = (attempts = 0) => {
-		if (!isPlaying.value || !spectrumVisualizationEnabled.value) {
+		if (!playerStore.isPlaying || !spectrumVisualizationEnabled.value) {
 			return;
 		}
 		
@@ -174,16 +175,16 @@ const restartSpectrumAnalysis = () => {
 	}, 100);
 };
 
-watch(() => currentSong.value?.full_id, (newSongId, oldSongId) => {
-	if (newSongId !== oldSongId && isPlaying.value && spectrumVisualizationEnabled.value) {
+watch(() => playerStore.song?.full_id, (newSongId, oldSongId) => {
+	if (newSongId !== oldSongId && playerStore.isPlaying && spectrumVisualizationEnabled.value) {
 		restartSpectrumAnalysis();
 	}
 }, { immediate: false });
 
-watch(() => [isPlaying.value, spectrumVisualizationEnabled.value], ([playing, enabled], [prevPlaying, prevEnabled]) => {
+watch(() => [playerStore.isPlaying, spectrumVisualizationEnabled.value], ([playing, enabled], [prevPlaying, prevEnabled]) => {
 	if (playing && enabled) {
 		if (!prevPlaying && playing) {
-			currentSongId = currentSong.value?.full_id;
+			currentSongId = playerStore.song?.full_id;
 			restartSpectrumAnalysis();
 		} else if (playing && !analyserData.value) {
 			restartSpectrumAnalysis();
@@ -199,13 +200,13 @@ watch(() => [isPlaying.value, spectrumVisualizationEnabled.value], ([playing, en
 
 const toggleSpectrumVisualization = () => {
 	const newValue = !spectrumVisualizationEnabled.value;
-	updateSection("equalizer", { spectrumVisualization: newValue });
+	settingsStore.updateSection("equalizer", { spectrumVisualization: newValue });
 	
 	if (!newValue) {
 		stopSpectrumAnalysis();
 		analyserData.value = null;
 		drawGraph();
-	} else if (isPlaying.value) {
+	} else if (playerStore.isPlaying) {
 		restartSpectrumAnalysis();
 	}
 };
@@ -369,7 +370,7 @@ const startSpectrumAnalysis = () => {
 	const dataArray = new Uint8Array(bufferLength);
 	analyserData.value = dataArray;
 	lastUpdateTime = performance.now();
-	currentSongId = currentSong.value?.full_id;
+	currentSongId = playerStore.song?.full_id;
 
 	let storedAnalyser: AnalyserNode | null = analyser;
 
@@ -377,7 +378,7 @@ const startSpectrumAnalysis = () => {
 	let lastDataSum = 0;
 
 	const updateSpectrum = () => {
-		const songId = currentSong.value?.full_id;
+		const songId = playerStore.song?.full_id;
 		const currentAnalyser = equalizerStore.getAnalyserNode();
 		
 		// Проверка на смену трека - более надежная
@@ -387,13 +388,13 @@ const startSpectrumAnalysis = () => {
 			storedAnalyser = null;
 			analyserData.value = null;
 			adaptiveMaxValue = 100;
-			if (isPlaying.value && spectrumVisualizationEnabled.value) {
+			if (playerStore.isPlaying && spectrumVisualizationEnabled.value) {
 				restartSpectrumAnalysis();
 			}
 			return;
 		}
 
-		if (!currentAnalyser || !isPlaying.value || !spectrumVisualizationEnabled.value) {
+		if (!currentAnalyser || !playerStore.isPlaying || !spectrumVisualizationEnabled.value) {
 			stopSpectrumAnalysis();
 			storedAnalyser = null;
 			return;
@@ -407,10 +408,10 @@ const startSpectrumAnalysis = () => {
 				analyserData.value = new Uint8Array(bufferLength);
 				lastDataCheck = performance.now();
 				lastDataSum = 0;
-				currentSongId = currentSong.value?.full_id; // Обновляем ID трека при смене анализатора
+				currentSongId = playerStore.song?.full_id; // Обновляем ID трека при смене анализатора
 			} else {
 				stopSpectrumAnalysis();
-				if (isPlaying.value && spectrumVisualizationEnabled.value) {
+				if (playerStore.isPlaying && spectrumVisualizationEnabled.value) {
 					restartSpectrumAnalysis();
 				}
 				return;
@@ -451,7 +452,7 @@ const startSpectrumAnalysis = () => {
 						analyserData.value = null;
 						storedAnalyser = null;
 						adaptiveMaxValue = 100;
-						if (isPlaying.value && spectrumVisualizationEnabled.value) {
+						if (playerStore.isPlaying && spectrumVisualizationEnabled.value) {
 							restartSpectrumAnalysis();
 						}
 						return;
@@ -465,7 +466,7 @@ const startSpectrumAnalysis = () => {
 			} else {
 				// Если dataArray стал null, перезапускаем
 				stopSpectrumAnalysis();
-				if (isPlaying.value && spectrumVisualizationEnabled.value) {
+				if (playerStore.isPlaying && spectrumVisualizationEnabled.value) {
 					restartSpectrumAnalysis();
 				}
 				return;
@@ -621,7 +622,7 @@ const drawGraph = () => {
 		ctx.setLineDash([]);
 	});
 
-	if (isPlaying.value && analyserData.value && spectrumVisualizationEnabled.value) {
+	if (playerStore.isPlaying && analyserData.value && spectrumVisualizationEnabled.value) {
 		const spectrumData = getFrequencyData();
 		const firstValue = spectrumData[0];
 		

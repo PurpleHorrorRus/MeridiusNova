@@ -1,15 +1,18 @@
+import { storeToRefs } from "pinia";
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
+import { useSettingsStore } from "~/stores/settings";
 // useHotkeys is auto-imported from app/composables
 
 export default defineNuxtPlugin(async () => {
-	const { settings, load, updateSection, save } = useSettings();
+	const settingsStore = useSettingsStore();
+	const { settings } = storeToRefs(settingsStore);
 	const playerStore = usePlayerStore();
 	const playlistStore = usePlaylistStore();
 	const { registerHotkeys } = useHotkeys();
 	const { applyTheme } = useTheme();
 
-	await load();
+	await settingsStore.load();
 
 	// Apply theme on load
 	if (settings.value.appearance.theme) {
@@ -65,33 +68,6 @@ export default defineNuxtPlugin(async () => {
 	if (import.meta.client) {
 		await registerHotkeys();
 	}
-
-	// Watch for settings changes and save
-	watch(() => settings.value, () => {
-		save();
-	}, { deep: true });
-
-	// Watch for player volume/playbackRate/muted changes and save
-	watch(() => playerStore.volume, (volume) => {
-		updateSection("player", { volume });
-	});
-
-	watch(() => playerStore.playbackRate, (playbackRate) => {
-		updateSection("player", { playbackRate });
-	});
-
-	watch(() => playerStore.muted, (muted) => {
-		updateSection("player", { mute: muted });
-	});
-
-	// Watch for playlist shuffle/repeat changes and save
-	watch(() => playlistStore.shuffle, (shuffle) => {
-		updateSection("player", { random: shuffle });
-	});
-
-	watch(() => playlistStore.repeat, (repeat) => {
-		updateSection("player", { repeat });
-	});
 
 	// Watch for theme changes and apply
 	watch(() => settings.value.appearance.theme, (theme) => {

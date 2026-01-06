@@ -31,25 +31,22 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useAudio } from "~/composables/useAudio";
 import { useStrings } from "~/composables/useStrings";
-import { useSongProps } from "~/composables/useSongProps";
-import { useModal } from "~/composables/useModal";
-import { useSongDelete } from "~/composables/useSongDelete";
-import { useSongAdd } from "~/composables/useSongAdd";
+import { useModalStore } from "~/stores/modal";
 import { useIsMobile } from "~/composables/useIsMobile";
 
-const { currentSong } = useAudio();
+import { usePlayerStore } from "~/stores/player";
+import { usePlaylistStore } from "~/stores/playlist";
+
+const playerStore = usePlayerStore();
+const playlistStore = usePlaylistStore();
 const { getString } = useStrings();
 const t = getString;
-const { generateSongProps } = useSongProps();
-const { openModal } = useModal();
-const { handleDelete: deleteSong, getDeleteTitle, canDelete: canDeleteSong } = useSongDelete();
-const { handleAdd: addSong } = useSongAdd();
+const modalStore = useModalStore();
 const { isMobile } = useIsMobile();
 
 const songProps = computed(() => {
-	const song = currentSong.value;
+	const song = playerStore.song;
 	if (!song) {
 		return {
 			canAdd: false,
@@ -58,48 +55,52 @@ const songProps = computed(() => {
 		};
 	}
 
-	return generateSongProps(song);
+	return {
+		canAdd: Boolean(song.canAdd),
+		canDelete: Boolean(song.canDelete),
+		hasLyrics: Boolean(song.hasLyrics)
+	};
 });
 
 const canDelete = computed(() => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return false;
 	}
 
-	return canDeleteSong(currentSong.value, songProps.value);
+	return playlistStore.canDelete(playerStore.song, songProps.value);
 });
 
 const deleteTitle = computed(() => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return "";
 	}
 
-	return getDeleteTitle(currentSong.value);
+	return playlistStore.getDeleteTitle(playerStore.song);
 });
 
 const handleAdd = async () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
-	await addSong(currentSong.value);
+	await playlistStore.addSongToLibrary(playerStore.song);
 };
 
 const handleDelete = async () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
-	await deleteSong(currentSong.value);
+	await playlistStore.deleteSong(playerStore.song);
 };
 
 const handleLyrics = () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
 	if (isMobile.value) {
-		openModal("lyrics", { audio: currentSong.value });
+		modalStore.openModal("lyrics", { audio: playerStore.song });
 		return;
 	}
 

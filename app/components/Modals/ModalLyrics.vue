@@ -2,7 +2,7 @@
 	<div class="lyrics-modal">
 		<div class="modal-header">
 			<h2 class="modal-title" v-html="audio.title"></h2>
-			<button class="modal-close-btn" @click="closeModal">
+			<button class="modal-close-btn" @click="modalStore.close">
 				<Icon name="mdi:close" size="24" />
 			</button>
 		</div>
@@ -35,9 +35,7 @@
 				Текст песни недоступен
 			</div>
 
-			<div v-if="lyrics.lyricsInfo.value?.credits" class="lyrics-credits">
-				{{ lyrics.lyricsInfo.value.credits }}
-			</div>
+			<div v-if="lyrics.lyricsInfo.value?.credits" class="lyrics-credits" v-text="lyrics.lyricsInfo.value.credits" />
 		</div>
 	</div>
 </template>
@@ -45,7 +43,7 @@
 <script setup lang="ts">
 import { onMounted, watch, nextTick } from "vue";
 import type { TAudio } from "~~/server/utils/types";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import { useLyrics } from "~/composables/useLyrics";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
 
@@ -53,7 +51,7 @@ const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { closeModal } = useModal();
+const modalStore = useModalStore();
 const lyrics = useLyrics(() => props.audio);
 
 const isLoading = lyrics.loading;

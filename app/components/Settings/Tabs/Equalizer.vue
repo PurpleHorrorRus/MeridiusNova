@@ -21,14 +21,16 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useEqualizerStore } from "~/stores/equalizer";
-import { useSettings } from "~/composables/useSettings";
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
 import { useSpectrumAnalyzer } from "~/composables/useSpectrumAnalyzer";
 import { EQUALIZER_PRESETS } from "./EqualizerPresets";
 import EqualizerSettings from "./EqualizerSettings.vue";
 import EqualizerGraph from "./EqualizerGraph.vue";
 
 const equalizerStore = useEqualizerStore();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const { connect: connectSpectrumAnalyzer, disconnect: disconnectSpectrumAnalyzer } = useSpectrumAnalyzer();
 const presets = ref(EQUALIZER_PRESETS);
 const selectedPresetIndex = ref(0);
@@ -58,7 +60,7 @@ const changePreset = (index: number) => {
 	const preset = presets.value[index];
 
 	if (preset) {
-		updateSection("equalizer", { levels: [...preset.levels] });
+		settingsStore.updateSection("equalizer", { levels: [...preset.levels] });
 		selectedPresetIndex.value = index;
 		equalizerStore.setLevels(preset.levels);
 	}
@@ -68,12 +70,12 @@ const updateLevel = (index: number, value: number) => {
 	const clampedValue = Math.max(-15, Math.min(15, value));
 	const newLevels = [...settings.value.equalizer.levels];
 	newLevels[index] = clampedValue;
-	updateSection("equalizer", { levels: newLevels });
+	settingsStore.updateSection("equalizer", { levels: newLevels });
 	equalizerStore.setLevel(index, clampedValue);
 };
 
 const updateEqualizerEnable = (enabled: boolean) => {
-	updateSection("equalizer", { enable: enabled });
+	settingsStore.updateSection("equalizer", { enable: enabled });
 	equalizerStore.setEnabled(enabled);
 };
 
@@ -105,7 +107,7 @@ const importPreset = () => {
 				const content = e.target?.result as string;
 				const preset = JSON.parse(content);
 				if (preset.levels && Array.isArray(preset.levels) && preset.levels.length === 18) {
-					updateSection("equalizer", { levels: preset.levels });
+					settingsStore.updateSection("equalizer", { levels: preset.levels });
 					equalizerStore.setLevels(preset.levels);
 				}
 			};

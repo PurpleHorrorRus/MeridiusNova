@@ -6,12 +6,13 @@
 					:src="user.photo_200 || user.photo_max || user.avatar || ''"
 					:width="180"
 					:height="180"
+					:priority="true"
 				/>
 			</div>
 
 			<div class="collection-header-info">
-				<div class="collection-header-type">{{ getString("collection.type") }}</div>
-				<h1 class="collection-header-title">{{ userName }}</h1>
+				<div class="collection-header-type" v-text="getString('collection.type')" />
+				<h1 class="collection-header-title" v-text="userName" />
 
 				<div class="collection-header-meta">
 					<span v-if="playlist.size !== undefined && playlist.size > 0" class="collection-header-size">
@@ -45,8 +46,8 @@
 
 <script setup lang="ts">
 import type { TPlaylist } from "~~/server/utils/types";
-import { usePlaylistButton } from "~/composables/usePlaylistButton";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
+import { usePlaylistButton } from "~/utils/playlist-button";
+import { usePlaylistStore } from "~/stores/playlist";
 
 const props = defineProps<{
 	playlist: TPlaylist;
@@ -66,7 +67,7 @@ const emit = defineEmits<{
 
 const { getString, translate } = useStrings();
 const { isPlaying, isLoading, handlePlayPause: handlePlayPauseBase } = usePlaylistButton(props.playlist);
-const { downloadLibrary } = usePlaylistActions();
+const playlistStore = usePlaylistStore();
 
 const isRestricted = computed(() => {
 	return Boolean(props.playlist.restricted);
@@ -122,7 +123,7 @@ const handleDownload = async () => {
 	}
 
 	isDownloading.value = true;
-	await downloadLibrary(props.playlist.owner_id).catch((error) => {
+	await playlistStore.downloadLibrary(props.playlist.owner_id).catch((error) => {
 		console.error("Failed to download library:", error);
 	}).finally(() => {
 		isDownloading.value = false;

@@ -31,17 +31,15 @@
 						/>
 					</div>
 					<div class="fullscreen-queue-current-info">
-						<div class="fullscreen-queue-current-title">{{ playlistSource.title }}</div>
-						<div v-if="playlistSource.description" class="fullscreen-queue-current-description">{{ playlistSource.description }}</div>
+						<div class="fullscreen-queue-current-title" v-text="playlistSource.title" />
+						<div v-if="playlistSource.description" class="fullscreen-queue-current-description" v-text="playlistSource.description" />
 						<div class="fullscreen-queue-current-meta">
-							<span v-if="queueCurrentPlaylist?.author" class="fullscreen-queue-current-author">
-								{{ queueCurrentPlaylist.author.name }}
-							</span>
+							<span v-if="queueCurrentPlaylist?.author" class="fullscreen-queue-current-author" v-text="queueCurrentPlaylist.author.name" />
 							<span v-if="songsCount > 0" class="fullscreen-queue-current-size">
 								{{ songsCount }} треков
 							</span>
 							<span v-if="queueCurrentPlaylist?.listens && queueCurrentPlaylist.listens > 0" class="fullscreen-queue-current-listens">
-								{{ formatListens(queueCurrentPlaylist.listens) }} прослушиваний
+								{{ playlistStore.formatListens(queueCurrentPlaylist.listens) }} прослушиваний
 							</span>
 						</div>
 					</div>
@@ -79,18 +77,18 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { useQueueInfo } from "~/composables/useQueueInfo";
 import { usePlaylistStore } from "~/stores/playlist";
-import { useAudio } from "~/composables/useAudio";
-import { useQueueScroll } from "~/composables/useQueueScroll";
+import { usePlayerStore } from "~/stores/player";
+import { useQueueScroll } from "~/utils/queue-scroll";
+import { storeToRefs } from "pinia";
 import Song from "~/components/Song/Song.vue";
 import VirtualSongList from "~/components/VirtualSongList.vue";
 import VirtualSongItem from "~/components/VirtualSongItem.vue";
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
-const { currentPlaylist: queueCurrentPlaylist, playlistSource, formatListens } = useQueueInfo();
 const playlistStore = usePlaylistStore();
-const { play } = useAudio();
+const playerStore = usePlayerStore();
+const { currentPlaylist: queueCurrentPlaylist, playlistSource } = storeToRefs(playlistStore);
 
 const props = defineProps<{
 	showQueue: boolean;
@@ -127,7 +125,7 @@ const playFromQueue = async (audio: TAudio, index: number) => {
 	playlistStore.setCurrentIndex(index);
 	const songFromQueue = playlistStore.playingSongs[index];
 	if (songFromQueue) {
-		await play(songFromQueue);
+		await playerStore.play(songFromQueue);
 	}
 };
 </script>

@@ -25,8 +25,12 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
+
 const { getString } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const { applyTheme } = useTheme();
 
 const themes = [
@@ -38,7 +42,7 @@ const themes = [
 const updateTheme = (event: Event) => {
 	const target = event.target as HTMLSelectElement;
 	const themeId = target.value;
-	updateSection("appearance", { theme: themeId });
+	settingsStore.updateSection("appearance", { theme: themeId });
 	applyTheme(themeId);
 };
 </script>

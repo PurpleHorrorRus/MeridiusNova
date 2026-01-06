@@ -2,24 +2,24 @@
 	<div class="player-center">
 		<div class="controls-row">
 			<div class="main-controls">
-				<button class="btn-control" @click.stop="playPrevious">
+				<button class="btn-control" @click.stop="playerStore.prev()">
 					<Icon name="mdi:skip-previous" size="24" />
 				</button>
 				
-			<button class="btn-play" @click.stop="toggle">
+			<button class="btn-play" @click.stop="playerStore.toggle()">
 				<Icon v-if="paused" name="mdi:play" />
 				<Icon v-else name="mdi:pause" />
 			</button>
 				
-				<button class="btn-control" @click.stop="playNext">
+				<button class="btn-control" @click.stop="playerStore.next({ manual: true })">
 					<Icon name="mdi:skip-next" size="24" />
 				</button>
 			</div>
 			
 			<div class="time-display">
-				<span class="time-current">{{ formatTime(currentTime) }}</span>
+				<span class="time-current">{{ playerStore.formatTime(currentTime) }}</span>
 				<span class="time-separator">/</span>
-				<span class="time-duration">{{ formatTime(duration) }}</span>
+				<span class="time-duration">{{ playerStore.formatTime(duration) }}</span>
 			</div>
 			
 			<div class="secondary-controls">
@@ -29,17 +29,11 @@
 </template>
 
 <script setup lang="ts">
-import { useAudio } from "~/composables/useAudio";
-import { formatTime } from "~/composables/usePlayerTime";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
 
-const {
-	paused,
-	currentTime,
-	duration,
-	toggle,
-	playNext,
-	playPrevious
-} = useAudio();
+const playerStore = usePlayerStore();
+const { paused, currentTime, duration } = storeToRefs(playerStore);
 </script>
 
 <style scoped lang="scss">

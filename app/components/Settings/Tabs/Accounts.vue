@@ -56,7 +56,8 @@
 import { useVkStore } from "~/stores/vk";
 
 const { getString } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const vkStore = useVkStore();
 const profiles = ref<any[]>([]);
 
@@ -122,7 +123,7 @@ const switchAccount = async (index: number) => {
 	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === profile.id);
 	
 	if (accountIndex >= 0) {
-		updateSection("vk", { active: accountIndex });
+		settingsStore.updateSection("vk", { active: accountIndex });
 		window.location.href = "/?reload=1";
 	} else if (profile.id === vkStore.user_id) {
 		window.location.href = "/?reload=1";
@@ -148,7 +149,7 @@ const removeAccount = (index: number) => {
 
 		const newAccounts = [...settings.value.vk.accounts];
 		newAccounts.splice(accountIndex, 1);
-		updateSection("vk", { accounts: newAccounts });
+		settingsStore.updateSection("vk", { accounts: newAccounts });
 	}
 
 	profiles.value.splice(index, 1);

@@ -6,7 +6,9 @@
 		:height="height"
 		format="webp"
 		quality="80"
-		loading="lazy"
+		:loading="priority ? 'eager' : 'lazy'"
+		:fetchpriority="priority ? 'high' : undefined"
+		preload
 	/>
 </template>
 
@@ -16,6 +18,7 @@ defineProps<{
     alt?: string;
     width?: number;
     height?: number;
+    priority?: boolean;
 }>();
 </script>
 

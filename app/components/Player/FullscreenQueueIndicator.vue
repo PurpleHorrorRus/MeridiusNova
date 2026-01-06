@@ -30,10 +30,12 @@
 
 <script setup lang="ts">
 import { useIsMobile } from "~/composables/useIsMobile";
-import { useQueueInfo } from "~/composables/useQueueInfo";
+import { usePlaylistStore } from "~/stores/playlist";
+import { storeToRefs } from "pinia";
 
 const { isMobile } = useIsMobile();
-const { currentPlaylist: queueCurrentPlaylist, playlistSource } = useQueueInfo();
+const playlistStore = usePlaylistStore();
+const { currentPlaylist: queueCurrentPlaylist, playlistSource } = storeToRefs(playlistStore);
 
 defineProps<{
 	showQueue: boolean;

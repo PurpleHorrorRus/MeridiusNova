@@ -1,8 +1,9 @@
 <template>
-	<div class="modal-settings">
+	<div class="modal-settings" :class="{ 'modal-settings-page': isPage }">
 		<div class="modal-settings-header">
 			<h1 class="modal-settings-title">{{ getString("settings.title") }}</h1>
 			<button
+				v-if="!isPage"
 				class="modal-settings-close"
 				@click="modalStore.close"
 			>
@@ -45,8 +46,16 @@ import { useModalStore } from "~/stores/modal";
 
 import { isTauri } from "~/utils/tauri";
 
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
+
+const props = defineProps<{
+	isPage?: boolean;
+}>();
+
 const { getString, loadLanguage } = useStrings();
-const { settings, load } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const modalStore = useModalStore();
 const activeTab = ref("general");
 
@@ -89,7 +98,7 @@ watch(() => tabs.value, (newTabs) => {
 }, { immediate: true });
 
 onMounted(async () => {
-	await load();
+	await settingsStore.load();
 	const lang = settings.value.general.lang;
 	if (lang) {
 		await loadLanguage(lang);
@@ -107,6 +116,11 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+
+	&.modal-settings-page {
+		height: auto;
+		min-height: 100%;
+	}
 }
 
 .modal-settings-header {

@@ -39,11 +39,11 @@
 
 <script setup lang="ts">
 import { usePlaylistStore } from "~/stores/playlist";
-import { useAudio } from "~/composables/useAudio";
+import { usePlayerStore } from "~/stores/player";
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const playlistStore = usePlaylistStore();
-const { play } = useAudio();
+const playerStore = usePlayerStore();
 
 const clearQueue = () => {
 	playlistStore.clear();
@@ -54,8 +54,7 @@ const playFromQueue = async (audio: TAudio, index: number) => {
 	// Используем трек из очереди, который уже имеет все данные (включая URL)
 	const songFromQueue = playlistStore.playingSongs[index];
 	if (songFromQueue) {
-		// Помечаем трек как из очереди, чтобы updatePlaylist не перезагружал плейлист
-		await play({ ...songFromQueue, from: "queue", manual: true });
+		await playerStore.play({ ...songFromQueue, manual: true });
 	}
 };
 </script>

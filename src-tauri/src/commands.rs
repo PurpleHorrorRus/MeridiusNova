@@ -82,12 +82,6 @@ pub fn set_startup(enable: bool) -> Result<(), String> {
 		}
 	}
 
-	#[cfg(target_os = "macos")]
-	{
-		// TODO: Implement for macOS using Launch Agents
-		let _ = enable;
-	}
-
 	Ok(())
 }
 

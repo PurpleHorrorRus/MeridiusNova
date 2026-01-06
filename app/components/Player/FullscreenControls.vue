@@ -13,16 +13,16 @@
 			</div>
 			
 			<div class="fullscreen-controls-center">
-				<button class="btn-control-fullscreen" @click.stop="playPrevious">
+				<button class="btn-control-fullscreen" @click.stop="playerStore.prev()">
 					<Icon name="mdi:skip-previous" size="32" />
 				</button>
 				
-				<button class="btn-play-fullscreen" @click.stop="toggle">
+				<button class="btn-play-fullscreen" @click.stop="playerStore.toggle()">
 					<Icon v-if="paused" name="mdi:play" size="40" />
 					<Icon v-else name="mdi:pause" size="40" />
 				</button>
 				
-				<button class="btn-control-fullscreen" @click.stop="playNext">
+				<button class="btn-control-fullscreen" @click.stop="playerStore.next({ manual: true })">
 					<Icon name="mdi:skip-next" size="32" />
 				</button>
 			</div>
@@ -43,18 +43,20 @@
 </template>
 
 <script setup lang="ts">
-import { useAudio } from "~/composables/useAudio";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { storeToRefs } from "pinia";
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
 import { useStrings } from "~/composables/useStrings";
 import { useIsMobile } from "~/composables/useIsMobile";
 
-const { paused, toggle, playNext, playPrevious } = useAudio();
+const playerStore = usePlayerStore();
+const playlistStore = usePlaylistStore();
+const { paused } = storeToRefs(playerStore);
+const { repeat, shuffle } = storeToRefs(playlistStore);
 const { getString } = useStrings();
 const t = getString;
-const playlistStore = usePlaylistStore();
-const { repeat, shuffle } = usePlaylist();
 const { isMobile } = useIsMobile();
+
 
 </script>
 

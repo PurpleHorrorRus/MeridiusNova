@@ -48,55 +48,49 @@ export const useHotkeysStore = defineStore("hotkeys", {
 		},
 
 		async handleAction(action: string): Promise<void> {
-			const {
-				playNext,
-				playPrevious,
-				toggle,
-				setVolume,
-				setPlaybackRate,
-				toggleMute,
-				volume,
-				playbackRate,
-			} = useAudio();
-
-			const { useSettings } = await import("~/composables/useSettings");
-			const { settings } = useSettings();
+			const { usePlayerStore } = await import("~/stores/player");
+			const { useSettingsStore } = await import("~/stores/settings");
+			
+			const playerStore = usePlayerStore();
+			const settingsStore = useSettingsStore();
+			const settings = settingsStore.settings;
+			const { volume, playbackRate } = playerStore;
 
 			switch (action) {
 				case "playpause":
-					toggle();
+					playerStore.toggle();
 					break;
 				case "playnext":
-					playNext();
+					await playerStore.next({ manual: true });
 					break;
 				case "playprev":
-					playPrevious();
+					await playerStore.prev();
 					break;
 				case "volup": {
-					const step = settings.value.player.step.hotkey / 100;
-					const newVolume = Math.min(1, volume.value + step);
-					setVolume(newVolume);
+					const step = settings.player.step.hotkey / 100;
+					const newVolume = Math.min(1, volume + step);
+					playerStore.setVolume(newVolume);
 					break;
 				}
 				case "voldown": {
-					const step = settings.value.player.step.hotkey / 100;
-					const newVolume = Math.max(0, volume.value - step);
-					setVolume(newVolume);
+					const step = settings.player.step.hotkey / 100;
+					const newVolume = Math.max(0, volume - step);
+					playerStore.setVolume(newVolume);
 					break;
 				}
 				case "volmute":
-					toggleMute();
+					playerStore.toggleMute();
 					break;
 				case "rateup": {
-					const step = settings.value.player.playbackRateStep.hotkey;
-					const newRate = Math.min(2, playbackRate.value + step);
-					setPlaybackRate(newRate);
+					const step = settings.player.playbackRateStep.hotkey;
+					const newRate = Math.min(2, playbackRate + step);
+					playerStore.setPlaybackRate(newRate);
 					break;
 				}
 				case "ratedown": {
-					const step = settings.value.player.playbackRateStep.hotkey;
-					const newRate = Math.max(0.5, playbackRate.value - step);
-					setPlaybackRate(newRate);
+					const step = settings.player.playbackRateStep.hotkey;
+					const newRate = Math.max(0.5, playbackRate - step);
+					playerStore.setPlaybackRate(newRate);
 					break;
 				}
 			}

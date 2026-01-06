@@ -1,11 +1,10 @@
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import type { TAudio, TLyrics } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
 import { usePlayerStore } from "~/stores/player";
+import { useAudioStore } from "~/stores/audio";
 import { storeToRefs } from "pinia";
 
 export const useLyrics = (audio: () => TAudio | null) => {
-	const { getLyrics } = useAudioActions();
 	const playerStore = usePlayerStore();
 	const { song: currentSong, currentTime } = storeToRefs(playerStore);
 
@@ -40,7 +39,8 @@ export const useLyrics = (audio: () => TAudio | null) => {
 		lyricsText.value = [];
 		trackActive.value = -1;
 
-		const result = await getLyrics(currentAudio).catch(() => null);
+		const audioStore = useAudioStore();
+		const result = await audioStore.getLyrics(currentAudio).catch(() => null);
 		
 		if (result) {
 			lyricsInfo.value = result;

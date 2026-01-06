@@ -11,9 +11,30 @@ export default defineNuxtConfig({
 		"@nuxt/icon",
 		"nuxt-auth-utils",
 		"@nuxt/image",
+		"@nuxt/fonts",
 		...(isTauri ? [] : ["@vite-pwa/nuxt"])
 	],
-	
+
+	routeRules: {
+		// Статические страницы
+		"/": { ssr: false },
+		"/auth": { ssr: false },
+		"/settings": { ssr: false },
+		
+		// SWR для страниц с данными, требующих аутентификации
+		"/general": { swr: true },
+		"/artists": { swr: true },
+		"/collection": { swr: true },
+		"/discover/**": { swr: true },
+		
+		// SWR для динамических страниц
+		"/playlist/**": { swr: true },
+		"/artist/**": { swr: true },
+		"/search/**": { ssr: false },
+		"/queue": { ssr: false },
+		"/songs/**": { ssr: false }
+	},
+
 	image: {
 		// Ограничиваем кэширование изображений в Tauri для экономии памяти
 		...(isTauri ? {
@@ -21,9 +42,61 @@ export default defineNuxtConfig({
 			ipx: {
 				maxAge: 60 * 60 * 24 * 7 // 7 дней вместо бесконечного кэша
 			}
-		} : {})
+		} : {
+			providers: {
+				ipx: {}
+			},
+			format: ["webp", "avif"],
+			quality: 80,
+			screens: {
+				xs: 320,
+				sm: 640,
+				md: 768,
+				lg: 1024,
+				xl: 1280,
+				xxl: 1536
+			}
+		})
 	},
 	css: ["~/assets/css/variables.scss"],
+
+	fonts: {
+		provider: "google",
+		families: [
+			{
+				name: "Inter",
+				weights: [400, 500, 600, 700],
+				subsets: ["latin", "cyrillic"]
+			}
+		],
+		defaults: {
+			weights: [400, 500, 600, 700],
+			styles: ["normal"],
+			subsets: ["latin", "cyrillic"]
+		},
+		experimental: {
+			processCSSVariables: true
+		}
+	},
+
+	experimental: {
+		payloadExtraction: true,
+		viewTransition: true
+	},
+
+	nitro: {
+		compressPublicAssets: true,
+		prerender: {
+			crawlLinks: false,
+			ignore: [
+				"/general",
+				"/artists",
+				"/collection",
+				"/discover",
+				"/discover/**"
+			]
+		}
+	},
 
 	vite: {
 		optimizeDeps: {
@@ -36,9 +109,31 @@ export default defineNuxtConfig({
 			}
 		},
 		build: {
+			chunkSizeWarningLimit: 600,
 			commonjsOptions: {
 				transformMixedEsModules: true,
 				exclude: [/cssstyle/, /jsdom/]
+			},
+			rollupOptions: {
+				output: {
+					manualChunks: (id) => {
+						if (id.includes("node_modules")) {
+							if (id.includes("hls.js")) {
+								return "hls-vendor";
+							}
+							if (id.includes("@tauri-apps")) {
+								return "tauri-vendor";
+							}
+							if (id.includes("@nuxt/icon")) {
+								return undefined;
+							}
+							if (id.includes("@nuxt")) {
+								return "nuxt-vendor";
+							}
+							return "vendor";
+						}
+					}
+				}
 			}
 		},
 		esbuild: {

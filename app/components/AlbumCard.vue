@@ -18,17 +18,11 @@
 		</div>
 
 		<div class="album-card-info">
-			<div class="album-card-title" :title="album.title">
-				{{ album.title }}
-			</div>
+			<div class="album-card-title" :title="album.title" v-once v-text="album.title" />
 
-			<div v-if="album.text" class="album-card-text">
-				{{ album.text }}
-			</div>
+			<div v-if="album.text" class="album-card-text" v-once v-text="album.text" />
 
-			<div v-if="album.subtext" class="album-card-subtext">
-				{{ album.subtext }}
-			</div>
+			<div v-if="album.subtext" class="album-card-subtext" v-once v-text="album.subtext" />
 		</div>
 	</div>
 </template>

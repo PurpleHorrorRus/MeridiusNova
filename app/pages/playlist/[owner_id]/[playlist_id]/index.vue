@@ -4,28 +4,28 @@
 			<LoadingSpinner />
 		</div>
 
-		<div v-else-if="error && !data" class="error">
-			{{ error }}
-		</div>
+		<div v-else-if="error && !data" class="error" v-text="error" />
 
 		<div v-else class="playlist-content" ref="contentRef">
 			<div class="playlist-tracks">
 				<div v-if="isRestricted" class="playlist-restricted-message">
 					<Icon name="mdi:lock" size="20" />
-					<span>{{ getString("library.hidden") }}</span>
+					<span v-text="getString('library.hidden')" />
 				</div>
 
 				<template v-else>
 					<div class="playlist-tracks-header">
-						<span class="tracks-header-title">{{ getString("playlist.tracksHeader.title") }}</span>
-						<span class="tracks-header-album">{{ getString("playlist.tracksHeader.album") }}</span>
+						<span class="tracks-header-title" v-text="getString('playlist.tracksHeader.title')" />
+						<span class="tracks-header-album" v-text="getString('playlist.tracksHeader.album')" />
 						<span class="tracks-header-duration">
 							<Icon name="mdi:clock-outline" size="16" />
 						</span>
 					</div>
 
-					<VirtualSongList
-						:items="audios"
+					<SongList
+						:songs="audios"
+						:table-mode="true"
+						:virtualized="true"
 						:item-height="56"
 						:overscan="14"
 						:has-more="hasMore"
@@ -34,7 +34,7 @@
 						ref="virtualListRef"
 						class="playlist-virtual-list"
 					>
-						<template #default="{ visibleItems, startIndex }">
+						<template #item="{ items: visibleItems, startIndex, handleClick, handleAlbumClick, handleArtistClick, handleAction, handleLongPress }">
 							<div
 								v-for="(audio, relativeIndex) in visibleItems"
 								:key="`${audio.owner_id}-${audio.id}-${startIndex + relativeIndex}`"
@@ -54,15 +54,20 @@
 										:class="{ 'draggable': canEdit }"
 										@mousedown="(e) => { if (canEdit) { dragAndDrop.handleMouseDown(e, startIndex + relativeIndex); } }"
 									>
-										<Song
-											:audio="audio"
-											:index="startIndex + relativeIndex"
-										/>
+									<LazySong
+										:audio="audio"
+										:index="startIndex + relativeIndex"
+										@click="handleClick(audio)"
+										@album-click="handleAlbumClick"
+										@artist-click="handleArtistClick"
+										@action="handleAction"
+										@long-press="handleLongPress(audio)"
+									/>
 									</div>
 								</VirtualSongItem>
 							</div>
 						</template>
-					</VirtualSongList>
+					</SongList>
 				</template>
 			</div>
 		</div>
@@ -70,15 +75,17 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import type { TParsedPayload } from "~~/server/api/vk/audio/types";
 import { type TPlaylist, type TMore, type TAudio } from "~~/server/utils/types";
 import { provideSongsContext } from "~/composables/useSongsContext";
 import { authenticatedFetch } from "~/utils/api";
 import { useDragAndDrop } from "~/composables/useDragAndDrop";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
-import { useAudioActions } from "~/composables/useAudioActions";
+import { usePlaylistStore } from "~/stores/playlist";
 import { useVkStore } from "~/stores/vk";
-import VirtualSongList from "~/components/VirtualSongList.vue";
+import { useAudioStore } from "~/stores/audio";
+import SongList from "~/components/SongList.vue";
+const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
 import VirtualSongItem from "~/components/VirtualSongItem.vue";
 
 const { getString } = useStrings();
@@ -88,8 +95,7 @@ const ownerId = computed(() => Number(route.params.owner_id));
 const playlistId = computed(() => Number(route.params.playlist_id));
 const accessHash = computed(() => route.query.access_hash as string | undefined);
 const isCollection = computed(() => playlistId.value === -1);
-const { reorderSongsInPlaylist } = usePlaylistActions();
-const { reorderAudio } = useAudioActions();
+const playlistStore = usePlaylistStore();
 
 // Получаем данные плейлиста из родительского компонента
 const playlistData = inject<Ref<TPlaylist | null>>("playlistInfo", ref(null));
@@ -141,18 +147,32 @@ const audioUrl = computed(() => {
 	return "";
 });
 
-const { data, pending, error, refresh } = useFetch<TParsedPayload>(
-	audioUrl,
+const audioKey = computed(() => `audio-${ownerId.value}-${playlistId.value}`);
+const { data, pending, error, refresh } = useAsyncData<TParsedPayload>(
+	audioKey,
+	() => authenticatedFetch<TParsedPayload>(audioUrl.value),
 	{
 		immediate: false,
 		lazy: true,
-		cache: "no-store"
+		getCachedData: (key) => {
+			const cached = useNuxtApp().payload.data[key];
+			if (cached && Date.now() - (cached._timestamp || 0) < 30000) {
+				return cached;
+			}
+			return undefined;
+		},
+		transform: (data) => {
+			if (data) {
+				(data as any)._timestamp = Date.now();
+			}
+			return data;
+		}
 	}
 );
 
 // Запускаем загрузку только для коллекций
-watch(audioUrl, (url) => {
-	if (url && isCollection.value) {
+watch([audioUrl, isCollection], ([url, isCollectionValue]) => {
+	if (url && isCollectionValue) {
 		refresh();
 	}
 }, { immediate: true });
@@ -162,8 +182,8 @@ const audios = ref<TAudio[]>([]);
 
 watch([playlistData, data, isCollection], () => {
 	// Для обычных плейлистов используем треки из playlist.list (которые приходят из /api/vk/playlists с list=true)
-	if (!isCollection.value && playlistData.value && playlistData.value.list && Array.isArray(playlistData.value.list)) {
-		audios.value = [...playlistData.value.list];
+	if (!isCollection.value && playlistData.value?.list && Array.isArray(playlistData.value.list)) {
+		audios.value = playlistData.value.list;
 		return;
 	}
 
@@ -171,41 +191,34 @@ watch([playlistData, data, isCollection], () => {
 	if (isCollection.value && data.value) {
 		const payload = data.value as unknown as TParsedPayload;
 		if (payload?.audios) {
-			audios.value = [...payload.audios];
+			audios.value = payload.audios;
 			return;
 		}
 	}
 
 	audios.value = [];
-}, { immediate: true });
+}, { immediate: true, flush: "post" });
 
 // Синхронизируем изменения обратно в playlistData для обычных плейлистов
+// Используем прямое присваивание для лучшей производительности
 watch(audios, (newAudios) => {
 	if (!isCollection.value && playlistData.value) {
-		playlistData.value.list = [...newAudios];
+		playlistData.value.list = newAudios;
 	}
-}, { deep: true });
+}, { flush: "post" });
 
 // Обновляем restricted в playlistData для коллекций на основе ответа API
-watch([data, pending, error], ([newData, isPending, hasError]) => {
-	if (!isCollection.value || !playlistData.value) {
+watch([data, pending, error, isCollection], ([newData, isPending, hasError, isCollectionValue]) => {
+	if (!isCollectionValue || !playlistData.value) {
 		return;
 	}
 
-	// Если загрузка завершена
 	if (!isPending) {
-		// Если есть ошибка, считаем что музыка скрыта
 		if (hasError) {
 			playlistData.value.restricted = true;
 		} else {
 			const payload = newData as unknown as TParsedPayload;
-			if (!payload || !payload.audios || payload.audios.length === 0) {
-				// Если треков нет, устанавливаем restricted = true
-				playlistData.value.restricted = true;
-			} else {
-				// Если есть треки, устанавливаем restricted = false
-				playlistData.value.restricted = false;
-			}
+			playlistData.value.restricted = !payload || !payload.audios || payload.audios.length === 0;
 		}
 	}
 }, { immediate: true });
@@ -245,7 +258,7 @@ const hasMore = computed(() => {
 	return false;
 });
 
-const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
+const virtualListRef = ref<InstanceType<typeof SongList> | null>(null);
 const isLoadingMore = ref(false);
 
 const loadMore = async () => {
@@ -283,22 +296,22 @@ const loadMore = async () => {
 
 	const result = await authenticatedFetch<TParsedPayload>(`/api/vk/audio/${ownerId.value}/${playlistId.value}`, {
 		params: {
-			section_id: more.section_id,
-			next_from: more.next_from
+			section_id: more?.section_id,
+			next_from: more?.next_from
 		}
-	}).catch(() => {
-		return null;
-	});
+	}).catch(() => (null));
 
 	if (result) {
 		if (isCollection.value && data.value) {
 			// Для коллекций обновляем data.value
 			const payload = data.value as unknown as TParsedPayload;
+
 			if (result.audios && result.audios.length > 0) {
 				// Directly push to array to ensure reactivity
 				if (!payload.audios) {
 					payload.audios = [];
 				}
+
 				payload.audios.push(...result.audios);
 				audios.value.push(...result.audios);
 			}
@@ -313,52 +326,51 @@ const loadMore = async () => {
 					start_from: ""
 				};
 			}
-	} else if (!isCollection.value && playlistData.value) {
-		// Для обычных плейлистов загружаем через /api/vk/playlists с offset
-		const currentOffset = playlistData.value.list?.length || 0;
+		} else if (!isCollection.value && playlistData.value) {
+			// Для обычных плейлистов загружаем через /api/vk/playlists с offset
+			const currentOffset = playlistData.value.list?.length || 0;
 
-		const playlistResult = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
-			params: {
-				list: "true",
-				access_hash: playlistData.value.access_hash || accessHash.value,
-				count: "50",
-				offset: String(currentOffset)
-			}
-		}).catch(() => {
-			return null;
-		});
+			const playlistResult = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
+				params: {
+					list: "true",
+					access_hash: playlistData.value.access_hash || accessHash.value,
+					count: "50",
+					offset: String(currentOffset)
+				}
+			}).catch(() => (null));
 
-		if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
-			if (!playlistData.value.list) {
-				playlistData.value.list = [];
-			}
-			playlistData.value.list.push(...playlistResult.list);
-			audios.value.push(...playlistResult.list);
+			if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
+				if (!playlistData.value.list) {
+					playlistData.value.list = [];
+				}
 
-			// Обновляем size, если он изменился
-			if (playlistResult.size !== undefined) {
-				playlistData.value.size = playlistResult.size;
-			}
+				playlistData.value.list.push(...playlistResult.list);
+				audios.value.push(...playlistResult.list);
 
-			// Обновляем more из результата (для обратной совместимости)
-			if (playlistResult.more) {
-				playlistData.value.more = playlistResult.more;
+				// Обновляем size, если он изменился
+				if (playlistResult.size !== undefined) {
+					playlistData.value.size = playlistResult.size;
+				}
+
+				// Обновляем more из результата (для обратной совместимости)
+				if (playlistResult.more) {
+					playlistData.value.more = playlistResult.more;
+				} else {
+					playlistData.value.more = {
+						section_id: "",
+						next_from: "",
+						start_from: ""
+					};
+				}
 			} else {
+				// Если больше нет треков, сбрасываем more
 				playlistData.value.more = {
 					section_id: "",
 					next_from: "",
 					start_from: ""
 				};
 			}
-		} else {
-			// Если больше нет треков, сбрасываем more
-			playlistData.value.more = {
-				section_id: "",
-				next_from: "",
-				start_from: ""
-			};
 		}
-	}
 	}
 
 	isLoadingMore.value = false;
@@ -420,7 +432,8 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 			}
 
 			try {
-				await reorderAudio({
+				const audioStore = useAudioStore();
+				await audioStore.reorderAudio({
 					audio_id: movedAudio.id,
 					next_audio_id: nextAudioId,
 					owner_id: ownerId.value
@@ -469,7 +482,8 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 				const nextAudioId = nextAudio ? nextAudio.id : 0;
 
 				try {
-					await reorderAudio({
+					const audioStoreReorder = useAudioStore();
+					await audioStoreReorder.reorderAudio({
 						audio_id: moved.audio.id,
 						next_audio_id: nextAudioId,
 						owner_id: ownerId.value
@@ -492,9 +506,16 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 			return;
 		}
 
-		const audioIds = newOrder.map(audioItem => `${audioItem.full_id}_`).join(",");
+		const audioIdsParts: string[] = [];
+		for (let i = 0; i < newOrder.length; i++) {
+			const audioItem = newOrder[i];
+			if (audioItem) {
+				audioIdsParts.push(`${audioItem.full_id}_`);
+			}
+		}
+		const audioIds = audioIdsParts.join(",");
 
-		await reorderSongsInPlaylist({
+		await playlistStore.reorderSongsInPlaylist({
 			playlist_id: playlistData.value.playlist_id,
 			Audios: audioIds
 		}).catch((error) => {

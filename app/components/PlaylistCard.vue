@@ -14,15 +14,11 @@
 		</div>
 
 		<div class="playlist-card-info">
-			<div class="playlist-card-title" :title="playlist.title">
-				{{ playlist.title }}
-			</div>
+			<div class="playlist-card-title" v-once :title="playlist.title" v-text="playlist.title" />
 
-			<div v-if="playlist.description" class="playlist-card-description">
-				{{ playlist.description }}
-			</div>
+			<div v-if="playlist.description" class="playlist-card-description" v-once v-text="playlist.description" />
 
-			<div v-if="playlist.size !== undefined && playlist.size > 0" class="playlist-card-meta">
+			<div v-if="playlist.size !== undefined && playlist.size > 0" class="playlist-card-meta" v-once>
 				{{ playlist.size }} треков
 			</div>
 		</div>
@@ -44,19 +40,12 @@ const emit = defineEmits<{
 
 const { isPlaying, isLoading, handlePlayPause: handlePlayPauseBase } = usePlaylistButton(props.playlist);
 
-const coverSize = computed(() => {
-	if (typeof window === "undefined") {
-		return 160;
-	}
+const coverSize = typeof window === "undefined" ? 160 : (() => {
 	const width = window.innerWidth;
-	if (width <= 480) {
-		return 120;
-	}
-	if (width <= 768) {
-		return 140;
-	}
+	if (width <= 480) return 120;
+	if (width <= 768) return 140;
 	return 160;
-});
+})();
 
 const handleClick = () => {
 	emit("click", props.playlist);

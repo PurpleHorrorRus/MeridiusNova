@@ -2,9 +2,9 @@
 	<Teleport to="body">
 		<Transition name="queue-drawer">
 			<div
-				v-if="isQueueDrawerOpen"
+				v-if="playerStore.isQueueDrawerOpen"
 				class="queue-drawer-overlay"
-				@click="closeQueueDrawer"
+				@click="playerStore.closeQueueDrawer"
 			>
 				<div
 					class="queue-drawer"
@@ -23,7 +23,7 @@
 							</button>
 							<button
 								class="queue-drawer-close"
-								@click="closeQueueDrawer"
+								@click="playerStore.closeQueueDrawer"
 							>
 								<Icon name="mdi:close" size="24" />
 							</button>
@@ -50,17 +50,15 @@
 								/>
 							</div>
 							<div class="queue-drawer-current-info">
-								<div class="queue-drawer-current-title">{{ playlistSource.title }}</div>
-								<div v-if="playlistSource.description" class="queue-drawer-current-description">{{ playlistSource.description }}</div>
+								<div class="queue-drawer-current-title" v-text="playlistSource.title" />
+								<div v-if="playlistSource.description" class="queue-drawer-current-description" v-text="playlistSource.description" />
 								<div class="queue-drawer-current-meta">
-									<span v-if="currentPlaylist?.author" class="queue-drawer-current-author">
-										{{ currentPlaylist.author.name }}
-									</span>
+									<span v-if="currentPlaylist?.author" class="queue-drawer-current-author" v-text="currentPlaylist.author.name" />
 									<span v-if="playlistStore.playingSongs.length > 0" class="queue-drawer-current-size">
 										{{ playlistStore.playingSongs.length }} треков
 									</span>
 									<span v-if="currentPlaylist?.listens && currentPlaylist.listens > 0" class="queue-drawer-current-listens">
-										{{ formatListens(currentPlaylist.listens) }} прослушиваний
+										{{ playlistStore.formatListens(currentPlaylist.listens) }} прослушиваний
 									</span>
 								</div>
 							</div>
@@ -103,18 +101,16 @@ import { ref } from "vue";
 import Song from "~/components/Song/Song.vue";
 import VirtualSongList from "~/components/VirtualSongList.vue";
 import VirtualSongItem from "~/components/VirtualSongItem.vue";
-import { useQueueDrawer } from "~/composables/useQueueDrawer";
 import { usePlaylistStore } from "~/stores/playlist";
-import { useAudio } from "~/composables/useAudio";
+import { usePlayerStore } from "~/stores/player";
 import { useEventListener } from "~/composables/useEventListener";
-import { useQueueInfo } from "~/composables/useQueueInfo";
-import { useQueueScroll } from "~/composables/useQueueScroll";
+import { useQueueScroll } from "~/utils/queue-scroll";
+import { storeToRefs } from "pinia";
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
-const { isQueueDrawerOpen, closeQueueDrawer } = useQueueDrawer();
+const playerStore = usePlayerStore();
 const playlistStore = usePlaylistStore();
-const { play } = useAudio();
-const { currentPlaylist, playlistSource, formatListens } = useQueueInfo();
+const { currentPlaylist, playlistSource } = storeToRefs(playlistStore);
 
 const tracksContainerRef = ref<HTMLElement | null>(null);
 const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
@@ -123,7 +119,7 @@ const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
 useQueueScroll(
 	tracksContainerRef,
 	() => playlistStore.currentIndex,
-	isQueueDrawerOpen,
+	() => playerStore.isQueueDrawerOpen,
 	virtualListRef
 );
 
@@ -131,7 +127,7 @@ const playFromQueue = async (audio: TAudio, index: number) => {
 	playlistStore.setCurrentIndex(index);
 	const songFromQueue = playlistStore.playingSongs[index];
 	if (songFromQueue) {
-		await play(songFromQueue);
+		await playerStore.play(songFromQueue);
 	}
 };
 
@@ -141,12 +137,12 @@ const handleCoverClick = () => {
 	}
 
 	navigateTo(playlistSource.value.link);
-	closeQueueDrawer();
+	playerStore.closeQueueDrawer();
 };
 
 const handleEscape = (event: KeyboardEvent) => {
-	if (event.key === "Escape" && isQueueDrawerOpen.value) {
-		closeQueueDrawer();
+	if (event.key === "Escape" && playerStore.isQueueDrawerOpen) {
+		playerStore.closeQueueDrawer();
 	}
 };
 

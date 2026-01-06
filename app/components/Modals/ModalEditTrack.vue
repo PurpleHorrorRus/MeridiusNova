@@ -52,9 +52,8 @@
 							v-for="(genreName, genreId) in genres"
 							:key="genreId"
 							:value="Number(genreId)"
-						>
-							{{ genreName }}
-						</option>
+							v-text="genreName"
+						/>
 					</select>
 				</div>
 
@@ -76,7 +75,7 @@
 			<button
 				class="button button-secondary"
 				:disabled="loading"
-				@click="handleCancel"
+				@click="modalStore.close"
 			>
 				Отмена
 			</button>
@@ -95,17 +94,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import type { TAudio } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import { usePlayerStore } from "~/stores/player";
+import { useAudioStore } from "~/stores/audio";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { editAudio, getLyrics } = useAudioActions();
-const { closeModal } = useModal();
+const modalStore = useModalStore();
 const playerStore = usePlayerStore();
+const audioStore = useAudioStore();
 
 const performer = ref("");
 const title = ref("");
@@ -147,14 +146,19 @@ onMounted(async () => {
 	title.value = props.audio.title || "";
 
 	if (props.audio.lyrics) {
-		const lyricsInfo = await getLyrics(props.audio).catch(() => null);
+		const lyricsInfo = await audioStore.getLyrics(props.audio).catch(() => null);
 		if (lyricsInfo?.lyrics) {
 			if (lyricsInfo.lyrics.timestamps) {
 				lyrics.value = lyricsInfo.lyrics.timestamps.map((timestamp: any) => timestamp.line).join("\n");
 			} else if (lyricsInfo.lyrics.text) {
 				lyrics.value = lyricsInfo.lyrics.text.join("\n");
 			} else if (lyricsInfo.lyrics.ugc) {
-				lyrics.value = lyricsInfo.lyrics.ugc.replaceAll("<br>", "\n");
+				const ugc = lyricsInfo.lyrics.ugc as string | string[];
+				if (typeof ugc === "string") {
+					lyrics.value = ugc.replaceAll("<br>", "\n");
+				} else if (Array.isArray(ugc)) {
+					lyrics.value = ugc.join("\n");
+				}
 			}
 		}
 	}
@@ -167,7 +171,7 @@ const handleSave = async () => {
 
 	loading.value = true;
 
-	const result = await editAudio(props.audio, {
+	const result = await audioStore.editAudio(props.audio, {
 		performer: performer.value.trim(),
 		title: title.value.trim(),
 		lyrics: lyrics.value.trim() || undefined,
@@ -184,12 +188,8 @@ const handleSave = async () => {
 		if (playerStore.song?.full_id === props.audio.full_id) {
 			playerStore.song = { ...playerStore.song, ...result };
 		}
-		closeModal();
+		modalStore.close();
 	}
-};
-
-const handleCancel = () => {
-	closeModal();
 };
 </script>
 

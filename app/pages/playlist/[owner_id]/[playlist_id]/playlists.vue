@@ -4,9 +4,7 @@
 			<LoadingSpinner />
 		</div>
 
-		<div v-else-if="error && !data" class="error">
-			{{ error }}
-		</div>
+		<div v-else-if="error && !data" class="error" v-text="error" />
 
 		<div v-else-if="data" class="playlists-content">
 			<div v-if="playlists.length === 0" class="empty-state">
@@ -14,9 +12,11 @@
 			</div>
 
 			<div v-else class="playlists-grid">
-				<PlaylistCard
+				<LazyPlaylistCard
 					v-for="playlist in playlists"
 					:key="playlist.raw_id"
+					v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+					hydrate-on-visible
 					:playlist="playlist"
 					:show-play-button="true"
 				/>
@@ -33,29 +33,57 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
 import { useVkStore } from "~/stores/vk";
 import type { TPlaylist } from "~~/server/utils/types";
 import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
+
+const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));
 
 const route = useRoute();
 const vkStore = useVkStore();
 
 const ownerId = computed(() => Number(route.params.owner_id));
 
-const { data, pending, error } = useFetch<{ count: number; playlists: TPlaylist[] }>(
-	() => `/api/vk/playlists`,
-	{
+const playlistsKey = computed(() => `playlists-${ownerId.value}`);
+const { data, pending, error } = useAsyncData<{ count: number; playlists: TPlaylist[] }>(
+	playlistsKey,
+	() => $fetch<{ count: number; playlists: TPlaylist[] }>(`/api/vk/playlists`, {
 		params: {
 			owner_id: ownerId.value
-		},
+		}
+	}),
+	{
 		immediate: true,
-		cache: "no-store"
+		getCachedData: (key) => {
+			const cached = useNuxtApp().payload.data[key];
+			if (cached && Date.now() - (cached._timestamp || 0) < 20000) {
+				return cached;
+			}
+			return undefined;
+		},
+		transform: (data) => {
+			if (data) {
+				(data as any)._timestamp = Date.now();
+			}
+			return data;
+		}
 	}
 );
 
 const playlists = computed(() => {
-	const playlistsData = data.value?.playlists || [];
-	return playlistsData.filter(playlist => playlist.playlist_id !== -1);
+	if (!data.value?.playlists) {
+		return [];
+	}
+	const playlistsData = data.value.playlists;
+	const filtered: TPlaylist[] = [];
+	for (let i = 0; i < playlistsData.length; i++) {
+		const playlist = playlistsData[i];
+		if (playlist && playlist.playlist_id !== -1) {
+			filtered.push(playlist);
+		}
+	}
+	return filtered;
 });
 
 const totalCount = computed(() => data.value?.count || 0);
@@ -84,8 +112,12 @@ const loadMore = async () => {
 	});
 
 	if (result && data.value) {
-		const newPlaylists = result.playlists.filter(playlist => playlist.playlist_id !== -1);
-		data.value.playlists.push(...newPlaylists);
+		for (let i = 0; i < result.playlists.length; i++) {
+			const playlist = result.playlists[i];
+			if (playlist && playlist.playlist_id !== -1) {
+				data.value.playlists.push(playlist);
+			}
+		}
 		data.value.count = result.count;
 	}
 

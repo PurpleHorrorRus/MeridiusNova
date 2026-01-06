@@ -505,6 +505,9 @@ export class AudioRequests extends BaseRequest implements IRequest {
 			}
 		}
 
+		const isRestricted = !!audio[ERawAudio.RESTRICTION];
+		const isMySong = audio[ERawAudio.OWNER_ID] === (this.event.context.user?.id || 0);
+
 		return {
 			id: audio[ERawAudio.ID],
 			owner_id: audio[ERawAudio.OWNER_ID],
@@ -518,8 +521,8 @@ export class AudioRequests extends BaseRequest implements IRequest {
 			coverUrl_s: covers[0]?.replaceAll("&amp;", "&") || "",
 			coverUrl_p: covers[1]?.replaceAll("&amp;", "&") || "",
 			cover: covers[0]?.replaceAll("&amp;", "&") || "",
-			is_restriction: Boolean(audio[ERawAudio.RESTRICTION]),
-			lyrics: Boolean(audio[ERawAudio.LYRICS]),
+			is_restriction: isRestricted,
+			lyrics: !!audio[ERawAudio.LYRICS],
 			hq: !!(flags & EAudioFlags.HQ_BIT),
 			claimed: !!(flags & EAudioFlags.CLAIMED_BIT),
 			uma: !!(flags & EAudioFlags.UMA_BIT),
@@ -539,6 +542,12 @@ export class AudioRequests extends BaseRequest implements IRequest {
 			album,
 			replaceable: !!(flags & EAudioFlags.REPLACEABLE),
 			context: audio[ERawAudio.CONTEXT] || "",
+			canAdd: !isMySong && !isRestricted && !!(flags & EAudioFlags.CAN_ADD_BIT),
+			canDelete: isMySong && !!hashes[3],
+			canAddPlaylist: !isRestricted,
+			canEdit: !!hashes[1],
+			canShare: !isRestricted,
+			hasLyrics: !!audio[ERawAudio.LYRICS],
 			...additional
 		};
 	}

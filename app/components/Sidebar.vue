@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
 import { useEventListener } from "~/composables/useEventListener";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
 import SidebarSearch from "~/components/Navigation/SidebarSearch.vue";
@@ -63,13 +63,13 @@ import SidebarNavigation from "~/components/Navigation/SidebarNavigation.vue";
 import SidebarSettingsButton from "~/components/Navigation/SidebarSettingsButton.vue";
 import SidebarUser from "~/components/Navigation/SidebarUser.vue";
 import Downloads from "~/components/Downloads/Downloads.vue";
-import { loadUserAccounts } from "~/utils/accounts";
 import { isTauri } from "~/utils/tauri";
 
-const { playPlaylist, playing } = usePlaylist();
+const playlistStore = usePlaylistStore();
 
 const vkStore = useVkStore();
-const { settings, load } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const playerStore = usePlayerStore();
 
 const userId = computed(() => vkStore.user_id || 0);
@@ -91,7 +91,7 @@ const showBottomNavigation = computed(() => {
 
 const updatePlaylistStates = () => {
 	userPlaylists.value.forEach(playlist => {
-		const currentPlaying = playing.value;
+		const currentPlaying = playlistStore.playing;
 		const isCurrent = currentPlaying && currentPlaying.raw_id === playlist.raw_id;
 		playlistPlayingStates.value[playlist.raw_id] = Boolean(isCurrent && !playerStore.paused);
 	});
@@ -99,7 +99,7 @@ const updatePlaylistStates = () => {
 
 const handlePlaylistPlay = async (playlist: any) => {
 	const playlistRawId = playlist.raw_id;
-	const currentPlaying = playing.value;
+	const currentPlaying = playlistStore.playing;
 	const isCurrent = currentPlaying && currentPlaying.raw_id === playlistRawId;
 
 	if (isCurrent && !playerStore.paused) {
@@ -110,14 +110,14 @@ const handlePlaylistPlay = async (playlist: any) => {
 		playlistPlayingStates.value[playlistRawId] = true;
 	} else {
 		playlistLoadingStates.value[playlistRawId] = true;
-		await playPlaylist(playlist).finally(() => {
+		await playlistStore.playPlaylist(playlist).finally(() => {
 			playlistLoadingStates.value[playlistRawId] = false;
 		});
 	}
 };
 
 // Объединяем watchers для оптимизации производительности
-watch([playing, () => playerStore.paused, () => playerStore.isPlaying], () => {
+watch([() => playlistStore.playing, () => playerStore.paused, () => playerStore.isPlaying], () => {
 	updatePlaylistStates();
 }, { immediate: true });
 
@@ -139,8 +139,9 @@ const loadUserPlaylists = async () => {
 };
 
 const loadAccounts = async () => {
+	const vkStore = useVkStore();
 	const accountIds = settings.value.vk.accounts.map(account => account.user).filter((id): id is number => typeof id === "number");
-	const loadedAccounts = await loadUserAccounts(accountIds);
+	const loadedAccounts = await vkStore.loadUserAccounts(accountIds);
 	accounts.value.push(...loadedAccounts);
 };
 
@@ -155,7 +156,7 @@ onMounted(async () => {
 		useEventListener(window, "resize", handleResize);
 	}
 
-	await load();
+	await settingsStore.load();
 	await loadAccounts();
 	playlistsExpanded.value = Boolean(settings.value.appearance.sidebarPlaylistsExpanded ?? false);
 	await loadUserPlaylists();

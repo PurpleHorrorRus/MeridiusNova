@@ -12,7 +12,7 @@
 			/>
 		</div>
 		<div class="fullscreen-queue-preview-info">
-			<div class="fullscreen-queue-preview-title">{{ playlistSource.title }}</div>
+			<div class="fullscreen-queue-preview-title" v-text="playlistSource.title" />
 			<div class="fullscreen-queue-preview-meta">
 				<span>{{ songsCount }} треков</span>
 			</div>
@@ -23,10 +23,12 @@
 
 <script setup lang="ts">
 import { useIsMobile } from "~/composables/useIsMobile";
-import { useQueueInfo } from "~/composables/useQueueInfo";
+import { usePlaylistStore } from "~/stores/playlist";
+import { storeToRefs } from "pinia";
 
 const { isMobile } = useIsMobile();
-const { currentPlaylist: queueCurrentPlaylist, playlistSource } = useQueueInfo();
+const playlistStore = usePlaylistStore();
+const { currentPlaylist: queueCurrentPlaylist, playlistSource } = storeToRefs(playlistStore);
 
 defineProps<{
 	showQueue: boolean;

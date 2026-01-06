@@ -44,7 +44,7 @@
 									:height="32"
 								/>
 							</div>
-							<span class="playlist-item-title">{{ playlist.title }}</span>
+							<span class="playlist-item-title" v-text="playlist.title" />
 						</button>
 						<div v-if="myPlaylists.length === 0" class="no-playlists">
 							Нет плейлистов
@@ -76,7 +76,7 @@
 					@click="handleDelete"
 				>
 					<Icon name="mdi:heart" size="24" />
-					<span>{{ deleteLabel }}</span>
+					<span v-text="deleteLabel" />
 				</button>
 
 				<button
@@ -107,7 +107,7 @@
 				</button>
 
 				<button
-					v-if="songProps.canDownload && isTauri.value"
+					v-if="songProps.canDownload && isTauri"
 					class="action-item"
 					@click="handleDownload"
 				>
@@ -139,32 +139,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
-import { useSongProps } from "~/composables/useSongProps";
-import { usePlaylist } from "~/composables/usePlaylist";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
-import { useSongDelete } from "~/composables/useSongDelete";
-import { useSongAdd } from "~/composables/useSongAdd";
+import { useAudioStore } from "~/stores/audio";
 import { useIsTauri } from "~/composables/useIsTauri";
 import { navigateToSimilarTracks } from "~/utils/navigation";
+import { storeToRefs } from "pinia";
 import Cover from "~/components/Cover.vue";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { downloadAudio, getSimilarTracks } = useAudioActions();
-const { addSongToPlaylist, removeSongFromPlaylist } = usePlaylistActions();
-const { generateSongProps } = useSongProps();
-const { current, playing } = usePlaylist();
-const { openModal, closeModal } = useModal();
-const vkStore = useVkStore();
 const playlistStore = usePlaylistStore();
-const { handleDelete: deleteSong, getDeleteTitle } = useSongDelete();
-const { handleAdd: addSong } = useSongAdd();
+const { current, playing } = storeToRefs(playlistStore);
+const modalStore = useModalStore();
+const vkStore = useVkStore();
+const audioStore = useAudioStore();
 const { isTauri } = useIsTauri();
 
 const playlists = ref<TPlaylist[]>([]);
@@ -183,7 +175,15 @@ const songProps = computed(() => {
 		};
 	}
 
-	return generateSongProps(props.audio);
+	return {
+		canAdd: Boolean(props.audio.canAdd),
+		canDelete: Boolean(props.audio.canDelete),
+		canAddPlaylist: Boolean(props.audio.canAddPlaylist),
+		canEdit: Boolean(props.audio.canEdit),
+		canShare: Boolean(props.audio.canShare),
+		hasLyrics: Boolean(props.audio.hasLyrics),
+		canDownload: !props.audio.is_restriction
+	};
 });
 
 const currentPlaylist = computed(() => {
@@ -195,7 +195,7 @@ const deleteLabel = computed(() => {
 		return "Удалить из библиотеки";
 	}
 
-	return getDeleteTitle(props.audio);
+	return playlistStore.getDeleteTitle(props.audio);
 });
 
 const myPlaylists = computed(() => {
@@ -207,7 +207,7 @@ const myPlaylists = computed(() => {
 });
 
 const close = () => {
-	closeModal();
+	modalStore.close();
 };
 
 const handleAdd = async () => {
@@ -215,7 +215,7 @@ const handleAdd = async () => {
 		return;
 	}
 
-	await addSong(props.audio);
+	await playlistStore.addSongToLibrary(props.audio);
 	close();
 };
 
@@ -224,7 +224,7 @@ const handleDelete = async () => {
 		return;
 	}
 
-	await deleteSong(props.audio);
+	await playlistStore.deleteSong(props.audio);
 	close();
 };
 
@@ -233,7 +233,7 @@ const handleEdit = () => {
 		return;
 	}
 
-	openModal("editTrack", { audio: props.audio });
+	modalStore.openModal("editTrack", { audio: props.audio });
 	close();
 };
 
@@ -242,7 +242,7 @@ const handleLyrics = () => {
 		return;
 	}
 
-	openModal("lyrics", { audio: props.audio });
+	modalStore.openModal("lyrics", { audio: props.audio });
 	close();
 };
 
@@ -251,7 +251,7 @@ const handleDownload = async () => {
 		return;
 	}
 
-	await downloadAudio(props.audio).catch(console.error);
+	await audioStore.downloadAudio(props.audio).catch(console.error);
 	close();
 };
 
@@ -260,7 +260,7 @@ const handleShare = () => {
 		return;
 	}
 
-	openModal("shareAudio", { audio: props.audio });
+	modalStore.openModal("shareAudio", { audio: props.audio });
 	close();
 };
 
@@ -269,7 +269,7 @@ const handleSimilar = async () => {
 		return;
 	}
 
-	const result = await getSimilarTracks(props.audio).catch(() => null);
+	const result = await audioStore.getSimilarTracks(props.audio).catch(() => null);
 	if (result) {
 		navigateToSimilarTracks(props.audio);
 		close();
@@ -295,11 +295,14 @@ const handleAddToPlaylist = async () => {
 		return;
 	}
 
-	if (myPlaylists.value.length === 1) {
-		await addSongToPlaylist(props.audio, myPlaylists.value[0]).catch(console.error);
-		close();
-		return;
-	}
+		if (myPlaylists.value.length === 1) {
+			const playlist = myPlaylists.value[0];
+			if (playlist) {
+				await playlistStore.addSongToPlaylist(props.audio, playlist).catch(console.error);
+			}
+			close();
+			return;
+		}
 
 	showPlaylistList.value = true;
 };
@@ -309,7 +312,7 @@ const handleSelectPlaylist = async (playlist: TPlaylist) => {
 		return;
 	}
 
-	await addSongToPlaylist(props.audio, playlist).catch(console.error);
+	await playlistStore.addSongToPlaylist(props.audio, playlist).catch(console.error);
 	close();
 };
 
@@ -318,7 +321,7 @@ const handleRemoveFromPlaylist = async () => {
 		return;
 	}
 
-	await removeSongFromPlaylist(props.audio, currentPlaylist.value);
+	await playlistStore.removeSongFromPlaylist(props.audio, currentPlaylist.value);
 	close();
 };
 

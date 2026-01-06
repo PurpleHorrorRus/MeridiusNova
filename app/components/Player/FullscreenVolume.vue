@@ -1,38 +1,129 @@
 <template>
 	<div v-if="!isMobile" class="fullscreen-volume-top">
-		<button @click="volumeSlider.toggleMute" class="btn-mute-fullscreen">
+		<button @click="playerStore.toggleMute" class="btn-mute-fullscreen">
 			<Icon 
-				:name="volumeSlider.muted.value ? 'mdi:volume-mute' : (volumeSlider.volume.value === 0 ? 'mdi:volume-off' : (volumeSlider.volume.value < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
+				:name="muted ? 'mdi:volume-mute' : (volume === 0 ? 'mdi:volume-off' : (volume < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
 				size="20" 
 			/>
 		</button>
 		<div 
 			class="fullscreen-volume-slider"
-			:ref="volumeSlider.volumeSliderRef"
-			@mousedown="volumeSlider.handleVolumeSliderMouseDown"
-			@wheel="volumeSlider.handleVolumeWheel"
+			:ref="(volumeSliderRef as any)"
+			@mousedown="handleVolumeSliderMouseDown"
+			@wheel="handleVolumeWheel"
 		>
 			<input
-				:ref="volumeSlider.volumeRangeInputRef"
+				:ref="(volumeRangeInputRef as any)"
 				type="range"
 				min="0"
 				max="1000"
 				step="1"
-				:value="volumeSlider.volume.value * 1000"
-				@input="volumeSlider.handleVolumeChange"
+				:value="volume * 1000"
+				@input="handleVolumeChange"
 				class="fullscreen-volume-range"
 			/>
-			<div class="fullscreen-volume-fill" :style="{ width: `${volumeSlider.volume.value * 100}%` }"></div>
+			<div class="fullscreen-volume-fill" :style="{ width: `${volume * 100}%` }"></div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { useVolumeSlider } from "~/composables/useVolumeSlider";
+import { ref } from "vue";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
+import { useSettingsStore } from "~/stores/settings";
 import { useIsMobile } from "~/composables/useIsMobile";
 
-const volumeSlider = useVolumeSlider();
+const playerStore = usePlayerStore();
+const settingsStore = useSettingsStore();
 const { isMobile } = useIsMobile();
+
+const { volume, muted } = storeToRefs(playerStore);
+const { settings } = storeToRefs(settingsStore);
+
+const volumeSliderRef = ref<HTMLElement | null>(null);
+const volumeRangeInputRef = ref<HTMLInputElement | null>(null);
+
+const handleVolumeChange = async (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	const newVolume = Number(target.value) / 1000;
+	await playerStore.setVolume(newVolume);
+};
+
+const handleVolumeSliderMouseDown = async (event: MouseEvent) => {
+	const clickedElement = event.target as HTMLElement;
+	
+	if (clickedElement.tagName === "INPUT") {
+		const inputElement = clickedElement as HTMLInputElement;
+		if (inputElement.type === "range") {
+			event.stopPropagation();
+			return;
+		}
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+
+	const slider = volumeSliderRef.value;
+	const rangeInput = volumeRangeInputRef.value;
+	
+	if (!slider || !rangeInput) {
+		return;
+	}
+
+	const getOffsetX = (mouseEvent: MouseEvent): number => {
+		const currentSliderRect = slider.getBoundingClientRect();
+		return mouseEvent.clientX - currentSliderRect.left;
+	};
+
+	const offsetX = getOffsetX(event);
+	const width = slider.clientWidth;
+	const percentage = Math.max(0, Math.min(1, offsetX / width));
+	const newValue = Math.round(percentage * 1000);
+	const newVolume = newValue / 1000;
+	
+	rangeInput.value = String(newValue);
+	await playerStore.setVolume(newVolume);
+
+	const handleMouseMove = async (moveEvent: MouseEvent) => {
+		const moveOffsetX = getOffsetX(moveEvent);
+		const moveWidth = slider.clientWidth;
+		const movePercentage = Math.max(0, Math.min(1, moveOffsetX / moveWidth));
+		const moveValue = Math.round(movePercentage * 1000);
+		const moveVolume = moveValue / 1000;
+		
+		rangeInput.value = String(moveValue);
+		await playerStore.setVolume(moveVolume);
+	};
+
+	const handleMouseUp = () => {
+		document.removeEventListener("mousemove", handleMouseMove);
+		document.removeEventListener("mouseup", handleMouseUp);
+	};
+
+	document.addEventListener("mousemove", handleMouseMove);
+	document.addEventListener("mouseup", handleMouseUp);
+};
+
+const handleVolumeWheel = async (event: WheelEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+
+	const hasWheelStep = settings.value
+		&& settings.value.player
+		&& settings.value.player.step
+		&& settings.value.player.step.wheel;
+
+	const wheelStepValue = hasWheelStep
+		? settings.value.player.step.wheel
+		: 1;
+
+	const wheelStep = wheelStepValue / 100;
+	const delta = event.deltaY > 0 ? -wheelStep : wheelStep;
+	const newVolume = Math.max(0, Math.min(1, volume.value + delta));
+	
+	await playerStore.setVolume(newVolume);
+};
 </script>
 
 <style scoped lang="scss">

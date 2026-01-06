@@ -42,14 +42,14 @@ const getCustomActive = (path: string): boolean => {
 		return currentPath.startsWith("/search");
 	}
 
+	if (path === "/settings") {
+		return currentPath === "/settings";
+	}
+
 	if (path.startsWith("/playlist") && path.endsWith("/-1")) {
 		return currentPath.startsWith("/playlist") && 
 			route.params.playlist_id === "-1" && 
 			Number(route.params.owner_id) === userId.value;
-	}
-
-	if (path === "/settings") {
-		return currentPath === "/settings";
 	}
 
 	return false;

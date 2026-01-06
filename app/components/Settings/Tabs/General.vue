@@ -254,8 +254,12 @@ import { useUpdater } from "~/composables/useUpdater";
 
 import { useStreamerStore } from "~/stores/streamer";
 
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
+
 const { getString, loadLanguage } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const streamerStore = useStreamerStore();
 const { checking, isAvailable: isServerAvailable, error: serverError, checkServer: checkServerHealth, reset: resetServerCheck } = useServerCheck();
 const {
@@ -280,7 +284,7 @@ const streamerHint = computed(() => {
 const updateLang = async (event: Event) => {
 	const target = event.target as HTMLSelectElement;
 	const newLang = target.value;
-	updateSection("general", { lang: newLang });
+	settingsStore.updateSection("general", { lang: newLang });
 	await loadLanguage(newLang);
 };
 
@@ -292,17 +296,17 @@ const updateStartup = async (event: Event) => {
 		await invoke("set_startup", { enable: target.checked });
 	}
 
-	updateSection("window", { startup: target.checked });
+	settingsStore.updateSection("window", { startup: target.checked });
 };
 
 const updateHideOnClose = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("window", { hideOnClose: target.checked });
+	settingsStore.updateSection("window", { hideOnClose: target.checked });
 };
 
 const updateDiscordEnable = async (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
 			enable: target.checked
@@ -327,7 +331,7 @@ const updateDiscordEnable = async (event: Event) => {
 
 const updateDiscordTimeline = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
 			timeline: target.checked
@@ -337,7 +341,7 @@ const updateDiscordTimeline = (event: Event) => {
 
 const updateDiscordReverse = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
 			reverse: target.checked
@@ -347,7 +351,7 @@ const updateDiscordReverse = (event: Event) => {
 
 const updateStreamerEnable = async (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		streamer: {
 			...settings.value.general.streamer,
 			enable: target.checked
@@ -361,7 +365,7 @@ const updateStreamerEnable = async (event: Event) => {
 
 const updateStreamerPath = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		streamer: {
 			...settings.value.general.streamer,
 			path: target.value
@@ -378,7 +382,7 @@ const chooseStreamerPath = async () => {
 		});
 
 		if (selected && typeof selected === "string") {
-			updateSection("general", {
+			settingsStore.updateSection("general", {
 				streamer: {
 					...settings.value.general.streamer,
 					path: selected
@@ -394,7 +398,7 @@ const chooseStreamerPath = async () => {
 
 const updateServerEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		server: {
 			...settings.value.general.server,
 			enable: target.checked
@@ -404,7 +408,7 @@ const updateServerEnable = (event: Event) => {
 
 const updateServerUrl = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("general", {
+	settingsStore.updateSection("general", {
 		server: {
 			...settings.value.general.server,
 			url: target.value
@@ -417,7 +421,7 @@ const updateServerPort = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const port = parseInt(target.value, 10);
 	if (!isNaN(port) && port > 0 && port <= 65535) {
-		updateSection("general", {
+		settingsStore.updateSection("general", {
 			server: {
 				...settings.value.general.server,
 				port: port
@@ -447,8 +451,7 @@ const checkServer = async () => {
 
 const connectToServer = async () => {
 	if (isTauri() && import.meta.client) {
-		const { save } = useSettings();
-		await save();
+		await settingsStore.save();
 		
 		await new Promise(resolve => setTimeout(resolve, 500));
 

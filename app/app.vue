@@ -9,9 +9,11 @@
 
 <script setup lang="ts">
 import { useAuthInit } from "~/composables/useAuthInit";
+import { isTauri } from "~/utils/tauri";
 
 const authInit = useAuthInit();
 const route = useRoute();
+
 
 const getRedirectPath = (): string | null => {
 	if (typeof window === "undefined") {
@@ -27,6 +29,8 @@ const getRedirectPath = (): string | null => {
 	return null;
 };
 
+let trayDestroy: (() => Promise<void>) | null = null;
+
 onMounted(async () => {
 	if (await authInit.initialize()) {
 		const savedRedirect = getRedirectPath();
@@ -37,11 +41,27 @@ onMounted(async () => {
 		} else if (route.path === "/" || route.path === "/auth") {
 			await navigateTo("/general");
 		}
+
+		if (isTauri() && typeof window !== "undefined") {
+			const { useTray } = await import("~/composables/useTray");
+			const tray = useTray();
+			
+			await tray.createTray();
+			await tray.loadPlaylists();
+			trayDestroy = tray.destroyTray;
+		}
 	} else {
 		if (route.path !== "/auth") {
 			sessionStorage.setItem("authRedirect", route.fullPath);
 		}
 		await navigateTo("/auth");
+	}
+});
+
+onUnmounted(async () => {
+	if (trayDestroy) {
+		await trayDestroy();
+		trayDestroy = null;
 	}
 });
 

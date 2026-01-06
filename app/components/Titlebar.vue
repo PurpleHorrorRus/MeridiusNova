@@ -32,9 +32,9 @@
 		<div id="titlebar-right">
 			<Downloads />
 
-			<div v-if="updateAvailable" class="titlebar-update-notification" @click="openSettings">
+			<div v-if="updateAvailable" class="titlebar-update-notification" @click="modalStore.openSettings">
 				<Icon name="mdi:download" size="16" />
-				<span class="update-text">{{ getString("titlebar.update.available") }}</span>
+				<span class="update-text" v-text="getString('titlebar.update.available')" />
 			</div>
 
 			<div class="titlebar-right__button" @click="handleMinimize">
@@ -55,13 +55,15 @@
 <script setup lang="ts">
 import Downloads from "./Downloads/Downloads.vue";
 import { useUpdater } from "~/composables/useUpdater";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import { useEventListener } from "~/composables/useEventListener";
+import { useSettingsStore } from "~/stores/settings";
+import { storeToRefs } from "pinia";
 
 import { isTauri } from "~/utils/tauri";
 
 const { getString } = useStrings();
-const { openSettings } = useModal();
+const modalStore = useModalStore();
 
 const appWindow = ref<any>(null);
 const { updateAvailable, checkForUpdates } = useUpdater();
@@ -148,14 +150,16 @@ const handleClose = async () => {
 		return;
 	}
 
-	const { settings, load } = useSettings();
-	await load();
+	const settingsStore = useSettingsStore();
+	const { settings, loaded } = storeToRefs(settingsStore);
 
-	if (settings.value.window.hideOnClose) {
-		return await appWindow.value.hide();
+	if (!loaded.value) {
+		await settingsStore.load();
 	}
 
-	return await appWindow.value.close();
+	return settings.value.window.hideOnClose
+		? await appWindow.value.hide()
+		: await appWindow.value.close();
 };
 </script>
 

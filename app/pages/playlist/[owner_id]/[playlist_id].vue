@@ -4,9 +4,7 @@
 			<SkeletonPlaylist :show-header="true" />
 		</div>
 
-		<div v-else-if="error && !playlistData" class="error">
-			{{ error }}
-		</div>
+		<div v-else-if="error && !playlistData" class="error" v-text="error" />
 
 		<div v-else class="playlist-page-content">
 			<ClientOnly>
@@ -40,6 +38,7 @@
 import { useVkStore } from "~/stores/vk";
 import type { TPlaylist } from "~~/server/utils/types";
 import { authenticatedFetch } from "~/utils/api";
+import { isTauri } from "~/utils/tauri";
 
 const route = useRoute();
 const vkStore = useVkStore();
@@ -47,7 +46,9 @@ const ownerId = computed(() => Number(route.params.owner_id));
 const playlistId = computed(() => Number(route.params.playlist_id));
 const accessHash = computed(() => route.query.access_hash as string | undefined);
 
-const { playPlaylist, setCurrent } = usePlaylist();
+import { usePlaylistStore } from "~/stores/playlist";
+
+const playlistStore = usePlaylistStore();
 
 // Загружаем данные плейлиста/коллекции
 const playlistData = ref<TPlaylist | null>(null);
@@ -62,16 +63,31 @@ const playlistUrl = computed(() => {
 	return `/api/vk/playlists/${ownerId.value}/${playlistId.value}`;
 });
 
-const { data, pending, error, refresh } = useFetch<TPlaylist | null>(
-	playlistUrl,
-	{
-		query: {
+const playlistKey = computed(() => `playlist-${ownerId.value}-${playlistId.value}-${accessHash.value || ""}`);
+const { data, pending, error, refresh } = useAsyncData<TPlaylist | null>(
+	playlistKey,
+	() => authenticatedFetch<TPlaylist | null>(playlistUrl.value, {
+		params: {
 			list: "true",
 			access_hash: accessHash.value
-		},
+		}
+	}),
+	{
 		immediate: false,
 		lazy: true,
-		$fetch: authenticatedFetch as typeof globalThis.$fetch
+		getCachedData: (key) => {
+			const cached = useNuxtApp().payload.data[key];
+			if (cached && Date.now() - (cached._timestamp || 0) < 30000) {
+				return cached;
+			}
+			return undefined;
+		},
+		transform: (data) => {
+			if (data) {
+				(data as any)._timestamp = Date.now();
+			}
+			return data;
+		}
 	}
 );
 
@@ -181,8 +197,7 @@ watch([data, isCollection, userInfo], ([newPlaylistData, isCollectionValue, user
 	}
 	
 	if (playlistData.value) {
-
-		setCurrent(playlistData.value).catch(() => {
+		playlistStore.setCurrent(playlistData.value).catch(() => {
 			// Игнорируем ошибки при установке плейлиста
 		});
 	}
@@ -198,11 +213,12 @@ const isCollectionRestricted = computed(() => {
 provide("isCollectionRestricted", isCollectionRestricted);
 
 const handlePlay = async (playlist: TPlaylist) => {
-	await playPlaylist(playlist);
+	const playlistStore = usePlaylistStore();
+	await playlistStore.playPlaylist(playlist);
 };
 
 const handleFollow = async (playlist: TPlaylist & { followed?: boolean }) => {
-	const { followPlaylist, unfollowPlaylist } = usePlaylistActions();
+	const playlistStore = usePlaylistStore();
 
 	if (!playlistData.value) {
 		return;
@@ -237,8 +253,8 @@ const handleFollow = async (playlist: TPlaylist & { followed?: boolean }) => {
 	
 	// Выполняем операцию
 	const operation = isFollowed
-		? unfollowPlaylist(playlistForOperation)
-		: followPlaylist(playlistForOperation);
+		? playlistStore.unfollowPlaylist(playlistForOperation)
+		: playlistStore.followPlaylist(playlistForOperation);
 
 	operation.then(async (result) => {
 		if (result && playlistData.value) {
@@ -266,10 +282,16 @@ const handleFollow = async (playlist: TPlaylist & { followed?: boolean }) => {
 			}
 
 			// Обновляем список плейлистов в фоне
-			vkStore.refreshPlaylists().then(() => {
+			vkStore.refreshPlaylists().then(async () => {
 				// Отправляем событие для обновления данных в sidebar
 				if (typeof window !== "undefined") {
 					window.dispatchEvent(new CustomEvent("playlists-updated"));
+				}
+				
+				if (isTauri() && typeof window !== "undefined") {
+					const { useTray } = await import("~/composables/useTray");
+					const tray = useTray();
+					await tray.loadPlaylists();
 				}
 			});
 		}

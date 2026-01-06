@@ -106,7 +106,8 @@
 import { isTauri } from "~/utils/tauri";
 
 const { getString } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const lang = computed(() => settings.value.general.lang as "ru" | "en");
 const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
@@ -126,12 +127,12 @@ const templatePlaceholder = "{{ performer }} - {{ title }}";
 
 const updateHardwareAcceleration = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("window", { hardwareAcceleration: target.checked });
+	settingsStore.updateSection("window", { hardwareAcceleration: target.checked });
 };
 
 const updateAutoDownloads = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("optimization", {
+	settingsStore.updateSection("optimization", {
 		download: {
 			...settings.value.optimization.download,
 			auto: target.checked
@@ -142,7 +143,7 @@ const updateAutoDownloads = (event: Event) => {
 const updateFixedDownloads = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value);
-	updateSection("optimization", {
+	settingsStore.updateSection("optimization", {
 		download: {
 			...settings.value.optimization.download,
 			fixed: value
@@ -152,12 +153,12 @@ const updateFixedDownloads = (event: Event) => {
 
 const updateDownloadEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("download", { enable: target.checked });
+	settingsStore.updateSection("download", { enable: target.checked });
 };
 
 const updateTemplate = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("download", { template: target.value });
+	settingsStore.updateSection("download", { template: target.value });
 };
 </script>
 

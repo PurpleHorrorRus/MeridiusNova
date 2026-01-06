@@ -1,6 +1,7 @@
 import { computed, ref, type ComputedRef, unref } from "vue";
 import type { TPlaylist, TAlbum } from "~~/server/utils/types";
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
 
 type PlaylistLike = TPlaylist | (TAlbum & { owner_id: number; playlist_id: number }) | null | undefined;
 type PlaylistLikeInput = PlaylistLike | ComputedRef<PlaylistLike>;
@@ -71,7 +72,6 @@ const normalizeToPlaylist = (item: PlaylistLike): TPlaylist | null => {
 };
 
 export const usePlaylistButton = (playlist: PlaylistLikeInput) => {
-	const { playPlaylist, playing } = usePlaylist();
 	const playlistStore = usePlaylistStore();
 	const playerStore = usePlayerStore();
 	const isLoading = ref(false);
@@ -92,7 +92,7 @@ export const usePlaylistButton = (playlist: PlaylistLikeInput) => {
 	});
 
 	const isCurrentPlaylist = computed(() => {
-		const currentPlaying = playing.value;
+		const currentPlaying = playlistStore.playing;
 		const playlistData = currentPlaylistData.value;
 		
 		if (!currentPlaying || !playlistData) {
@@ -132,7 +132,7 @@ export const usePlaylistButton = (playlist: PlaylistLikeInput) => {
 		isProcessing.value = true;
 
 		try {
-			const currentPlaying = playing.value;
+			const currentPlaying = playlistStore.playing;
 			const playlistData = currentPlaylistData.value;
 			
 			const isRandomStart = randomStart || event?.shiftKey || false;
@@ -165,7 +165,7 @@ export const usePlaylistButton = (playlist: PlaylistLikeInput) => {
 			} else {
 				// Запускаем плейлист (либо новый, либо тот же, но с пустой очередью, либо с рандомом)
 				isLoading.value = true;
-				await playPlaylist(normalizedPlaylist, 0, isRandomStart).finally(() => {
+				await playlistStore.playPlaylist(normalizedPlaylist, 0, isRandomStart).finally(() => {
 					isLoading.value = false;
 				});
 			}
@@ -181,3 +181,4 @@ export const usePlaylistButton = (playlist: PlaylistLikeInput) => {
 		handlePlayPause
 	};
 };
+

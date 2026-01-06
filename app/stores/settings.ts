@@ -106,7 +106,8 @@ const defaultSettings: TSettings = {
 			material: "none",
 			opacity: 0.5
 		},
-		sidebarPlaylistsExpanded: false
+		sidebarPlaylistsExpanded: false,
+		sidebarLibraryExpanded: true
 	},
 
 	optimization: {

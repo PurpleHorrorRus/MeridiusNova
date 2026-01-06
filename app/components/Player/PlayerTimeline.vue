@@ -19,17 +19,20 @@
 			class="timeline-tooltip"
 			:style="{ left: `${tooltipPosition}%` }"
 		>
-			{{ formatTime(tooltipTime) }}
+			{{ playerStore.formatTime(tooltipTime) }}
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { useAudio } from "~/composables/useAudio";
 import { usePlayerTimeline } from "~/composables/usePlayerTimeline";
 
-const { progress } = useAudio();
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
+
+const playerStore = usePlayerStore();
+const { progress } = storeToRefs(playerStore);
 
 const {
 	throttledProgress,
@@ -41,8 +44,7 @@ const {
 	handleProgressHover,
 	handleProgressTouch,
 	handleProgressTouchMove,
-	handleProgressTouchEnd,
-	formatTime
+	handleProgressTouchEnd
 } = usePlayerTimeline(150);
 
 watch(progress, (newProgress) => {

@@ -8,11 +8,11 @@
 			<transition name="fade">
 				<div v-if="showSpeedMenu" class="speed-menu">
 					<button
-						v-for="rate in speedRates"
+						v-for="rate in SPEED_RATES"
 						:key="rate"
 						class="speed-item"
 						:class="{ active: rate === playbackRate }"
-						@click="setPlaybackRate(rate)"
+						@click="playerStore.setPlaybackRate(rate)"
 					>
 						{{ rate }}x
 					</button>
@@ -22,7 +22,7 @@
 
 		<div class="player-controls-group">
 			<button
-				v-if="songProps.canAdd"
+				v-if="playerStore.song?.canAdd"
 				class="btn-player-control"
 				@click="handleAdd"
 				:title="t('player.addToLibrary')"
@@ -31,10 +31,10 @@
 			</button>
 
 			<button
-				v-else-if="canDelete"
+				v-else-if="playerStore.song && playlistStore.canDelete(playerStore.song, { canAdd: Boolean(playerStore.song.canAdd), canDelete: Boolean(playerStore.song.canDelete) })"
 				class="btn-player-control"
 				@click="handleDelete"
-				:title="deleteTitle"
+				:title="playerStore.song ? playlistStore.getDeleteTitle(playerStore.song) : ''"
 			>
 				<Icon name="mdi:heart" size="20" />
 			</button>
@@ -59,90 +59,74 @@
 
 			<button
 				class="btn-player-control btn-queue"
-				:class="{ active: isQueueDrawerOpen }"
-				@click="openQueueDrawer"
+				:class="{ active: playerStore.isQueueDrawerOpen }"
+				@click="playerStore.openQueueDrawer"
 				:title="t('player.queue') || 'Очередь воспроизведения'"
 			>
 				<Icon name="mdi:playlist-music" size="20" />
-				<span v-if="playlistStore.playingSongs.length > 0" class="queue-badge">{{ queueTracksCountText }}</span>
+				<span v-if="playlistStore.playingSongs.length > 0" class="queue-badge" v-text="queueTracksCountText" />
 			</button>
 		</div>
 
-		<div class="volume-wrapper" @wheel="volumeSlider.handleVolumeWheel">
-			<button @click="volumeSlider.toggleMute" class="btn-mute">
+		<div class="volume-wrapper" @wheel="handleVolumeWheel">
+			<button @click="playerStore.toggleMute" class="btn-mute">
 				<Icon 
 					v-if="!showVolumePercent"
-					:name="volumeSlider.muted.value ? 'mdi:volume-mute' : (volumeSlider.volume.value === 0 ? 'mdi:volume-off' : (volumeSlider.volume.value < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
+					:name="muted ? 'mdi:volume-mute' : (volume === 0 ? 'mdi:volume-off' : (volume < 0.5 ? 'mdi:volume-low' : 'mdi:volume-high'))" 
 					size="20" 
 				/>
-				<span v-else class="volume-percent">{{ volumePercent }}%</span>
+				<span v-else class="volume-percent">{{ Math.round(volume * 100) }}%</span>
 			</button>
 			<div 
 				class="volume-slider"
-				:ref="volumeSlider.volumeSliderRef"
-				@mousedown="volumeSlider.handleVolumeSliderMouseDown"
+				:ref="volumeSliderRef as any"
+				@mousedown="handleVolumeSliderMouseDown"
 			>
 				<input
-					:ref="volumeSlider.volumeRangeInputRef"
+					:ref="volumeRangeInputRef as any"
 					type="range"
 					min="0"
 					max="1000"
 					step="1"
-					:value="volumeSlider.volume.value * 1000"
-					@input="volumeSlider.handleVolumeChange"
+					:value="volume * 1000"
+					@input="handleVolumeChange"
 					class="volume-range"
 				/>
-				<div class="volume-fill" :style="{ width: `${volumeSlider.volume.value * 100}%` }"></div>
+				<div class="volume-fill" :style="{ width: `${volume * 100}%` }"></div>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, watch as watchVue } from "vue";
-import { useAudio } from "~/composables/useAudio";
-import { useSongProps } from "~/composables/useSongProps";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { ref, computed, watch, onUnmounted } from "vue";
+import { storeToRefs } from "pinia";
 import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+import { useModalStore } from "~/stores/modal";
 import { useStrings } from "~/composables/useStrings";
-import { useSongDelete } from "~/composables/useSongDelete";
-import { useSongAdd } from "~/composables/useSongAdd";
-import { useVolumeSlider } from "~/composables/useVolumeSlider";
-import { useQueueDrawer } from "~/composables/useQueueDrawer";
+import { useSettingsStore } from "~/stores/settings";
 
-const {
-	currentSong,
-	playbackRate,
-	setPlaybackRate
-} = useAudio();
+const playerStore = usePlayerStore();
+const playlistStore = usePlaylistStore();
+const modalStore = useModalStore();
+const settingsStore = useSettingsStore();
 
-const { openQueueDrawer, isQueueDrawerOpen } = useQueueDrawer();
+const { playbackRate, volume, muted } = storeToRefs(playerStore);
+const { repeat, shuffle } = storeToRefs(playlistStore);
+const { settings } = storeToRefs(settingsStore);
 
-const volumeSlider = useVolumeSlider();
-
-const { generateSongProps } = useSongProps();
 const { getString } = useStrings();
 const t = getString;
-const playlistStore = usePlaylistStore();
-const { handleDelete: deleteSong, getDeleteTitle, canDelete: canDeleteSong } = useSongDelete();
-const { handleAdd: addSong } = useSongAdd();
 
-const {
-	repeat,
-	current,
-	playing,
-	shuffle
-} = usePlaylist();
+const volumeSliderRef = ref<HTMLElement | null>(null);
+const volumeRangeInputRef = ref<HTMLInputElement | null>(null);
 
 const showSpeedMenu = ref(false);
 let speedMenuTimeout: NodeJS.Timeout | null = null;
 
 const showVolumePercent = ref(false);
 let volumePercentTimeout: NodeJS.Timeout | null = null;
-
-const volumePercent = computed(() => {
-	return Math.round(volumeSlider.volume.value * 100);
-});
 
 const showVolumePercentHandler = () => {
 	showVolumePercent.value = true;
@@ -157,45 +141,11 @@ const showVolumePercentHandler = () => {
 	}, 1000);
 };
 
-watch(volumeSlider.volume, () => {
-	showVolumePercentHandler();
-});
+watch(volume, showVolumePercentHandler);
 
 const queueTracksCountText = computed(() => {
 	const count = playlistStore.playingSongs.length;
 	return count > 99 ? "99+" : String(count);
-});
-
-const songProps = computed(() => {
-	const song = currentSong.value;
-	if (!song) {
-		return {
-			canAdd: false,
-			canDelete: false
-		};
-	}
-
-	return generateSongProps(song);
-});
-
-const currentPlaylist = computed(() => {
-	return playing.value || current.value;
-});
-
-const canDelete = computed(() => {
-	if (!currentSong.value) {
-		return false;
-	}
-
-	return canDeleteSong(currentSong.value, songProps.value);
-});
-
-const deleteTitle = computed(() => {
-	if (!currentSong.value) {
-		return "";
-	}
-
-	return getDeleteTitle(currentSong.value);
 });
 
 const handleSpeedMouseEnter = () => {
@@ -213,31 +163,104 @@ const handleSpeedMouseLeave = () => {
 	}, 200);
 };
 
-const speedRates = computed(() => {
-	const rates: number[] = [];
-
-	for (let i = 0.5; i <= 2; i += 0.25) {
-		rates.push(Number(i.toFixed(2)));
-	}
-
-	return rates;
-});
+const SPEED_RATES = Object.freeze([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]);
 
 
 const handleAdd = async () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
-	await addSong(currentSong.value);
+	await playlistStore.addSongToLibrary(playerStore.song);
 };
 
 const handleDelete = async () => {
-	if (!currentSong.value) {
+	if (!playerStore.song) {
 		return;
 	}
 
-	await deleteSong(currentSong.value);
+	await playlistStore.deleteSong(playerStore.song);
+};
+
+const handleVolumeChange = async (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	const newVolume = Number(target.value) / 1000;
+	await playerStore.setVolume(newVolume);
+};
+
+const handleVolumeSliderMouseDown = async (event: MouseEvent) => {
+	const clickedElement = event.target as HTMLElement;
+	
+	if (clickedElement.tagName === "INPUT") {
+		const inputElement = clickedElement as HTMLInputElement;
+		if (inputElement.type === "range") {
+			event.stopPropagation();
+			return;
+		}
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+
+	const slider = volumeSliderRef.value;
+	const rangeInput = volumeRangeInputRef.value;
+	
+	if (!slider || !rangeInput) {
+		return;
+	}
+
+	const getOffsetX = (mouseEvent: MouseEvent): number => {
+		const currentSliderRect = slider.getBoundingClientRect();
+		return mouseEvent.clientX - currentSliderRect.left;
+	};
+
+	const offsetX = getOffsetX(event);
+	const width = slider.clientWidth;
+	const percentage = Math.max(0, Math.min(1, offsetX / width));
+	const newValue = Math.round(percentage * 1000);
+	const newVolume = newValue / 1000;
+	
+	rangeInput.value = String(newValue);
+	await playerStore.setVolume(newVolume);
+
+	const handleMouseMove = async (moveEvent: MouseEvent) => {
+		const moveOffsetX = getOffsetX(moveEvent);
+		const moveWidth = slider.clientWidth;
+		const movePercentage = Math.max(0, Math.min(1, moveOffsetX / moveWidth));
+		const moveValue = Math.round(movePercentage * 1000);
+		const moveVolume = moveValue / 1000;
+		
+		rangeInput.value = String(moveValue);
+		await playerStore.setVolume(moveVolume);
+	};
+
+	const handleMouseUp = () => {
+		document.removeEventListener("mousemove", handleMouseMove);
+		document.removeEventListener("mouseup", handleMouseUp);
+	};
+
+	document.addEventListener("mousemove", handleMouseMove);
+	document.addEventListener("mouseup", handleMouseUp);
+};
+
+const handleVolumeWheel = async (event: WheelEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+
+	const hasWheelStep = settings.value
+		&& settings.value.player
+		&& settings.value.player.step
+		&& settings.value.player.step.wheel;
+
+	const wheelStepValue = hasWheelStep
+		? settings.value.player.step.wheel
+		: 1;
+
+	const wheelStep = wheelStepValue / 100;
+	const delta = event.deltaY > 0 ? -wheelStep : wheelStep;
+	const newVolume = Math.max(0, Math.min(1, volume.value + delta));
+	
+	await playerStore.setVolume(newVolume);
 };
 
 onUnmounted(() => {

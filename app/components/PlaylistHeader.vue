@@ -4,21 +4,18 @@
 				<div class="playlist-header-cover">
 					<Cover
 						:src="playlist.cover_url"
+						:priority="true"
 					/>
 				</div>
 
 				<div class="playlist-header-info">
-					<div class="playlist-header-type">{{ playlistType }}</div>
-					<h1 class="playlist-header-title">{{ playlist.title }}</h1>
+					<div class="playlist-header-type" v-text="playlistType" />
+					<h1 class="playlist-header-title" v-text="playlist.title" />
 
-					<div v-if="playlist.description" class="playlist-header-description">
-						{{ playlist.description }}
-					</div>
+					<div v-if="playlist.description" class="playlist-header-description" v-text="playlist.description" />
 
 					<div class="playlist-header-meta">
-						<span v-if="playlist.author" class="playlist-header-author">
-							{{ playlist.author.name }}
-						</span>
+						<span v-if="playlist.author" class="playlist-header-author" v-text="playlist.author.name" />
 						<span v-if="playlist.size !== undefined && playlist.size > 0" class="playlist-header-size">
 							{{ playlist.size }} треков
 						</span>
@@ -107,9 +104,10 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useEventListener } from "~/composables/useEventListener";
 import type { TPlaylist } from "~~/server/utils/types";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
-import { useModal } from "~/composables/useModal";
+import { usePlaylistStore } from "~/stores/playlist";
+import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
+import { isTauri } from "~/utils/tauri";
 import EditPlaylistModal from "~/components/Modals/EditPlaylistModal.vue";
 import SharePlaylistModal from "~/components/Modals/SharePlaylistModal.vue";
 
@@ -123,8 +121,8 @@ const emit = defineEmits<{
 }>();
 
 const { isPlaying, isLoading, handlePlayPause: handlePlayPauseBase } = usePlaylistButton(props.playlist);
-const { deletePlaylist, downloadPlaylist } = usePlaylistActions();
-const { openModal, openConfirm, openCustom } = useModal();
+const playlistStore = usePlaylistStore();
+const modalStore = useModalStore();
 const vkStore = useVkStore();
 
 const showActionsMenu = ref(false);
@@ -245,21 +243,21 @@ const handleFollow = async () => {
 
 const handleEdit = () => {
 	showActionsMenu.value = false;
-	openCustom(EditPlaylistModal, {
+	modalStore.openCustom(EditPlaylistModal, {
 		playlist: props.playlist
 	});
 };
 
 const handleShare = () => {
 	showActionsMenu.value = false;
-	openCustom(SharePlaylistModal, {
+	modalStore.openCustom(SharePlaylistModal, {
 		playlist: props.playlist
 	});
 };
 
 const handleDownload = async () => {
 	showActionsMenu.value = false;
-	await downloadPlaylist(props.playlist).catch(() => {
+	await playlistStore.downloadPlaylist(props.playlist).catch(() => {
 		// Ignore download errors
 	});
 };
@@ -267,7 +265,7 @@ const handleDownload = async () => {
 const handleDelete = async () => {
 	showActionsMenu.value = false;
 
-	const confirmed = await openConfirm({
+	const confirmed = await modalStore.openConfirm({
 		message: `Вы уверены, что хотите удалить плейлист "${props.playlist.title}"?`,
 		confirmText: "Удалить",
 		cancelText: "Отмена"
@@ -277,12 +275,19 @@ const handleDelete = async () => {
 		return;
 	}
 
-	const result = await deletePlaylist(props.playlist).catch(() => {
+	const result = await playlistStore.deletePlaylist(props.playlist).catch(() => {
 		return null;
 	});
 
 	if (result) {
 		await vkStore.refreshPlaylists();
+		
+		if (isTauri() && typeof window !== "undefined") {
+			const { useTray } = await import("~/composables/useTray");
+			const tray = useTray();
+			await tray.loadPlaylists();
+		}
+		
 		await navigateTo("/general");
 	}
 };

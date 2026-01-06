@@ -76,16 +76,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import type { TPlaylist } from "~~/server/utils/types";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
-import { useModal } from "~/composables/useModal";
+import { usePlaylistStore } from "~/stores/playlist";
+import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
+import { isTauri } from "~/utils/tauri";
 
 const props = defineProps<{
 	playlist: TPlaylist;
 }>();
 
-const { editPlaylist } = usePlaylistActions();
-const { closeModal } = useModal();
+const playlistStore = usePlaylistStore();
+const modalStore = useModalStore();
 const vkStore = useVkStore();
 
 const title = ref("");
@@ -130,7 +131,7 @@ const handleSave = async () => {
 
 	loading.value = true;
 
-	const result = await editPlaylist({
+	const result = await playlistStore.editPlaylist({
 		playlist_id: props.playlist.playlist_id,
 		title: title.value.trim(),
 		description: description.value.trim() || undefined,
@@ -145,7 +146,14 @@ const handleSave = async () => {
 	if (result) {
 		// Обновляем список плейлистов
 		await vkStore.refreshPlaylists();
-		closeModal();
+		
+		if (isTauri() && typeof window !== "undefined") {
+			const { useTray } = await import("~/composables/useTray");
+			const tray = useTray();
+			await tray.loadPlaylists();
+		}
+		
+		modalStore.close();
 	}
 };
 

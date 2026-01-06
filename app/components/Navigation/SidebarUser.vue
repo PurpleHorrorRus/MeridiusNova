@@ -15,7 +15,7 @@
 				{{ userName.charAt(0).toUpperCase() }}
 			</div>
 			<div class="user-info">
-				<div class="user-name">{{ userName }}</div>
+				<div class="user-name" v-text="userName" />
 				<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
 			</div>
 			<Icon name="mdi:chevron-down" size="20" class="user-chevron" />
@@ -34,7 +34,7 @@
 				{{ userName.charAt(0).toUpperCase() }}
 			</div>
 			<div class="user-info">
-				<div class="user-name">{{ userName }}</div>
+				<div class="user-name" v-text="userName" />
 				<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
 			</div>
 		</div>
@@ -66,8 +66,8 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import { useSettings } from "~/composables/useSettings";
-import { loadUserAccounts } from "~/utils/accounts";
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
 import { getUserFullName } from "~/utils/user";
 
 const props = defineProps<{
@@ -75,7 +75,8 @@ const props = defineProps<{
 }>();
 
 const vkStore = useVkStore();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const user = computed(() => vkStore.user);
 const userName = computed(() => {
@@ -91,7 +92,7 @@ const getAccountName = (account: any): string => {
 const switchAccount = async (account: any) => {
 	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === account.id);
 	if (accountIndex >= 0) {
-		updateSection("vk", { active: accountIndex });
+		settingsStore.updateSection("vk", { active: accountIndex });
 		showAccountMenu.value = false;
 		await navigateTo("/?reload=1");
 	}

@@ -42,7 +42,8 @@ import { useHotkeys } from "~/composables/useHotkeys";
 import HotkeyInput from "~/components/Settings/HotkeyInput.vue";
 
 const { getString } = useStrings();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const { registerHotkey, unregisterHotkey, registerHotkeys, unregisterHotkeys } = useHotkeys();
 
 onMounted(async () => {
@@ -111,7 +112,7 @@ const updateHotkey = async (action: string, accelerator: string) => {
 	
 	const currentHotkeys = { ...settings.value.hotkeys } as Record<string, string>;
 	currentHotkeys[action] = accelerator;
-	await updateSection("hotkeys", currentHotkeys);
+	await settingsStore.updateSection("hotkeys", currentHotkeys);
 };
 </script>
 

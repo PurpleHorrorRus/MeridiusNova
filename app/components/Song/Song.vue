@@ -20,20 +20,20 @@
 				:height="isTableMode ? 40 : 50"
 			/>
 			<div v-if="isTableMode" class="song-cover-overlay">
-				<Icon :name="isPlaying && playerIsPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
+				<Icon :name="isPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
 			</div>
 
-			<div v-if="isPlaying && playerIsPlaying" class="song-cover-playing-indicator">
+			<div v-if="isPlaying" class="song-cover-playing-indicator">
 				<Icon name="mdi:volume-high" size="10" />
 			</div>
 		</div>
 
 		<div class="song-info">
-			<div class="song-info-title">
+			<div class="song-info-title" v-once>
 				<span v-html="audio.title" />
 			</div>
 
-		<div class="song-info-artist">
+		<div class="song-info-artist" v-once>
 			<template v-if="audio.artists && audio.artists.length > 0">
 				<template v-for="(artistItem, index) in audio.artists" :key="artistItem.id || index">
 					<span
@@ -62,20 +62,16 @@
 			</template>
 		</div>
 
-		<div v-if="!isTableMode && albumName" class="song-info-album" @click.stop="handleAlbumClick">
-			{{ albumName }}
-		</div>
+		<div v-if="!isTableMode && albumName" class="song-info-album" v-once @click.stop="handleAlbumClick" v-text="albumName" />
 	</div>
 
-	<div v-if="isTableMode && albumName" class="song-album" @click.stop="handleAlbumClick">
-		{{ albumName }}
-	</div>
+	<div v-if="isTableMode && albumName" class="song-album" v-once @click.stop="handleAlbumClick" v-text="albumName" />
 
 		<div class="song-actions">
-			<SongActions :audio="audio" />
+			<SongActions :audio="audio" @action="handleAction" />
 		</div>
 
-		<div class="song-duration">
+		<div class="song-duration" v-once>
 			<span v-if="isRestricted" class="restricted-badge" title="Трек недоступен">
 				<Icon name="mdi:lock" size="14" />
 			</span>
@@ -87,90 +83,82 @@
 			:audio="audio"
 			:position="contextMenuPosition"
 			@close="handleContextMenuClose"
+			@action="handleAction"
 		/>
 	</div>
 </template>
 
 <script setup lang="ts">
 import moment from "moment";
-import { inject } from "vue";
-import { storeToRefs } from "pinia";
 
 import SongActions from "~/components/SongActions.vue";
 import SongContextMenu from "~/components/SongContextMenu.vue";
-import { useModal } from "~/composables/useModal";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;
 	index?: number;
+	duration?: string;
+	albumName?: string;
+	albumInfo?: {
+		owner_id: number;
+		playlist_id: number;
+		access_hash: string;
+	} | null;
+	isPlaying?: boolean;
+	playerIsPlaying?: boolean;
 }>();
 
-const { play, pause, resume, currentSong, isPlaying: playerIsPlaying } = useAudio();
-const { playFromPlaylist, current, playing } = usePlaylist();
-const { playFromQueue } = useQueue();
-const playlistStore = usePlaylistStore();
-const songsContext = useSongsContext();
+const emit = defineEmits<{
+	click: [];
+	"album-click": [albumInfo: { owner_id: number; playlist_id: number; access_hash: string }];
+	"artist-click": [artist: { id?: string; link?: string; name?: string }];
+	"context-menu": [event: MouseEvent];
+	"long-press": [];
+	action: [action: string, data?: any];
+}>();
+
 const playerStore = usePlayerStore();
-const { song: playerSong } = storeToRefs(playerStore);
 const { isMobile } = useIsMobile();
-const { openModal } = useModal();
 
-const isTableMode = computed(() => props.index !== undefined);
-
-const isRestricted = computed(() => Boolean(props.audio.is_restriction));
+const isTableMode = props.index !== undefined;
+const isRestricted = Boolean(props.audio.is_restriction);
 
 const showContextMenu = ref(false);
 const contextMenuPosition = ref<{ x: number; y: number } | undefined>(undefined);
 const contextMenuJustClosed = ref(false);
 
-// Используем реактивную ссылку из storeToRefs для гарантии реактивности
 const isPlaying = computed(() => {
-	return playerSong.value?.full_id === props.audio.full_id;
+	return (playerStore.song !== null && props.audio !== null)
+		&& (playerStore.song.full_id || `${playerStore.song.owner_id}_${playerStore.song.id}`)
+			=== (props.audio.full_id || `${props.audio.owner_id}_${props.audio.id}`);
 });
 
-const duration = computed(() => {
-	return moment(props.audio.duration * 1000).format("mm:ss");
+const playerIsPlaying = computed(() => {
+	return !playerStore.paused && playerStore.song !== null;
 });
 
-const albumName = computed(() => {
+const duration = props.duration || moment(props.audio.duration * 1000).format("mm:ss");
+
+const albumName = props.albumName !== undefined ? props.albumName : (() => {
 	const album = props.audio.album;
-
-	if (!album) {
-		return "";
-	}
-
-	if (typeof album === "string") {
-		return album;
-	}
-
+	if (!album) return "";
+	if (typeof album === "string") return album;
 	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
-		// Объект с информацией об альбоме
 		const albumObject = album as any;
-		if (albumObject.title) {
-			return String(albumObject.title);
-		}
+		if (albumObject.title) return String(albumObject.title);
 	}
-
-	// Массив [owner_id, playlist_id, access_hash] или объект без title - не показываем ничего
-	// Альбом будет обогащен через enrichAlbums и получит title
 	return "";
-});
+})();
 
-const albumInfo = computed(() => {
+const albumInfo = props.albumInfo !== undefined ? props.albumInfo : (() => {
 	const album = props.audio.album;
-
-	if (!album) {
-		return null;
-	}
-
+	if (!album) return null;
 	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
 		const albumObject = album as any;
 		const ownerId = albumObject.owner_id || albumObject.ownerId;
 		const playlistId = albumObject.id || albumObject.playlist_id;
-
 		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
 			return {
 				owner_id: Number(ownerId),
@@ -179,12 +167,10 @@ const albumInfo = computed(() => {
 			};
 		}
 	}
-
 	if (Array.isArray(album) && album.length >= 2) {
 		const ownerId = album[0];
 		const playlistId = album[1];
 		const accessHash = album[2] || "";
-
 		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
 			return {
 				owner_id: Number(ownerId),
@@ -193,26 +179,19 @@ const albumInfo = computed(() => {
 			};
 		}
 	}
-
 	return null;
-});
-
-const handleAlbumClick = () => {
-	if (!albumInfo.value) {
-		return;
-	}
-
-	const route = `/playlist/${albumInfo.value.owner_id}/${albumInfo.value.playlist_id}`;
-	const query = albumInfo.value.access_hash ? { access_hash: albumInfo.value.access_hash } : {};
-
-	navigateTo({
-		path: route,
-		query
-	});
-};
+})();
 
 const canNavigateToArtist = (artist: { id?: string; link?: string }): boolean => {
 	return Boolean(artist.id || artist.link);
+};
+
+const handleAlbumClick = () => {
+	if (!albumInfo) {
+		return;
+	}
+
+	emit("album-click", albumInfo);
 };
 
 const handleArtistClick = (artist: { id?: string; link?: string; name?: string }) => {
@@ -220,181 +199,23 @@ const handleArtistClick = (artist: { id?: string; link?: string; name?: string }
 		return;
 	}
 
-	const artistId = artist.id || artist.link;
-	if (artistId) {
-		navigateTo(`/artist/${artistId}`);
-	}
+	emit("artist-click", artist);
 };
 
-const handleClick = async () => {
-	if (isRestricted.value) {
+const handleClick = () => {
+	if (isRestricted) {
 		return;
 	}
 
-	// Если клик произошел сразу после закрытия контекстного меню, игнорируем его
-	// Это предотвращает случайное воспроизведение трека при закрытии меню
 	if (contextMenuJustClosed.value) {
 		contextMenuJustClosed.value = false;
 		return;
 	}
 
-	// Проверяем, является ли это тот же трек, что и текущий (даже на паузе)
-	const isCurrentSong = currentSong.value?.full_id === props.audio.full_id;
-
-	if (isCurrentSong && playerIsPlaying.value) {
-		pause();
-	} else if (isCurrentSong && !playerIsPlaying.value) {
-		resume();
-	} else {
-		// Пытаемся получить плейлист из контекста страницы
-		const playlistInfo = inject<Ref<TPlaylist | null> | undefined>("playlistInfo", undefined);
-		const pagePlaylist = playlistInfo?.value;
-		
-		// Используем плейлист из контекста страницы, если он есть
-		// Для библиотек пользователей (playlist_id === -1) проверяем owner_id, чтобы не использовать плейлист другого пользователя
-		// Для обычных плейлистов используем плейлист из контекста страницы для корректного переключения
-		const isUserLibrary = pagePlaylist && pagePlaylist.playlist_id === -1;
-		const usePagePlaylist = pagePlaylist && (!isUserLibrary || pagePlaylist.owner_id === props.audio.owner_id);
-		
-		// Используем плейлист из контекста страницы, если он соответствует треку
-		// Иначе используем current плейлист из store
-		const currentPlaylist = usePagePlaylist ? pagePlaylist : current.value;
-		const isCurrentVkMix = currentPlaylist && (currentPlaylist.playlist_id === -9 || String(currentPlaylist.owner_id) === "vkmix");
-		
-		if (currentPlaylist && !isCurrentVkMix && songsContext?.value && songsContext.value.length > 0) {
-			// Создаем плейлист из контекста страницы
-			await playFromPlaylist(props.audio, { ...currentPlaylist, list: songsContext.value });
-		} else if (playing.value && playing.value.list && playing.value.list.length > 0) {
-			// Fallback: используем playing плейлист, если current нет
-			const isPlayingVkMix = playing.value.playlist_id === -9 || String(playing.value.owner_id) === "vkmix";
-			if (!isPlayingVkMix) {
-				await playFromPlaylist(props.audio, playing.value);
-			} else {
-				// Если playing - VK Mix, используем контекст страницы
-				await handlePlayFromContext();
-			}
-		} else {
-			// Ищем треки из контекста страницы
-			await handlePlayFromContext();
-		}
-	}
-};
-
-const handlePlayFromContext = async () => {
-	// ПЕРВЫМ ДЕЛОМ проверяем, не находится ли трек уже в очереди воспроизведения
-	// Это предотвращает очистку очереди при клике на трек из очереди
-	const currentSongs = playlistStore.playingSongs;
-	const existingIndex = currentSongs.findIndex((s: TAudio) => s.full_id === props.audio.full_id);
-	
-	if (existingIndex >= 0) {
-		// Трек уже в очереди, просто обновляем индекс и воспроизводим
-		playlistStore.setCurrentIndex(existingIndex);
-		
-		// Используем трек из очереди, который уже имеет все данные (включая URL)
-		const songFromQueue = currentSongs[existingIndex];
-
-		if (songFromQueue) {
-			await play({
-				...songFromQueue,
-				from: "queue",
-				manual: true
-			} as TAudio & { from?: string; manual?: boolean });
-		}
-
-		return;
-	}
-	
-	// Ищем треки из контекста страницы или плейлиста
-	let contextSongs: TAudio[] = [];
-	let playlistToUse: TPlaylist | undefined = undefined;
-	const currentPlaylist = current.value;
-	const playingPlaylist = playing.value;
-	
-	// Приоритет 1: контекст страницы
-	if (songsContext?.value && songsContext.value.length > 0) {
-		contextSongs = songsContext.value;
-		
-		// Если есть current плейлист и это плейлист поиска, используем его
-		if (currentPlaylist && currentPlaylist.raw_id.startsWith("search_")) {
-			playlistToUse = { ...currentPlaylist, list: contextSongs };
-		}
-		// Иначе, если есть current плейлист, используем его (для переключения плейлистов)
-		// Для библиотек пользователей (playlist_id === -1) проверяем owner_id
-		else if (currentPlaylist) {
-			const isUserLibrary = currentPlaylist.playlist_id === -1;
-			if (!isUserLibrary || currentPlaylist.owner_id === props.audio.owner_id) {
-				playlistToUse = { ...currentPlaylist, list: contextSongs };
-			}
-		}
-	}
-	// Приоритет 2: current плейлист с треками
-	else if (currentPlaylist?.list && currentPlaylist.list.length > 0) {
-		contextSongs = currentPlaylist.list;
-		playlistToUse = currentPlaylist;
-	}
-	// Приоритет 3: playing плейлист с треками
-	else if (playingPlaylist?.list && playingPlaylist.list.length > 0) {
-		contextSongs = playingPlaylist.list;
-		playlistToUse = playingPlaylist;
-	}
-	// Приоритет 4: если есть current плейлист, но нет list, загружаем его
-	else if (currentPlaylist && currentPlaylist.owner_id && currentPlaylist.playlist_id) {
-
-		const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
-		await playFromPlaylistFn(props.audio, currentPlaylist);
-		return;
-	}
-	// Приоритет 5: если есть playing плейлист, но нет list, загружаем его
-	else if (playingPlaylist && playingPlaylist.owner_id && playingPlaylist.playlist_id) {
-
-		const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
-		await playFromPlaylistFn(props.audio, playingPlaylist);
-		return;
-	}
-	// Приоритет 6: проверяем route - может быть мы на странице плейлиста
-	else {
-		const route = useRoute();
-		const ownerId = route.params.owner_id ? Number(route.params.owner_id) : null;
-		const playlistId = route.params.playlist_id ? Number(route.params.playlist_id) : null;
-		
-		if (ownerId !== null && playlistId !== null && playlistId !== -1) {
-			// Мы на странице плейлиста, загружаем его
-			const { playFromPlaylist: playFromPlaylistFn } = usePlaylist();
-
-			await playFromPlaylistFn(props.audio, {
-				owner_id: ownerId,
-				playlist_id: playlistId,
-				raw_id: `${ownerId}_${playlistId}`,
-				title: "",
-				cover_url: "",
-				description: "",
-				size: 0,
-				listens: 0,
-				last_updated: 0,
-				explicit: false,
-				followed: false,
-				official: false,
-				restricted: false,
-				access_hash: route.query.access_hash as string || "",
-				follow_hash: "",
-				edit_hash: "",
-				list: []
-			});
-
-			return;
-		}
-		
-		// Приоритет 7: только текущий трек (fallback)
-		contextSongs = [props.audio];
-	}
-	
-	// Используем универсальный метод для воспроизведения из очереди
-	// Если playlistToUse не установлен, используем current или playing плейлист
-	await playFromQueue(props.audio, contextSongs, playlistToUse || currentPlaylist || playingPlaylist || undefined);
+	emit("click");
 };
 
 const handleContextMenu = (event: MouseEvent) => {
-	// На мобильных устройствах используем долгое нажатие для открытия модального окна
 	if (isMobile.value) {
 		return;
 	}
@@ -409,6 +230,7 @@ const handleContextMenu = (event: MouseEvent) => {
 
 	showContextMenu.value = true;
 	contextMenuJustClosed.value = false;
+	emit("context-menu", event);
 };
 
 const handleContextMenuClose = () => {
@@ -419,7 +241,10 @@ const handleContextMenuClose = () => {
 	}, 100);
 };
 
-let touchStartTime = 0;
+const handleAction = (action: string, data?: any) => {
+	emit("action", action, data);
+};
+
 let touchStartX = 0;
 let touchStartY = 0;
 let longPressTimer: NodeJS.Timeout | null = null;
@@ -428,20 +253,19 @@ const MOVE_THRESHOLD = 10;
 let isLongPress = false;
 
 const handleTouchStart = (event: TouchEvent) => {
-	if (!isMobile.value || isRestricted.value) {
+	if (!isMobile.value || isRestricted) {
 		return;
 	}
 
 	const touch = event.touches[0];
 	if (touch) {
-		touchStartTime = Date.now();
 		touchStartX = touch.clientX;
 		touchStartY = touch.clientY;
 		isLongPress = false;
 
 		longPressTimer = setTimeout(() => {
 			isLongPress = true;
-			openModal("songActions", { audio: props.audio });
+			emit("long-press");
 		}, LONG_PRESS_DURATION);
 	}
 };
@@ -471,7 +295,6 @@ const handleTouchEnd = (event: TouchEvent) => {
 		longPressTimer = null;
 	}
 
-	// Если был долгий тап, предотвращаем обычный клик
 	if (isLongPress) {
 		event.preventDefault();
 		isLongPress = false;
@@ -504,7 +327,7 @@ const handleTouchCancel = () => {
 		background-color: rgba(233, 0, 63, 0.08);
 
 		.song-index {
-			color: var(--secondary, #e9003f);
+			color: rgba(233, 0, 63, 0.6);
 		}
 
 		.song-info-title {
@@ -689,16 +512,11 @@ const handleTouchCancel = () => {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 18px;
-		height: 18px;
 		z-index: 1;
 		pointer-events: none;
-		background: var(--secondary, #e9003f);
-		border-radius: 50%;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 		
 		:deep(svg) {
-			color: var(--text, #fff);
+			color: rgba(233, 0, 63, 0.6);
 		}
 	}
 

@@ -31,10 +31,10 @@
 							</button>
 						</div>
 
-						<span class="nav-item-subitem-text">{{ playlist.title }}</span>
+						<span class="nav-item-subitem-text" v-text="playlist.title" />
 						
 						<div v-if="playlistPlayingStates[playlist.raw_id]" class="nav-item-subitem-playing-indicator">
-							<Icon name="mdi:volume-high" size="10" />
+							<Icon name="mdi:volume-high" size="16" />
 						</div>
 					</NuxtLink>
 				</div>
@@ -44,8 +44,9 @@
 </template>
 
 <script setup lang="ts">
-import { usePlaylist } from "~/composables/usePlaylist";
 import { usePlayerStore } from "~/stores/player";
+import { usePlaylistStore } from "~/stores/playlist";
+import { storeToRefs } from "pinia";
 import Cover from "~/components/Cover.vue";
 
 const props = defineProps<{
@@ -56,7 +57,8 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
-const { playing } = usePlaylist();
+const playlistStore = usePlaylistStore();
+const { playing } = storeToRefs(playlistStore);
 const playerStore = usePlayerStore();
 
 const isPlaylistActive = (playlist: any): boolean => {
@@ -228,6 +230,11 @@ const handlePlaylistPlay = async (playlist: any) => {
 		color: var(--secondary, #e9003f);
 		background: transparent;
 	}
+
+	.nav-item-subitem-wrapper.active:hover & {
+		color: var(--secondary, #e9003f);
+		background: var(--hover, #2a2a2a);
+	}
 }
 
 .nav-item-subitem-cover {
@@ -312,18 +319,10 @@ const handlePlaylistPlay = async (playlist: any) => {
 	justify-content: center;
 	margin-left: auto;
 	margin-right: 8px;
-	width: 16px;
-	height: 16px;
-	background: var(--secondary, #e9003f);
-	border-radius: 50%;
 	flex-shrink: 0;
 
 	@media (max-width: 600px) {
 		display: none;
-	}
-
-	:deep(svg) {
-		color: var(--text, #fff);
 	}
 }
 

@@ -1,7 +1,7 @@
 <template>
 	<div class="song-actions" @click.stop>
 	<button
-		v-if="songProps.canAdd"
+		v-if="canAdd"
 		class="action-button"
 		@click="handleAdd"
 		title="Добавить в библиотеку"
@@ -66,29 +66,27 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { storeToRefs } from "pinia";
 import type { TAudio } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useModal } from "~/composables/useModal";
-import { useSongProps } from "~/composables/useSongProps";
-import { useSongDelete } from "~/composables/useSongDelete";
-import { useSongAdd } from "~/composables/useSongAdd";
+import { useSongsContext } from "~/composables/useSongsContext";
 import { useIsTauri } from "~/composables/useIsTauri";
-import { navigateToSimilarTracks } from "~/utils/navigation";
+import { useSettingsStore } from "~/stores/settings";
+import { usePlaylistStore } from "~/stores/playlist";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { downloadAudio, shareAudio, getSimilarTracks } = useAudioActions();
-const { openModal } = useModal();
-const { generateSongProps } = useSongProps();
-const songsContext = useSongsContext();
-const { handleDelete: deleteSong, getDeleteTitle, canDelete: canDeleteSong } = useSongDelete();
-const { handleAdd: addSong } = useSongAdd();
-const { isTauri } = useIsTauri();
-const { settings } = useSettings();
+const emit = defineEmits<{
+	action: [action: string, data?: any];
+}>();
 
-// Получаем актуальный трек из songsContext для реактивности
+const songsContext = useSongsContext();
+const playlistStore = usePlaylistStore();
+const { isTauri } = useIsTauri();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+
 const audio = computed(() => {
 	if (songsContext?.value) {
 		const found = songsContext.value.find(t => t.id === props.audio.id);
@@ -99,25 +97,24 @@ const audio = computed(() => {
 	return props.audio;
 });
 
-const songProps = computed(() => {
-	const result = generateSongProps(audio.value);
-	return result;
+const canAdd = computed(() => {
+	return Boolean(audio.value.canAdd);
 });
 
 const canDelete = computed(() => {
-	return canDeleteSong(audio.value, songProps.value);
+	return playlistStore.canDelete(audio.value, { canDelete: Boolean(audio.value.canDelete) });
 });
 
 const deleteTitle = computed(() => {
-	return getDeleteTitle(audio.value);
+	return playlistStore.getDeleteTitle(audio.value);
 });
 
 const canEdit = computed(() => {
-	return audio.value.can_edit;
+	return Boolean(audio.value.canEdit);
 });
 
 const hasLyrics = computed(() => {
-	return Boolean(audio.value.lyrics);
+	return Boolean(audio.value.hasLyrics);
 });
 
 const canDownload = computed(() => {
@@ -125,38 +122,35 @@ const canDownload = computed(() => {
 });
 
 const canShare = computed(() => {
-	return !audio.value.is_restriction;
+	return Boolean(audio.value.canShare);
 });
 
-const handleAdd = async () => {
-	await addSong(audio.value);
+const handleAdd = () => {
+	emit("action", "add", audio.value);
 };
 
-const handleDelete = async () => {
-	await deleteSong(audio.value);
+const handleDelete = () => {
+	emit("action", "delete", audio.value);
 };
 
 const handleEdit = () => {
-	openModal("editTrack", { audio: audio.value });
+	emit("action", "edit", audio.value);
 };
 
 const handleLyrics = () => {
-	openModal("lyrics", { audio: audio.value });
+	emit("action", "lyrics", audio.value);
 };
 
-const handleDownload = async () => {
-	await downloadAudio(audio.value).catch(console.error);
+const handleDownload = () => {
+	emit("action", "download", audio.value);
 };
 
 const handleShare = () => {
-	openModal("shareAudio", { audio: audio.value });
+	emit("action", "share", audio.value);
 };
 
-const handleSimilar = async () => {
-	const result = await getSimilarTracks(audio.value).catch(() => null);
-	if (result) {
-		navigateToSimilarTracks(audio.value);
-	}
+const handleSimilar = () => {
+	emit("action", "similar", audio.value);
 };
 </script>
 

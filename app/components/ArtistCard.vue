@@ -9,9 +9,7 @@
 		</div>
 
 		<div class="artist-card-info">
-			<div class="artist-card-name" :title="artist.name">
-				{{ artist.name }}
-			</div>
+			<div class="artist-card-name" :title="artist.name" v-once v-text="artist.name" />
 		</div>
 	</div>
 </template>
@@ -27,19 +25,12 @@ const emit = defineEmits<{
 	click: [artist: TArtist];
 }>();
 
-const coverSize = computed(() => {
-	if (typeof window === "undefined") {
-		return 160;
-	}
+const coverSize = typeof window === "undefined" ? 160 : (() => {
 	const width = window.innerWidth;
-	if (width <= 480) {
-		return 80;
-	}
-	if (width <= 768) {
-		return 100;
-	}
+	if (width <= 480) return 80;
+	if (width <= 768) return 100;
 	return 160;
-});
+})();
 
 const handleClick = () => {
 	emit("click", props.artist);

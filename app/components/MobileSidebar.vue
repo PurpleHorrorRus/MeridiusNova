@@ -35,7 +35,7 @@
 				>
 					<Icon :name="item.icon" size="24" />
 					<ClientOnly>
-						<span class="nav-item-text">{{ item.label }}</span>
+						<span class="nav-item-text" v-text="item.label" />
 						<template #fallback>
 							<span class="nav-item-text"></span>
 						</template>
@@ -59,7 +59,7 @@
 						{{ userName.charAt(0).toUpperCase() }}
 					</div>
 					<div class="user-info">
-						<div class="user-name">{{ userName }}</div>
+						<div class="user-name" v-text="userName" />
 						<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
 					</div>
 					<Icon name="mdi:chevron-down" size="20" class="user-chevron" />
@@ -78,7 +78,7 @@
 						{{ userName.charAt(0).toUpperCase() }}
 					</div>
 					<div class="user-info">
-						<div class="user-name">{{ userName }}</div>
+						<div class="user-name" v-text="userName" />
 						<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
 					</div>
 				</div>
@@ -112,15 +112,19 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import { useEventListener } from "~/composables/useEventListener";
 import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
 
 const { getString } = useStrings();
 const route = useRoute();
 const vkStore = useVkStore();
-const { settings, load, updateSection } = useSettings();
-const { openSettings } = useModal();
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "~/stores/settings";
+
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+const modalStore = useModalStore();
 
 const userId = computed(() => vkStore.user_id || 0);
 const searchQuery = ref("");
@@ -179,19 +183,17 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	}
 };
 
-onMounted(async () => {
-	await load();
-	await loadAccounts();
-});
-
-import { loadUserAccounts } from "~/utils/accounts";
-import { getUserFullName } from "~/utils/user";
-
 const loadAccounts = async () => {
-	const accountIds = settings.value.vk.accounts.map(account => account.user);
-	const loadedAccounts = await loadUserAccounts(accountIds);
+	const vkStore = useVkStore();
+	const accountIds = settings.value.vk.accounts.map(account => account.user).filter((id): id is number => typeof id === "number");
+	const loadedAccounts = await vkStore.loadUserAccounts(accountIds);
 	accounts.value.push(...loadedAccounts);
 };
+
+onMounted(async () => {
+	await settingsStore.load();
+	await loadAccounts();
+});
 
 const getAccountName = (account: any): string => {
 	return getUserFullName(account, "User");
@@ -200,7 +202,7 @@ const getAccountName = (account: any): string => {
 const switchAccount = async (account: any) => {
 	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === account.id);
 	if (accountIndex >= 0) {
-		updateSection("vk", { active: accountIndex });
+		settingsStore.updateSection("vk", { active: accountIndex });
 		showAccountMenu.value = false;
 		await navigateTo("/?reload=1");
 	}

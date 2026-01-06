@@ -1,8 +1,8 @@
 <template>
 	<div class="fullscreen-timeline">
 		<div class="fullscreen-timeline-time">
-			<span class="time-current-fullscreen">{{ formatTime(currentTime) }}</span>
-			<span class="time-duration-fullscreen">{{ formatTime(duration) }}</span>
+			<span class="time-current-fullscreen">{{ playerStore.formatTime(currentTime) }}</span>
+			<span class="time-duration-fullscreen">{{ playerStore.formatTime(duration) }}</span>
 		</div>
 		<div 
 			class="fullscreen-timeline-track" 
@@ -23,17 +23,20 @@
 			class="fullscreen-timeline-tooltip"
 			:style="{ left: `${tooltipPosition}%` }"
 		>
-			{{ formatTime(tooltipTime) }}
+			{{ playerStore.formatTime(tooltipTime) }}
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { useAudio } from "~/composables/useAudio";
 import { usePlayerTimeline } from "~/composables/usePlayerTimeline";
 
-const { currentTime, duration, progress } = useAudio();
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
+
+const playerStore = usePlayerStore();
+const { currentTime, duration, progress } = storeToRefs(playerStore);
 
 const {
 	throttledProgress,
@@ -45,8 +48,7 @@ const {
 	handleProgressHover,
 	handleProgressTouch,
 	handleProgressTouchMove,
-	handleProgressTouchEnd,
-	formatTime
+	handleProgressTouchEnd
 } = usePlayerTimeline(100);
 
 watch(progress, (newProgress) => {

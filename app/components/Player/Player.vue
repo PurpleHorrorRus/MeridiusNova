@@ -26,7 +26,6 @@
 import { ref, onUnmounted } from "vue";
 import { useEventListener } from "~/composables/useEventListener";
 import { storeToRefs } from "pinia";
-import { useAudio } from "~/composables/useAudio";
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { provideSongsContext } from "~/composables/useSongsContext";
@@ -38,12 +37,12 @@ import PlayerRight from "~/components/Player/PlayerRight.vue";
 import PlayerCompact from "~/components/Player/PlayerCompact.vue";
 import FullscreenPlayer from "~/components/Player/FullscreenPlayer.vue";
 
-const { currentSong } = useAudio();
+const playerStore = usePlayerStore();
+const { song: currentSong } = storeToRefs(playerStore);
 
 const playlistStore = usePlaylistStore();
-const playerStore = usePlayerStore();
 
-// Provide the songs context before useUpdateTrack to fix the injection warning
+// Provide the songs context
 // Используем storeToRefs для сохранения реактивности
 const { playingSongs } = storeToRefs(playlistStore);
 provideSongsContext(playingSongs);

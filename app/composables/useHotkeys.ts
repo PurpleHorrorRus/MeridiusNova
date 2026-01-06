@@ -59,7 +59,8 @@ const createHandler = (action: string, handler: () => void) => {
 export const useHotkeys = () => {
 	const playerStore = usePlayerStore();
 	const playlistStore = usePlaylistStore();
-	const { settings, updateSection } = useSettings();
+		const settingsStore = useSettingsStore();
+		const { settings } = storeToRefs(settingsStore);
 
 	const actionHandlers: Record<string, () => void> = {
 		playpause: createHandler("playpause", () => {
@@ -87,7 +88,7 @@ export const useHotkeys = () => {
 		}),
 
 		volmute: createHandler("volmute", () => {
-			updateSection("player", {
+			settingsStore.updateSection("player", {
 				mute: !settings.value.player.mute
 			});
 			playerStore.setVolume(settings.value.player.mute ? 0 : playerStore.volume);

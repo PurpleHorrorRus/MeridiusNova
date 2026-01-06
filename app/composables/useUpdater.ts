@@ -1,7 +1,10 @@
+import { storeToRefs } from "pinia";
 import { isTauri } from "~/utils/tauri";
+import { useSettingsStore } from "~/stores/settings";
 
 export const useUpdater = () => {
-	const { settings, updateSection } = useSettings();
+	const settingsStore = useSettingsStore();
+	const { settings } = storeToRefs(settingsStore);
 	const checking = ref(false);
 	const updateAvailable = ref(false);
 	const updateError = ref<string | null>(null);
@@ -39,7 +42,7 @@ export const useUpdater = () => {
 	};
 
 	const setUpdateChannel = async (channel: "production" | "beta" | "development") => {
-		await updateSection("general", { updateChannel: channel });
+		await settingsStore.updateSection("general", { updateChannel: channel });
 	};
 
 	const checkForUpdates = async (): Promise<boolean> => {

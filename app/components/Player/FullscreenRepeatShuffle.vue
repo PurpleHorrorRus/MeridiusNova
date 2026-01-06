@@ -21,16 +21,16 @@
 </template>
 
 <script setup lang="ts">
-import { usePlaylist } from "~/composables/usePlaylist";
-import { usePlaylistStore } from "~/stores/playlist";
+import { storeToRefs } from "pinia";
+
 import { useStrings } from "~/composables/useStrings";
-import { useIsMobile } from "~/composables/useIsMobile";
+
+const playlistStore = usePlaylistStore();
 
 const { getString } = useStrings();
 const t = getString;
-const playlistStore = usePlaylistStore();
-const { repeat, shuffle } = usePlaylist();
-const { isMobile } = useIsMobile();
+
+const { repeat, shuffle } = storeToRefs(playlistStore);
 </script>
 
 <style scoped lang="scss">

@@ -87,7 +87,8 @@ import { useFFmpegStore } from "~/stores/ffmpeg";
 
 const { getString } = useStrings();
 const ffmpegStore = useFFmpegStore();
-const { settings, updateSection } = useSettings();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
@@ -108,7 +109,7 @@ const installFFmpeg = async () => {
 
 const updateDownloadEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("download", { enable: target.checked });
+	settingsStore.updateSection("download", { enable: target.checked });
 };
 
 const chooseDownloadPath = async () => {
@@ -120,14 +121,14 @@ const chooseDownloadPath = async () => {
 		});
 
 		if (selected && typeof selected === "string") {
-			updateSection("download", { path: selected });
+			settingsStore.updateSection("download", { path: selected });
 		}
 	}
 };
 
 const updateTemplate = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	updateSection("download", { template: target.value });
+	settingsStore.updateSection("download", { template: target.value });
 };
 </script>
 

@@ -1,9 +1,10 @@
 import { Client } from "@xhayper/discord-rpc";
 import { ActivityType } from "discord-api-types/v10";
 
+import { storeToRefs } from "pinia";
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
-import { useSettings } from "~/composables/useSettings";
+import { useSettingsStore } from "./settings";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
@@ -33,9 +34,9 @@ export const useDiscordStore = defineStore("discord", {
 				return true;
 			}
 
-			const { settings } = useSettings();
+			const settingsStore = useSettingsStore();
 
-			if (!settings.general.discord.enable) {
+			if (!settingsStore.settings.general.discord.enable) {
 				return false;
 			}
 
@@ -67,9 +68,9 @@ export const useDiscordStore = defineStore("discord", {
 		},
 
 		async setActivity(song?: TAudio) {
-			const { settings } = useSettings();
+			const settingsStore = useSettingsStore();
 
-			if (!settings.value.general.discord.enable) {
+			if (!settingsStore.settings.general.discord.enable) {
 				return false;
 			}
 
@@ -92,14 +93,15 @@ export const useDiscordStore = defineStore("discord", {
 
 			const playlist = playlistStore.playing || playlistStore.current;
 
+			const albumThumb = currentSong.album && typeof currentSong.album === "object" && !Array.isArray(currentSong.album) && "thumb" in currentSong.album && currentSong.album.thumb && typeof currentSong.album.thumb === "object" && "photo_600" in currentSong.album.thumb
+				? currentSong.album.thumb.photo_600
+				: undefined;
+
 			const activity: TDiscordActivity = {
 				type: ActivityType.Listening,
 				details: currentSong.performer || "Meridius",
 				state: currentSong.title,
-				largeImageKey: currentSong.album && typeof currentSong.album === "object" && currentSong.album.thumb?.photo_600
-					? currentSong.album.thumb.photo_600
-					: (currentSong.coverUrl_p && !/\.svg/.test(currentSong.coverUrl_p) ? currentSong.coverUrl_p : "")
-					|| "meridiushq"
+				largeImageKey: albumThumb || (currentSong.coverUrl_p && !/\.svg/.test(currentSong.coverUrl_p) ? currentSong.coverUrl_p : "") || "meridiushq"
 			};
 
 			if (playlist && playlist.playlist_id && playlist.playlist_id !== -1) {
@@ -107,12 +109,12 @@ export const useDiscordStore = defineStore("discord", {
 				activity.smallImageKey = playlist.cover_url || "meridiushq";
 			}
 
-			if (!playerStore.paused && settings.value.general.discord.timeline) {
+			if (!playerStore.paused && settingsStore.settings.general.discord.timeline) {
 				activity.startTimestamp = Date.now() - playerStore.currentTime * 1000;
 				activity.endTimestamp = Date.now() + (currentSong.duration - playerStore.currentTime) * 1000;
 			}
 
-			if (settings.value.general.discord.reverse) {
+			if (settingsStore.settings.general.discord.reverse) {
 				const details = activity.details;
 				activity.details = activity.state;
 				activity.state = details;
@@ -139,7 +141,6 @@ export const useDiscordStore = defineStore("discord", {
 
 		async throttle(): Promise<number> {
 			const now = Date.now();
-			const { settings } = useSettings();
 			const delay = 2000; // 2 секунды задержка по умолчанию
 			const defaultDelay = 500; // 500мс минимальная задержка
 

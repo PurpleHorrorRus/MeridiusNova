@@ -2,7 +2,7 @@
 	<nav class="sidebar-nav">
 		<div class="nav-section">
 			<div class="nav-section-header">
-				<span class="nav-section-title">{{ getString("navigation.myLibrary") }}</span>
+				<span class="nav-section-title" v-text="getString('navigation.myLibrary')" />
 				<button
 					class="nav-section-header-button"
 					@click.stop="toggleLibraryExpanded"
@@ -25,14 +25,14 @@
 					:class="{ active: getCustomActive(item.path) }"
 				>
 					<Icon :name="item.icon" size="20" />
-					<span class="nav-item-text">{{ item.label }}</span>
+					<span class="nav-item-text" v-text="item.label" />
 				</NuxtLink>
 			</div>
 		</div>
 
 		<div class="nav-section nav-section-playlists">
 			<div class="nav-section-header">
-				<span class="nav-section-title">{{ getString("navigation.playlists") }}</span>
+				<span class="nav-section-title" v-text="getString('navigation.playlists')" />
 				<div class="nav-section-header-actions">
 					<button
 						class="nav-section-header-button"
@@ -67,15 +67,16 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
 import SidebarPlaylists from "~/components/Navigation/SidebarPlaylists.vue";
 import CreatePlaylistModal from "~/components/Modals/CreatePlaylistModal.vue";
 
 const { getString } = useStrings();
 const route = useRoute();
 const vkStore = useVkStore();
-const { updateSection, settings, load } = useSettings();
-const { openCustom } = useModal();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+const modalStore = useModalStore();
 
 const props = defineProps<{
 	userPlaylists: any[];
@@ -124,21 +125,21 @@ const getCustomActive = (path: string): boolean => {
 
 const toggleLibraryExpanded = async () => {
 	libraryExpanded.value = !libraryExpanded.value;
-	await updateSection("appearance", {
+	await settingsStore.updateSection("appearance", {
 		sidebarLibraryExpanded: libraryExpanded.value
-	});
+	} as any);
 };
 
 const togglePlaylistsExpanded = async () => {
 	const newValue = !props.playlistsExpanded;
 	emit("update:playlistsExpanded", newValue);
-	await updateSection("appearance", {
+	await settingsStore.updateSection("appearance", {
 		sidebarPlaylistsExpanded: newValue
 	});
 };
 
 const handleCreatePlaylist = () => {
-	openCustom(CreatePlaylistModal, {}, {
+	modalStore.openCustom(CreatePlaylistModal, {}, {
 		onConfirm: async () => {
 			await vkStore.refreshPlaylists();
 			emit("playlist-created");
@@ -147,8 +148,8 @@ const handleCreatePlaylist = () => {
 };
 
 onMounted(async () => {
-	await load();
-	libraryExpanded.value = Boolean(settings.value.appearance.sidebarLibraryExpanded ?? true);
+	await settingsStore.load();
+	libraryExpanded.value = Boolean((settings.value.appearance as any).sidebarLibraryExpanded ?? true);
 });
 </script>
 

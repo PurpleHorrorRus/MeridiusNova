@@ -1,18 +1,28 @@
 <template>
 	<button
-		@click="openSettings"
+		@click="handleClick"
 		class="sidebar-settings-button"
 	>
 		<Icon name="mdi:cog" size="24" />
-		<span class="sidebar-settings-text">{{ getString("navigation.settings") }}</span>
+		<span class="sidebar-settings-text" v-text="getString('navigation.settings')" />
 	</button>
 </template>
 
 <script setup lang="ts">
-import { useModal } from "~/composables/useModal";
+import { useModalStore } from "~/stores/modal";
+import { useIsMobile } from "~/composables/useIsMobile";
 
 const { getString } = useStrings();
-const { openSettings } = useModal();
+const modalStore = useModalStore();
+const { isMobile } = useIsMobile();
+
+const handleClick = () => {
+	if (isMobile.value) {
+		navigateTo("/settings");
+	} else {
+		modalStore.openSettings();
+	}
+};
 </script>
 
 <style scoped lang="scss">

@@ -1,11 +1,16 @@
 import { ref, toRefs } from "vue";
-import { useAudio } from "~/composables/useAudio";
-import { useSettings } from "~/composables/useSettings";
+import { storeToRefs } from "pinia";
+import { usePlayerStore } from "~/stores/player";
+import { useSettingsStore } from "~/stores/settings";
 
 export const useVolumeSlider = () => {
-	const { volume, muted, setVolume, toggleMute } = useAudio();
+	const playerStore = usePlayerStore();
+	const { volume, muted } = storeToRefs(playerStore);
+	const setVolume = (volume: number) => playerStore.setVolume(volume);
+	const toggleMute = () => playerStore.toggleMute();
 	
-	const { settings } = useSettings();
+	const settingsStore = useSettingsStore();
+	const { settings } = storeToRefs(settingsStore);
 
 	const volumeSliderRef = ref<HTMLElement | null>(null);
 	const volumeRangeInputRef = ref<HTMLInputElement | null>(null);
