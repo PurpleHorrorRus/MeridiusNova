@@ -1,6 +1,6 @@
 services:
   meridius: &meridius
-    # image: infinitehorror/meridius-nova:nightly
+    image: infinitehorror/meridius-nova:nightly
 
     build:
       context: .
