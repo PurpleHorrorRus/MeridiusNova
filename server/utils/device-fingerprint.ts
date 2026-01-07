@@ -17,7 +17,5 @@ export function generateSessionId(): string {
 }
 
 export function verifyDeviceFingerprint(event: H3Event, storedFingerprint: string): boolean {
-	const currentFingerprint = generateDeviceFingerprint(event);
-	return currentFingerprint === storedFingerprint;
+	return generateDeviceFingerprint(event) === storedFingerprint;
 }
-

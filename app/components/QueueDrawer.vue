@@ -310,10 +310,6 @@ useEventListener(document, "keydown", handleEscape);
 		height: 64px;
 		border-radius: 10px;
 	}
-
-	.queue-drawer-current-playlist:hover & {
-		transform: scale(1.05);
-	}
 }
 
 .queue-drawer-current-cover-image {

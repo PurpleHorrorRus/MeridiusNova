@@ -42,6 +42,7 @@ export default defineEventHandler(async event => {
 
 	if (isExpired) {
 		const webToken = await webTokenPost(event);
+
 		if (webToken && typeof webToken === "object" && "user_id" in webToken) {
 			event.context.user = { id: (webToken as TWebTokenResponse["data"]).user_id };
 		}

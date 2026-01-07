@@ -20,6 +20,20 @@ export type TWebTokenResponse = {
 	};
 };
 
+export type TWebTokenError = {
+	type: "error";
+	error_code: string;
+	error_info: string;
+	error_msg: string;
+};
+
+export type TDecodedToken = {
+	access_token: string;
+	user_id: number;
+	sessionId: string;
+	deviceFingerprint: string
+};
+
 export type TApiResponse<T> = {
 	success: boolean;
 	data: T;

@@ -4,12 +4,11 @@ import type { TCookie } from "~~/server/types/auth";
 import type { TAuthSession } from "~~/server/utils/types";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
-import { configuration, getHttpInstance } from "~~/server/utils/http";
+import { configuration, getHttpInstance, migrateCookies } from "~~/server/utils/http";
 import { cookieSignOptions } from "./web-token.post";
 
 export default defineEventHandler(async (event) => {
-	const userId = event.context.user?.id;
-	const http = getHttpInstance(userId);
+	const http = getHttpInstance();
 	const config = useRuntimeConfig();
 
 	const userSession = await getUserSession(event);
@@ -80,6 +79,7 @@ export default defineEventHandler(async (event) => {
 			throw createError({
 				statusCode: 400,
 				statusMessage: errorInfo,
+
 				data: {
 					error_code: errorCode,
 					error_info: errorInfo,
@@ -138,6 +138,8 @@ export default defineEventHandler(async (event) => {
 				}
 			});
 		}
+
+		migrateCookies(webToken.user_id);
 
 		const sessionId = generateSessionId();
 		const deviceFingerprint = generateDeviceFingerprint(event);

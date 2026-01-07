@@ -34,6 +34,7 @@ let trayDestroy: (() => Promise<void>) | null = null;
 onMounted(async () => {
 	if (await authInit.initialize()) {
 		const savedRedirect = getRedirectPath();
+
 		if (savedRedirect) {
 			if (route.fullPath !== savedRedirect) {
 				await navigateTo(savedRedirect);
@@ -51,9 +52,10 @@ onMounted(async () => {
 			trayDestroy = tray.destroyTray;
 		}
 	} else {
-		if (route.path !== "/auth") {
+		if (!["/", "/auth"].includes(route.path)) {
 			sessionStorage.setItem("authRedirect", route.fullPath);
 		}
+
 		await navigateTo("/auth");
 	}
 });

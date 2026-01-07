@@ -3,6 +3,14 @@ import { configuration, regex$1, getHttpInstance } from "~~/server/utils/http";
 
 export default defineEventHandler(async (event) => {
 	const userId = event.context.user?.id;
+
+	if (!userId) {
+		throw createError({
+			statusCode: 401,
+			statusMessage: "User ID is required"
+		});
+	}
+
 	const http = getHttpInstance(userId);
 
 	const qrPageResponse = await http.request<string>(`${configuration.endpoints.authPage}?${new URLSearchParams({

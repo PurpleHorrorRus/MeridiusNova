@@ -165,6 +165,7 @@ const getRedirectPath = (): string => {
 	}
 
 	const savedRedirect = sessionStorage.getItem("authRedirect");
+
 	if (savedRedirect) {
 		sessionStorage.removeItem("authRedirect");
 		return savedRedirect;
@@ -201,28 +202,28 @@ const check = async () => {
 };
 
 const stopPendingWatcher = watch(pending, (pending: boolean) => {
-		if (!pending && data.value?.url && !errorMessage.value) {
-			const checkInterval = isMobile.value ? 1500 : 3000;
-			intervalId.value = setInterval(check, checkInterval);
-		} else {
-			stopInterval();
-		}
-	}, { immediate: true });
+	if (!pending && data.value?.url && !errorMessage.value) {
+		const checkInterval = isMobile.value ? 1500 : 3000;
+		intervalId.value = setInterval(check, checkInterval);
+	} else {
+		stopInterval();
+	}
+}, { immediate: true });
 
 const stopIsExpiredWatcher = watch(isExpired, (expired) => {
-		if (expired) {
-			stopInterval();
-		} else if (!pending.value && data.value?.url && !intervalId.value && !errorMessage.value) {
-			const checkInterval = isMobile.value ? 1500 : 3000;
-			intervalId.value = setInterval(check, checkInterval);
-		}
-	});
+	if (expired) {
+		stopInterval();
+	} else if (!pending.value && data.value?.url && !intervalId.value && !errorMessage.value) {
+		const checkInterval = isMobile.value ? 1500 : 3000;
+		intervalId.value = setInterval(check, checkInterval);
+	}
+});
 
 const stopErrorMessageWatcher = watch(errorMessage, (error) => {
-		if (error) {
-			stopInterval();
-		}
-	});
+	if (error) {
+		stopInterval();
+	}
+});
 
 onMounted(() => {
 	if (typeof window !== "undefined") {

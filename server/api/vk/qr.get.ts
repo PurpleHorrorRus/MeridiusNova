@@ -2,8 +2,7 @@ import { ERequestMethod, type TAuthSession } from "~~/server/utils/types";
 import { configuration, regex$1, getHttpInstance } from "~~/server/utils/http";
 
 export default defineEventHandler(async (event) => {
-	const userId = event.context.user?.id;
-	const http = getHttpInstance(userId);
+	const http = getHttpInstance();
 
 	const qrPageResponse = await http.request<string>(`${configuration.endpoints.authPage}?${new URLSearchParams({
 		...configuration.auth.pageParams,

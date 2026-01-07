@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { getCookie } from "h3";
+import { createError, getCookie } from "h3";
 import { useRuntimeConfig } from "#imports";
 
 import type { EventHandlerRequest, H3Event } from "h3";
@@ -9,6 +9,7 @@ import type { HTMLElement } from "node-html-parser";
 import type { Http, TRequestOptions } from "./http";
 import type { IRequest, TGetCatalogSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "./types";
 import type { TAudio, TRawAudio } from "~~/server/api/vk/audio/types";
+import { TDecodedToken } from "../types/auth";
 
 // Используем динамический импорт с кэшированием для jsdom
 let jsdomCache: typeof import("jsdom").JSDOM | null = null;
@@ -21,6 +22,7 @@ async function loadJSDOM() {
 			return module.JSDOM;
 		});
 	}
+
 	return jsdomPromise;
 }
 
@@ -49,6 +51,14 @@ export class BaseRequest implements IRequest {
 
 	constructor(protected readonly event: H3Event<EventHandlerRequest>) {
 		const userId = event.context.user?.id;
+
+		if (!userId) {
+			throw createError({
+				statusCode: 401,
+				statusMessage: "User ID is required"
+			});
+		}
+
 		this.http = getHttpInstance(userId);
 	}
 
@@ -74,37 +84,24 @@ export class BaseRequest implements IRequest {
 		const { cookieSignOptions } = await import("~~/server/api/vk/web-token.post");
 		const { isValidSession, updateSessionAccess } = await import("./session-storage");
 
-		const decodedToken = await Promise.resolve(jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>).catch(() => {
+		const decodedToken = await Promise.resolve(jwt.verify(token, cookieKey, cookieSignOptions as object) as TDecodedToken).catch(() => {
 			throw new Error("Invalid token");
 		});
 
-		if (
-			!decodedToken ||
-			typeof decodedToken !== "object" ||
-			!("access_token" in decodedToken) ||
-			!("user_id" in decodedToken)
-		) {
-			throw new Error("Malformed token payload");
-		}
-
-		const decoded = decodedToken as { access_token: string; user_id: number; sessionId?: string; deviceFingerprint?: string };
-
-		const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
-		
-		if (isOldToken) {
+		if (!decodedToken.sessionId || !decodedToken.deviceFingerprint) {
 			throw new Error("Old token format - re-authentication required");
 		}
 
-		if (!isValidSession(decoded.sessionId, decoded.user_id)) {
+		if (!isValidSession(decodedToken.sessionId, decodedToken.user_id)) {
 			throw new Error("Invalid session - unauthorized access attempt");
 		}
 
-		updateSessionAccess(decoded.sessionId);
+		updateSessionAccess(decodedToken.sessionId);
 
 		const query = new URLSearchParams({
 			...params,
 			v: "5.269",
-			access_token: decoded.access_token
+			access_token: decodedToken.access_token
 		}).toString();
 
 		const response = await fetch(`https://api.vk.ru/method/${endpoint}?${query}`, {

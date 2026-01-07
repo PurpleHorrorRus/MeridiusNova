@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-import type { TCookie } from "~~/server/types/auth";
+import type { TCookie, TWebTokenResponse } from "~~/server/types/auth";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
 import { getHttpInstance } from "~~/server/utils/http";
@@ -45,8 +45,8 @@ export default defineEventHandler(async (event) => {
 		return false;
 	}
 
-	const userId = decoded.user_id;
-	const webToken = await getHttpInstance(userId).webToken(decoded.access_token);
+	const webToken = await getHttpInstance(decoded.user_id).webToken(decoded.access_token)
+		.catch(() => false) as TWebTokenResponse["data"] | false;
 
 	if (!webToken) {
 		return false;

@@ -10,7 +10,7 @@ import type { UserSession } from "#auth-utils";
 import type { H3Event, EventHandlerRequest } from "h3";
 
 import type { TFetchCorsRequestInit } from "./types";
-import type { TWebTokenResponse } from "../types/auth";
+import type { TWebTokenError, TWebTokenResponse } from "../types/auth";
 
 export type TRequestOptions = {
 	method?: ERequestMethod;
@@ -134,6 +134,7 @@ export class Http {
 		}
 
 		const request = await fetch(url, requestOptions);
+		console.log(url, requestOptions.body, (requestOptions.headers as any).Cookie, request.status);
 
 		if (request.headers.has("set-cookie")) {
 			for (const cookie of request.headers.getSetCookie()) {
@@ -246,23 +247,16 @@ export class Http {
 	}
 
 	public async webToken(access_token: string = ""): Promise<TWebTokenResponse["data"]> {
-		const response = await this.request<TWebTokenResponse | Record<string, any>>(configuration.endpoints.webToken, {
+		const response = await this.request<TWebTokenResponse | TWebTokenError>(configuration.endpoints.webToken, {
 			version: configuration.webToken.version,
 			app_id: configuration.webToken.app_id,
 			access_token
 		}, configuration.auth.options);
 
-		if ((response as any).type === "error" || (response as any).error_code) {
-			const error = response as { type: string; error_code: string; error_info?: string; error_msg?: string };
-			const errorInfo = error.error_info || error.error_msg || "Произошла ошибка при получении токена";
-			const errorCode = error.error_code || "unknown";
+		console.log(response);
 
-			throw {
-				error_code: errorCode,
-				error_info: errorInfo,
-				error_msg: errorInfo,
-				type: "error"
-			};
+		if ((response as TWebTokenError).type === "error" || (response as TWebTokenError).error_code) {
+			throw response;
 		}
 
 		return (response as TWebTokenResponse).data;
@@ -300,22 +294,27 @@ export class Http {
 	}
 }
 
-const httpInstances: Map<number | null, Http> = new Map();
+const solveCookiesPath = (userId: number): string => {
+	return userId !== -1
+		? path.resolve(os.homedir(), ".meridius", `cookies-${userId}.json`)
+		: path.resolve(os.homedir(), ".meridius", "cookies.json");
+};
 
-export const getHttpInstance = (userId?: number | null): Http => {
-	const instanceKey = userId ?? null;
+export const migrateCookies = (userId: number = -1): string => {
+	const defaultCookiePath = solveCookiesPath(-1);
+	const targetCookiePath = solveCookiesPath(userId);
 
-	if (!httpInstances.has(instanceKey)) {
-		let cookiesPath = path.resolve(os.homedir(), ".meridius");
-
-		if (!fs.pathExistsSync(cookiesPath)) {
-			fs.mkdirpSync(cookiesPath);
-		}
-
-		const cookieFileName = userId ? `cookies-${userId}.json` : "cookies.json";
-		cookiesPath = path.resolve(cookiesPath, cookieFileName);
-		httpInstances.set(instanceKey, new Http(cookiesPath));
+	if (userId !== -1 && fs.existsSync(defaultCookiePath)) {
+		fs.copyFileSync(defaultCookiePath, targetCookiePath);
+		fs.removeSync(defaultCookiePath);
 	}
 
-	return httpInstances.get(instanceKey)!;
+	return userId !== -1
+		? targetCookiePath
+		: defaultCookiePath;
+}
+
+export const getHttpInstance = (userId: number = -1): Http => {
+	const cookiesPath = solveCookiesPath(userId);
+	return new Http(cookiesPath);
 };
