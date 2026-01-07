@@ -10,86 +10,9 @@
 					class="queue-drawer"
 					@click.stop
 				>
-					<div class="queue-drawer-header">
-						<h2 class="queue-drawer-title">Очередь проигрывания</h2>
-						<div class="queue-drawer-header-actions">
-							<button
-								v-if="playlistStore.playingSongs.length > 0"
-								class="queue-drawer-clear-button"
-								@click="playlistStore.clear"
-								title="Очистить очередь"
-							>
-								<Icon name="mdi:delete-outline" size="20" />
-							</button>
-							<button
-								class="queue-drawer-close"
-								@click="playerStore.closeQueueDrawer"
-							>
-								<Icon name="mdi:close" size="24" />
-							</button>
-						</div>
-					</div>
-
-					<div v-if="playlistStore.playingSongs.length === 0" class="queue-drawer-empty">
-						<Icon name="mdi:playlist-music-outline" size="64" />
-						<p>Очередь пуста</p>
-					</div>
-
-					<div v-else class="queue-drawer-content">
-						<div 
-							v-if="playlistSource.title" 
-							class="queue-drawer-current-playlist"
-							:class="{ 'queue-drawer-current-playlist-clickable': playlistSource.canNavigate }"
-							@click="handleCoverClick"
-						>
-							<div class="queue-drawer-current-cover">
-								<img
-									:src="currentPlaylist?.cover_url || '/no-cover.webp'"
-									:alt="playlistSource.title"
-									class="queue-drawer-current-cover-image"
-								/>
-							</div>
-							<div class="queue-drawer-current-info">
-								<div class="queue-drawer-current-title" v-text="playlistSource.title" />
-								<div v-if="playlistSource.description" class="queue-drawer-current-description" v-text="playlistSource.description" />
-								<div class="queue-drawer-current-meta">
-									<span v-if="currentPlaylist?.author" class="queue-drawer-current-author" v-text="currentPlaylist.author.name" />
-									<span v-if="playlistStore.playingSongs.length > 0" class="queue-drawer-current-size">
-										{{ playlistStore.playingSongs.length }} треков
-									</span>
-									<span v-if="currentPlaylist?.listens && currentPlaylist.listens > 0" class="queue-drawer-current-listens">
-										{{ playlistStore.formatListens(currentPlaylist.listens) }} прослушиваний
-									</span>
-								</div>
-							</div>
-						</div>
-
-						<div ref="tracksContainerRef" class="queue-drawer-tracks">
-							<VirtualSongList
-								:items="playlistStore.playingSongs"
-								:item-height="56"
-								:overscan="10"
-								:scroll-container="tracksContainerRef"
-								ref="virtualListRef"
-							>
-								<template #default="{ visibleItems, startIndex }">
-									<VirtualSongItem
-										v-for="(audio, relativeIndex) in visibleItems"
-										:key="`queue-${audio.full_id}-${startIndex + relativeIndex}`"
-										:index="startIndex + relativeIndex"
-										@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
-									>
-										<Song
-											:audio="audio"
-											:data-queue-index="startIndex + relativeIndex"
-											:class="{ 'queue-drawer-track-active': (startIndex + relativeIndex) === playlistStore.currentIndex }"
-											@click="playFromQueue(audio, startIndex + relativeIndex)"
-										/>
-									</VirtualSongItem>
-								</template>
-							</VirtualSongList>
-						</div>
-					</div>
+					<QueueContent
+						@close="playerStore.closeQueueDrawer"
+					/>
 				</div>
 			</div>
 		</Transition>
@@ -97,48 +20,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import Song from "~/components/Song/Song.vue";
-import VirtualSongList from "~/components/VirtualSongList.vue";
-import VirtualSongItem from "~/components/VirtualSongItem.vue";
-import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { useEventListener } from "~/composables/useEventListener";
-import { useQueueScroll } from "~/utils/queue-scroll";
-import { storeToRefs } from "pinia";
-import type { TAudio } from "~~/server/api/vk/audio/types";
+import QueueContent from "~/components/QueueContent.vue";
 
 const playerStore = usePlayerStore();
-const playlistStore = usePlaylistStore();
-const { currentPlaylist, playlistSource } = storeToRefs(playlistStore);
-
-const tracksContainerRef = ref<HTMLElement | null>(null);
-const virtualListRef = ref<InstanceType<typeof VirtualSongList> | null>(null);
-
-// Скроллим к текущему треку при изменении индекса
-useQueueScroll(
-	tracksContainerRef,
-	() => playlistStore.currentIndex,
-	() => playerStore.isQueueDrawerOpen,
-	virtualListRef
-);
-
-const playFromQueue = async (audio: TAudio, index: number) => {
-	playlistStore.setCurrentIndex(index);
-	const songFromQueue = playlistStore.playingSongs[index];
-	if (songFromQueue) {
-		await playerStore.play(songFromQueue);
-	}
-};
-
-const handleCoverClick = () => {
-	if (!playlistSource.value.canNavigate || !playlistSource.value.link) {
-		return;
-	}
-
-	navigateTo(playlistSource.value.link);
-	playerStore.closeQueueDrawer();
-};
 
 const handleEscape = (event: KeyboardEvent) => {
 	if (event.key === "Escape" && playerStore.isQueueDrawerOpen) {
@@ -391,7 +277,7 @@ useEventListener(document, "keydown", handleEscape);
 }
 
 .queue-drawer-track-active {
-	background: var(--active, rgba(233, 0, 63, 0.1));
+	background: var(--active, rgba(233, 0, 63, 0.1)) !important;
 }
 
 .queue-drawer-enter-active,
@@ -414,4 +300,3 @@ useEventListener(document, "keydown", handleEscape);
 	transform: translateX(100%);
 }
 </style>
-

@@ -1,8 +1,8 @@
-import { ref, isRef, computed, watch, nextTick, onBeforeUnmount, type Ref } from "vue";
+import { ref, isRef, computed, watch, nextTick, onBeforeUnmount, type Ref, type ComputedRef } from "vue";
 
 export interface UseIntersectionObserverOptions {
 	threshold?: number | number[];
-	root?: Element | null | Ref<Element | null>;
+	root?: Element | null | Ref<Element | null> | ComputedRef<Element | null>;
 	rootMargin?: string;
 	enabled?: Ref<boolean> | (() => boolean);
 }

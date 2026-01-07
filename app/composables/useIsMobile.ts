@@ -1,4 +1,4 @@
-import { inject, provide, type Ref } from "vue";
+import { inject, provide, ref, computed, onMounted, onUnmounted, type Ref } from "vue";
 
 const MOBILE_BREAKPOINT = 768;
 const IS_MOBILE_KEY = Symbol("isMobile");

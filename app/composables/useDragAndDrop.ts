@@ -17,7 +17,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 	const ghostElement = ref<HTMLElement | null>(null);
 	const originalElementRect = ref<DOMRect | null>(null);
 
-	const isDisabled = options.isDisabled || (() => false);
+	const isDisabled = options.isDisabled ?? (() => false);
 
 	const handleMouseDown = (event: MouseEvent, index: number) => {
 		if (isDisabled() || event.button !== 0) {
@@ -29,11 +29,12 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			return;
 		}
 
+		const dragHandle = target.closest(".song-drag-handle") as HTMLElement || target;
 		dragStartPos.value = { x: event.clientX, y: event.clientY };
-		currentDragElement.value = target;
+		currentDragElement.value = dragHandle;
 
-		// Вычисляем смещение клика относительно элемента
-		const originalElement = target.querySelector(".song") as HTMLElement;
+		const originalElement = ((event.target as HTMLElement)?.closest(".song") || dragHandle.querySelector(".song")) as HTMLElement;
+		
 		if (originalElement) {
 			const rect = originalElement.getBoundingClientRect();
 			dragOffset.value = {
@@ -52,91 +53,81 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			const deltaX = Math.abs(moveEvent.clientX - dragStartPos.value.x);
 			const deltaY = Math.abs(moveEvent.clientY - dragStartPos.value.y);
 
-			// Начинаем drag только если мышь переместилась на достаточное расстояние
-			if (deltaX > 5 || deltaY > 5) {
-				if (!isDragging.value) {
-					isDragging.value = true;
-					draggedIndex.value = index;
+			if ((deltaX > 5 || deltaY > 5) && !isDragging.value) {
+				isDragging.value = true;
+				draggedIndex.value = index;
 
-					if (currentDragElement.value) {
-						// Создаем ghost-элемент
-						const originalElement = currentDragElement.value.querySelector(".song") as HTMLElement;
-						if (originalElement && dragOffset.value) {
-							const rect = originalElement.getBoundingClientRect();
-							originalElementRect.value = rect;
-							const ghost = originalElement.cloneNode(true) as HTMLElement;
-							
-							// Применяем стили к ghost
-							ghost.style.position = "fixed";
-							ghost.style.pointerEvents = "none";
-							ghost.style.zIndex = "10000";
-							ghost.style.opacity = "0.9";
-							ghost.style.transform = "rotate(2deg) scale(1.02)";
-							ghost.style.boxShadow = "0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(233, 0, 63, 0.2)";
-							ghost.style.width = `${rect.width}px`;
-							ghost.style.height = `${rect.height}px`;
-							// Используем смещение клика как якорь
-							ghost.style.left = `${moveEvent.clientX - dragOffset.value.x}px`;
-							ghost.style.top = `${moveEvent.clientY - dragOffset.value.y}px`;
-							ghost.style.transition = "none";
-							ghost.style.borderRadius = "8px";
-							ghost.style.background = "var(--bg-secondary, #181818)";
-
-							ghost.classList.add("drag-ghost");
-							
-							// Отключаем анимации и интерактивные элементы в ghost
-							const allElements = ghost.querySelectorAll("*");
-							allElements.forEach((el) => {
-								const htmlEl = el as HTMLElement;
-								htmlEl.style.pointerEvents = "none";
-								htmlEl.style.transition = "none";
+				if (currentDragElement.value && dragOffset.value) {
+					const songElement = currentDragElement.value.querySelector(".song") as HTMLElement || (currentDragElement.value.closest(".song-wrapper")?.querySelector(".song") as HTMLElement);
+					
+					if (songElement) {
+						const rect = songElement.getBoundingClientRect();
+						originalElementRect.value = rect;
+						const ghost = songElement.cloneNode(true) as HTMLElement;
+						
+						Object.assign(ghost.style, {
+							position: "fixed",
+							pointerEvents: "none",
+							zIndex: "10000",
+							opacity: "0.9",
+							transform: "rotate(2deg) scale(1.02)",
+							boxShadow: "0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(233, 0, 63, 0.2)",
+							width: `${rect.width}px`,
+							height: `${rect.height}px`,
+							left: `${moveEvent.clientX - dragOffset.value.x}px`,
+							top: `${moveEvent.clientY - dragOffset.value.y}px`,
+							transition: "none",
+							borderRadius: "8px",
+							background: "var(--bg-secondary, #181818)"
+						});
+						
+						ghost.classList.add("drag-ghost");
+						
+						ghost.querySelectorAll("*").forEach((el) => {
+							Object.assign((el as HTMLElement).style, {
+								pointerEvents: "none",
+								transition: "none"
 							});
-							
-							document.body.appendChild(ghost);
-							ghostElement.value = ghost;
-						}
-
-						currentDragElement.value.style.opacity = "0";
-						currentDragElement.value.style.visibility = "hidden";
-						currentDragElement.value.style.cursor = "move";
-						const songElement = currentDragElement.value.querySelector(".song") as HTMLElement;
-						if (songElement) {
-							songElement.style.pointerEvents = "none";
-						}
+						});
+						
+						document.body.appendChild(ghost);
+						ghostElement.value = ghost;
 					}
 
-					document.body.style.cursor = "move";
-					document.body.style.userSelect = "none";
+					Object.assign(currentDragElement.value.style, {
+						opacity: "0",
+						visibility: "hidden",
+						cursor: "move"
+					});
+					
+					const innerSong = currentDragElement.value.querySelector(".song") as HTMLElement;
+					if (innerSong) {
+						innerSong.style.pointerEvents = "none";
+					}
 				}
 
-				// Обновляем позицию ghost-элемента с учетом смещения клика
+				document.body.style.cursor = "move";
+				document.body.style.userSelect = "none";
+			}
+
+			if (isDragging.value) {
 				if (ghostElement.value && dragOffset.value) {
 					ghostElement.value.style.left = `${moveEvent.clientX - dragOffset.value.x}px`;
 					ghostElement.value.style.top = `${moveEvent.clientY - dragOffset.value.y}px`;
 				}
 
-				// Сначала проверяем, находится ли курсор над исходной позицией элемента
-				// Используем расширенную зону для более стабильного определения
 				let foundIndex: number | null = null;
+				
 				if (originalElementRect.value && draggedIndex.value !== null) {
 					const rect = originalElementRect.value;
-					const tolerance = 10; // Расширяем зону проверки на 10px с каждой стороны
-					const isOverOriginalPosition = 
-						moveEvent.clientX >= rect.left - tolerance &&
-						moveEvent.clientX <= rect.right + tolerance &&
-						moveEvent.clientY >= rect.top - tolerance &&
-						moveEvent.clientY <= rect.bottom + tolerance;
-					
-					if (isOverOriginalPosition) {
+					const tolerance = 10;
+					if (moveEvent.clientX >= rect.left - tolerance && moveEvent.clientX <= rect.right + tolerance && moveEvent.clientY >= rect.top - tolerance && moveEvent.clientY <= rect.bottom + tolerance) {
 						foundIndex = draggedIndex.value;
 					}
 				}
 				
-				// Если не нашли исходную позицию, ищем элемент под курсором
 				if (foundIndex === null) {
-					// Временно скрываем ghost, чтобы найти реальный элемент под ним
 					if (ghostElement.value) {
-						ghostElement.value.style.pointerEvents = "none";
 						ghostElement.value.style.display = "none";
 					}
 					
@@ -144,35 +135,27 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 					
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "";
-						ghostElement.value.style.pointerEvents = "none";
 					}
 					
-					if (elementBelow) {
-						const dragHandle = elementBelow.closest(".song-drag-handle") as HTMLElement;
-						if (dragHandle) {
-							const wrapper = dragHandle.closest(".song-wrapper") as HTMLElement;
-							if (wrapper) {
-								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
-								const newIndex = allWrappers.indexOf(wrapper);
-								if (newIndex !== -1) {
-									foundIndex = newIndex;
-								}
-							}
-						} else {
-							// Пытаемся найти wrapper напрямую
-							const wrapper = elementBelow.closest(".song-wrapper") as HTMLElement;
-							if (wrapper) {
-								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
-								const newIndex = allWrappers.indexOf(wrapper);
-								if (newIndex !== -1) {
-									foundIndex = newIndex;
+					if (elementBelow && draggedIndex.value !== null) {
+						const wrapper = (elementBelow.closest(".song-drag-handle")?.closest(".song-wrapper") || elementBelow.closest(".song-wrapper")) as HTMLElement;
+						
+						if (wrapper) {
+							const listContainer = wrapper.closest(".song-list, .song-list-virtualized") as HTMLElement;
+							if (listContainer) {
+								const allWrappers = Array.from(listContainer.querySelectorAll(".song-wrapper"));
+								const currentIndex = allWrappers.indexOf(wrapper);
+								
+								if (currentIndex !== -1) {
+									const wrapperRect = wrapper.getBoundingClientRect();
+									const insertIndex = Math.max(0, Math.min(allWrappers.length - 1, (moveEvent.clientY - wrapperRect.top < wrapperRect.height / 2 ? currentIndex : currentIndex + 1) - (currentIndex > draggedIndex.value ? 1 : 0)));
+									foundIndex = insertIndex;
 								}
 							}
 						}
 					}
 				}
 				
-				// Обновляем draggedOverIndex только если нашли новый индекс
 				if (foundIndex !== null && foundIndex !== draggedOverIndex.value) {
 					draggedOverIndex.value = foundIndex;
 				}
@@ -188,9 +171,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 			if (isDragging.value && draggedIndex.value !== null) {
 				let toIndex = draggedOverIndex.value;
 
-				// Если draggedOverIndex не установлен, пытаемся найти элемент под курсором
 				if (toIndex === null) {
-					// Временно скрываем ghost, чтобы найти реальный элемент под ним
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "none";
 					}
@@ -202,18 +183,12 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 					}
 					
 					if (elementBelow) {
-						const dragHandle = elementBelow.closest(".song-drag-handle") as HTMLElement;
-						if (dragHandle) {
-							const wrapper = dragHandle.closest(".song-wrapper") as HTMLElement;
-							if (wrapper) {
-								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
-								toIndex = allWrappers.indexOf(wrapper);
-							}
-						} else {
-							// Пытаемся найти wrapper напрямую
-							const wrapper = elementBelow.closest(".song-wrapper") as HTMLElement;
-							if (wrapper) {
-								const allWrappers = Array.from(document.querySelectorAll(".song-wrapper"));
+						const wrapper = (elementBelow.closest(".song-drag-handle")?.closest(".song-wrapper") || elementBelow.closest(".song-wrapper")) as HTMLElement;
+						
+						if (wrapper) {
+							const listContainer = wrapper.closest(".song-list, .song-list-virtualized") as HTMLElement;
+							if (listContainer) {
+								const allWrappers = Array.from(listContainer.querySelectorAll(".song-wrapper"));
 								toIndex = allWrappers.indexOf(wrapper);
 							}
 						}
@@ -239,11 +214,12 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 				}, 200);
 			}
 
-			// Сброс состояния
 			if (currentDragElement.value) {
-				currentDragElement.value.style.opacity = "";
-				currentDragElement.value.style.visibility = "";
-				currentDragElement.value.style.cursor = "";
+				Object.assign(currentDragElement.value.style, {
+					opacity: "",
+					visibility: "",
+					cursor: ""
+				});
 				const songElement = currentDragElement.value.querySelector(".song") as HTMLElement;
 				if (songElement) {
 					songElement.style.pointerEvents = "";
@@ -271,24 +247,17 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 		const originalItems = [...items.value];
 		const newItems = [...items.value];
 		const [movedItem] = newItems.splice(fromIndex, 1);
+		
+		if (movedItem) {
+			newItems.splice(toIndex, 0, movedItem);
+			items.value = newItems;
 
-		if (!movedItem) {
-			console.warn("[DragAndDrop] No item to move");
-			return;
-		}
-
-		newItems.splice(toIndex, 0, movedItem);
-
-		// Обновляем UI сразу для лучшего UX
-		items.value = newItems;
-
-		try {
-			await onReorder(newItems, originalItems, fromIndex, toIndex);
-		} catch (error) {
-			console.error("[DragAndDrop] onReorder failed, reverting", error);
-			// Откатываем изменения в случае ошибки
-			items.value = originalItems;
-			throw error;
+			try {
+				await onReorder(newItems, originalItems, fromIndex, toIndex);
+			} catch (error) {
+				items.value = originalItems;
+				throw error;
+			}
 		}
 	};
 

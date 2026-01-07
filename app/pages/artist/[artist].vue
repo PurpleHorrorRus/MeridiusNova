@@ -67,7 +67,12 @@
 
 			<div v-if="current.audios && current.audios.length > 0" class="section">
 				<h2>Треки</h2>
-				<SongList :songs="current.audios || []" />
+				<SongList
+					:songs="current.audios || []"
+					:virtualized="true"
+					:item-height="56"
+					:overscan="10"
+				/>
 			</div>
 		</div>
 	</div>

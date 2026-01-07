@@ -113,7 +113,7 @@ export const usePlaylistStore = defineStore("playlist", {
 
 		playlistSource: (state) => {
 			const playlist = state.playing || (state.current && state.playingSongs.length > 0 ? state.current : null);
-			
+
 			if (!playlist) {
 				return { title: "", description: "", canNavigate: false, link: undefined };
 			}
@@ -198,19 +198,19 @@ export const usePlaylistStore = defineStore("playlist", {
 				return;
 			}
 
-		// При смене плейлиста явно очищаем старые данные для освобождения памяти
-		this.loaded = [];
-		if (this.current?.list) {
-			this.current.list = [];
-		}
-		
-		// Устанавливаем новый плейлист
-		// Используем новый массив для list, чтобы не удерживать ссылки на старые данные
-		this.current = {
-			...normalizedPlaylist,
-			list: normalizedPlaylist.list ? [...normalizedPlaylist.list] : []
-		};
-		this.loaded = this.current.list || [];
+			// При смене плейлиста явно очищаем старые данные для освобождения памяти
+			this.loaded = [];
+			if (this.current?.list) {
+				this.current.list = [];
+			}
+
+			// Устанавливаем новый плейлист
+			// Используем новый массив для list, чтобы не удерживать ссылки на старые данные
+			this.current = {
+				...normalizedPlaylist,
+				list: normalizedPlaylist.list ? [...normalizedPlaylist.list] : []
+			};
+			this.loaded = this.current.list || [];
 		},
 
 		async setPlaying(playlist: TPlaylist) {
@@ -360,6 +360,37 @@ export const usePlaylistStore = defineStore("playlist", {
 		setCurrentIndex(index: number) {
 			if (index >= 0 && index < this.playingSongs.length) {
 				this.currentIndex = index;
+			}
+		},
+
+		reorderQueue(newOrder: TAudio[], originalOrder?: TAudio[], fromIndex?: number, toIndex?: number) {
+			if (!Array.isArray(newOrder) || newOrder.length === 0) {
+				return;
+			}
+
+			const currentSongFullId = this.currentIndex >= 0 && this.currentIndex < this.playingSongs.length
+				? this.playingSongs[this.currentIndex]?.full_id
+				: null;
+
+			this.playingSongs = newOrder;
+
+			for (let i = 0; i < this.playingSongs.length; i++) {
+				(this.playingSongs[i] as TAudio & { _index?: number })._index = i;
+			}
+
+			if (currentSongFullId) {
+				const newCurrentIndex = this.playingSongs.findIndex((songItem: TAudio) => songItem.full_id === currentSongFullId);
+				if (newCurrentIndex >= 0) {
+					this.currentIndex = newCurrentIndex;
+				} else if (this.currentIndex >= this.playingSongs.length) {
+					this.currentIndex = -1;
+				}
+			} else if (this.currentIndex >= this.playingSongs.length) {
+				this.currentIndex = -1;
+			}
+
+			if (this.playing) {
+				this.playing.list = this.playingSongs;
 			}
 		},
 
@@ -584,20 +615,20 @@ export const usePlaylistStore = defineStore("playlist", {
 							this.currentIndex = restoredIndex;
 						}
 					}
-					
+
 					this.originalSongsOrder = [];
 				}
 			}
-			
+
 			this.shuffle = !this.shuffle;
-			
+
 			const { useSettingsStore } = await import("~/stores/settings");
 			await useSettingsStore().updateSection("player", { random: this.shuffle });
 		},
 
 		async toggleRepeat() {
 			this.repeat = !this.repeat;
-			
+
 			const { useSettingsStore } = await import("~/stores/settings");
 			await useSettingsStore().updateSection("player", { repeat: this.repeat });
 		},
@@ -652,7 +683,7 @@ export const usePlaylistStore = defineStore("playlist", {
 					(audio as TAudio & { _index?: number })._index = newIndex;
 				}
 			}
-			
+
 			if (this.playing) {
 				this.playing.list = this.playingSongs;
 			}
@@ -713,16 +744,16 @@ export const usePlaylistStore = defineStore("playlist", {
 				method: "POST",
 				body: params
 			});
-			
+
 			if (result && this.userPlaylistsOwnerId === useVkStore().user_id) {
 				this.userPlaylists.push(result);
 			}
-			
+
 			if (isTauri() && typeof window !== "undefined") {
 				const { useTray } = await import("~/composables/useTray");
-				await useTray().loadPlaylists().catch(() => {});
+				await useTray().loadPlaylists().catch(() => { });
 			}
-			
+
 			return result;
 		},
 
@@ -737,7 +768,7 @@ export const usePlaylistStore = defineStore("playlist", {
 				method: "POST",
 				body: params
 			});
-			
+
 			if (this.userPlaylistsOwnerId !== null) {
 				const playlistIndex = this.userPlaylists.findIndex(p => p.playlist_id === params.playlist_id);
 				if (playlistIndex >= 0 && this.userPlaylists[playlistIndex]) {
@@ -752,12 +783,12 @@ export const usePlaylistStore = defineStore("playlist", {
 					}
 				}
 			}
-			
+
 			if (isTauri() && typeof window !== "undefined") {
 				const { useTray } = await import("~/composables/useTray");
-				await useTray().loadPlaylists().catch(() => {});
+				await useTray().loadPlaylists().catch(() => { });
 			}
-			
+
 			return result;
 		},
 
@@ -770,21 +801,21 @@ export const usePlaylistStore = defineStore("playlist", {
 					edit_hash: playlist.edit_hash
 				}
 			});
-			
+
 			if (result.success && this.userPlaylistsOwnerId === playlist.owner_id) {
-				const playlistIndex = this.userPlaylists.findIndex(p => 
+				const playlistIndex = this.userPlaylists.findIndex(p =>
 					p.playlist_id === playlist.playlist_id && p.owner_id === playlist.owner_id
 				);
 				if (playlistIndex >= 0) {
 					this.userPlaylists.splice(playlistIndex, 1);
 				}
 			}
-			
+
 			if (isTauri() && typeof window !== "undefined") {
 				const { useTray } = await import("~/composables/useTray");
-				await useTray().loadPlaylists().catch(() => {});
+				await useTray().loadPlaylists().catch(() => { });
 			}
-			
+
 			return result;
 		},
 
@@ -797,21 +828,21 @@ export const usePlaylistStore = defineStore("playlist", {
 					access_hash: playlist.access_hash || ""
 				}
 			});
-			
+
 			if (this.userPlaylistsOwnerId === playlist.owner_id) {
-				const playlistIndex = this.userPlaylists.findIndex(p => 
+				const playlistIndex = this.userPlaylists.findIndex(p =>
 					p.playlist_id === playlist.playlist_id && p.owner_id === playlist.owner_id
 				);
 				if (playlistIndex >= 0 && this.userPlaylists[playlistIndex]) {
 					this.userPlaylists[playlistIndex].followed = true;
 				}
 			}
-			
+
 			if (isTauri() && typeof window !== "undefined") {
 				const { useTray } = await import("~/composables/useTray");
-				await useTray().loadPlaylists().catch(() => {});
+				await useTray().loadPlaylists().catch(() => { });
 			}
-			
+
 			return result;
 		},
 
@@ -823,21 +854,21 @@ export const usePlaylistStore = defineStore("playlist", {
 					owner_id: playlist.owner_id
 				}
 			});
-			
+
 			if (this.userPlaylistsOwnerId === playlist.owner_id) {
-				const playlistIndex = this.userPlaylists.findIndex(p => 
+				const playlistIndex = this.userPlaylists.findIndex(p =>
 					p.playlist_id === playlist.playlist_id && p.owner_id === playlist.owner_id
 				);
 				if (playlistIndex >= 0 && this.userPlaylists[playlistIndex]) {
 					this.userPlaylists[playlistIndex].followed = false;
 				}
 			}
-			
+
 			if (isTauri() && typeof window !== "undefined") {
 				const { useTray } = await import("~/composables/useTray");
-				await useTray().loadPlaylists().catch(() => {});
+				await useTray().loadPlaylists().catch(() => { });
 			}
-			
+
 			return result;
 		},
 
@@ -953,11 +984,11 @@ export const usePlaylistStore = defineStore("playlist", {
 						...(accessHash ? { access_hash: accessHash } : {})
 					}
 				});
-				
+
 				// Сохраняем title и cover_url из исходного плейлиста
 				playlist.title = sourcePlaylist.title;
 				playlist.cover_url = sourcePlaylist.cover_url || playlist.cover_url;
-				
+
 				return playlist;
 			}
 
@@ -989,14 +1020,14 @@ export const usePlaylistStore = defineStore("playlist", {
 			if (startIndex !== undefined && startIndex >= 0 && startIndex < songs.length) {
 				// Находим трек по индексу в исходном списке
 				const targetSong = songs[startIndex];
-				
+
 				if (targetSong) {
 					// Используем поле _index из трека для быстрого доступа
 					const targetSongWithIndex = targetSong as TAudio & { _index?: number };
 					const filteredIndex = targetSongWithIndex._index !== undefined && targetSongWithIndex._index >= 0 && targetSongWithIndex._index < this.playingSongs.length
 						? targetSongWithIndex._index
 						: this.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
-					
+
 					if (filteredIndex >= 0) {
 						this.setCurrentIndex(filteredIndex);
 					} else {
@@ -1011,7 +1042,7 @@ export const usePlaylistStore = defineStore("playlist", {
 
 		async playFromQueue(song: TAudio, songs: TAudio[], playlist?: TPlaylist, forceUpdate = false) {
 			const playerStore = usePlayerStore();
-			
+
 			// Проверяем, не является ли трек уже частью играющего плейлиста
 			const isSamePlaylist = playlist && this.playing && this.playing.raw_id === playlist.raw_id;
 			// Используем поле _index из трека для быстрого доступа
@@ -1032,7 +1063,7 @@ export const usePlaylistStore = defineStore("playlist", {
 				// Используем трек из очереди, который уже имеет все данные (включая URL)
 				const songFromQueue = this.playingSongs[existingIndex];
 
-				if (songFromQueue) {				
+				if (songFromQueue) {
 					await playerStore.play({
 						...songFromQueue,
 						from: playlist,
@@ -1057,7 +1088,7 @@ export const usePlaylistStore = defineStore("playlist", {
 			const actualIndex = this.currentIndex >= 0 && this.currentIndex < this.playingSongs.length
 				? this.currentIndex
 				: 0;
-			
+
 			// Используем трек из очереди, который уже имеет все данные (включая URL)
 			// Если трек не найден в отфильтрованной очереди, используем исходный
 			const songToPlay = this.playingSongs[actualIndex] || song;
@@ -1166,20 +1197,20 @@ export const usePlaylistStore = defineStore("playlist", {
 							return true;
 						}
 					}
-					
+
 					const currentPlaylist = await this.loadPlaylist(
 						this.current.owner_id,
 						this.current.playlist_id,
 						this.current.access_hash
 					);
-					
+
 					// Для библиотеки пользователя (playlist_id === -1) сохраняем title из current плейлиста
 					// так как API может не вернуть правильное имя пользователя
 					if (currentPlaylist.playlist_id === -1 && this.current.title && this.current.title !== currentPlaylist.title) {
 						currentPlaylist.title = this.current.title;
 						currentPlaylist.cover_url = this.current.cover_url || currentPlaylist.cover_url;
 					}
-					
+
 					if (currentPlaylist.list && currentPlaylist.list.length > 0) {
 						const songIndexInList = currentPlaylist.list.findIndex((s: TAudio) => s.full_id === song.full_id);
 						await this.setQueue(currentPlaylist.list, currentPlaylist, songIndexInList >= 0 ? songIndexInList : undefined);
@@ -1199,32 +1230,32 @@ export const usePlaylistStore = defineStore("playlist", {
 
 		async playPlaylist(playlist: TPlaylist, startIndex = 0, randomStart = false) {
 			const playerStore = usePlayerStore();
-			
+
 			// Проверяем, не переключаемся ли мы на тот же плейлист
-			const isSamePlaylist = this.playing && 
-				this.playing.owner_id === playlist.owner_id && 
+			const isSamePlaylist = this.playing &&
+				this.playing.owner_id === playlist.owner_id &&
 				this.playing.playlist_id === playlist.playlist_id &&
-				(this.playing.raw_id === playlist.raw_id || 
-				 (!playlist.raw_id && `${this.playing.owner_id}_${this.playing.playlist_id}` === `${playlist.owner_id}_${playlist.playlist_id}`));
-			
+				(this.playing.raw_id === playlist.raw_id ||
+					(!playlist.raw_id && `${this.playing.owner_id}_${this.playing.playlist_id}` === `${playlist.owner_id}_${playlist.playlist_id}`));
+
 			// Если плейлист уже играет и треки загружены, просто переключаемся на нужный трек
 			// НО только если очередь тоже установлена (playingSongs не пуста)
 			if (isSamePlaylist && this.playing && this.playing.list && this.playing.list.length > 0 && this.playingSongs.length > 0) {
 				let validIndex = startIndex < this.playing.list.length ? startIndex : 0;
-				
+
 				if (randomStart && this.playing.list.length > 0) {
 					validIndex = Math.floor(Math.random() * this.playing.list.length);
 				}
-				
+
 				const targetSong = this.playing.list[validIndex];
-				
+
 				if (targetSong) {
 					// Используем поле _index из трека для быстрого доступа
 					const targetSongWithIndex = targetSong as TAudio & { _index?: number };
 					const foundIndex = targetSongWithIndex._index !== undefined && targetSongWithIndex._index >= 0 && targetSongWithIndex._index < this.playingSongs.length
 						? targetSongWithIndex._index
 						: this.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
-					
+
 					// Если трек найден в отфильтрованной очереди, используем его индекс
 					// Если не найден (отфильтрован), выбираем случайный из доступных
 					let actualIndex = 0;
@@ -1234,9 +1265,9 @@ export const usePlaylistStore = defineStore("playlist", {
 						// Если рандомный старт и трек отфильтрован, выбираем случайный из доступных
 						actualIndex = Math.floor(Math.random() * this.playingSongs.length);
 					}
-					
+
 					this.setCurrentIndex(actualIndex);
-					
+
 					const song = this.playingSongs[actualIndex];
 					if (song && (!playerStore.song || playerStore.song.full_id !== song.full_id)) {
 						await playerStore.play({ ...song, from: this.playing, manual: true } as TSongWithFrom);
@@ -1244,22 +1275,22 @@ export const usePlaylistStore = defineStore("playlist", {
 				}
 				return;
 			}
-			
+
 			// Если плейлист тот же, но очередь пуста - переустанавливаем очередь
 			if (isSamePlaylist && this.playing && this.playing.list && this.playing.list.length > 0 && this.playingSongs.length === 0) {
 				let validIndex = startIndex < this.playing.list.length ? startIndex : 0;
-				
+
 				if (randomStart && this.playing.list.length > 0) {
 					validIndex = Math.floor(Math.random() * this.playing.list.length);
 				}
-				
+
 				await this.setQueue(this.playing.list, this.playing, validIndex);
-				
+
 				// Используем индекс, который был установлен в setQueue
 				const actualIndex = this.currentIndex >= 0 && this.currentIndex < this.playingSongs.length
 					? this.currentIndex
 					: 0;
-				
+
 				const song = this.playingSongs[actualIndex];
 				if (song) {
 					await playerStore.play({ ...song, from: this.playing, manual: true } as TSongWithFrom);
@@ -1308,21 +1339,21 @@ export const usePlaylistStore = defineStore("playlist", {
 			// Треки приходят без URL (withUrls: false), URL будет загружаться в момент проигрывания
 			if (currentPlaylist.list && currentPlaylist.list.length > 0) {
 				let validIndex = startIndex < currentPlaylist.list.length ? startIndex : 0;
-				
+
 				if (randomStart && currentPlaylist.list.length > 0) {
 					validIndex = Math.floor(Math.random() * currentPlaylist.list.length);
 				}
-				
+
 				await this.setQueue(currentPlaylist.list, currentPlaylist, validIndex);
-				
+
 				// Используем индекс, который был установлен в setQueue
 				// setQueue уже правильно установил индекс после фильтрации restricted треков
 				const actualIndex = this.currentIndex >= 0 && this.currentIndex < this.playingSongs.length
 					? this.currentIndex
 					: 0;
-				
+
 				const song = this.playingSongs[actualIndex];
-				
+
 				if (song) {
 					// Добавляем информацию о плейлисте в трек
 					await playerStore.play({ ...song, from: currentPlaylist, manual: true } as TSongWithFrom);
@@ -1379,7 +1410,7 @@ export const usePlaylistStore = defineStore("playlist", {
 				// Устанавливаем плейлист в store, чтобы title отображался правильно
 				await this.setCurrent(playlist);
 				await this.setPlaying(playlist);
-				
+
 				// Если треки уже есть, используем их, но только если owner_id совпадает
 				// чтобы не использовать треки другого пользователя
 				if (playlist.list && playlist.list.length > 0 && playlist.owner_id === song.owner_id) {
@@ -1402,7 +1433,7 @@ export const usePlaylistStore = defineStore("playlist", {
 			// Для обычных плейлистов или если треков нет, загружаем через API
 			// Но для библиотеки пользователя проверяем, может быть треки уже есть в current плейлисте
 			let tracksData: { audios: TAudio[]; more: TMore | null } | null = null;
-			
+
 			// Проверяем, есть ли треки в переданном плейлисте
 			if (playlist.list && playlist.list.length > 0) {
 				// Используем треки из переданного плейлиста, которые уже загружены
@@ -1413,10 +1444,10 @@ export const usePlaylistStore = defineStore("playlist", {
 			}
 			// Для библиотеки пользователя проверяем, есть ли треки в current плейлисте
 			else if (playlist.playlist_id === -1) {
-				if (this.current && 
-					this.current.playlist_id === -1 && 
+				if (this.current &&
+					this.current.playlist_id === -1 &&
 					this.current.owner_id === playlist.owner_id &&
-					this.current.list && 
+					this.current.list &&
 					this.current.list.length > 0) {
 					// Используем треки из current плейлиста, которые уже загружены
 					tracksData = {
@@ -1427,10 +1458,10 @@ export const usePlaylistStore = defineStore("playlist", {
 			}
 			// Для обычных плейлистов проверяем, есть ли треки в current плейлисте
 			else {
-				if (this.current && 
+				if (this.current &&
 					this.current.owner_id === playlist.owner_id &&
 					this.current.playlist_id === playlist.playlist_id &&
-					this.current.list && 
+					this.current.list &&
 					this.current.list.length > 0) {
 					// Используем треки из current плейлиста, которые уже загружены
 					tracksData = {
@@ -1439,7 +1470,7 @@ export const usePlaylistStore = defineStore("playlist", {
 					};
 				}
 			}
-			
+
 			// Если треки не найдены, загружаем через API
 			if (!tracksData) {
 				tracksData = await authenticatedFetch<{ audios: TAudio[]; more: TMore }>(
@@ -1846,7 +1877,7 @@ export const usePlaylistStore = defineStore("playlist", {
 				try {
 					const nuxtApp = useNuxtApp();
 					const $getString = nuxtApp.vueApp?.config?.globalProperties?.$getString as ((path: string) => string) | undefined;
-					
+
 					if ($getString) {
 						return $getString(path);
 					}

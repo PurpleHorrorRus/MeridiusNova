@@ -371,6 +371,8 @@ const setupScrollListener = () => {
 	currentScrollContainer = scrollContainer;
 };
 
+const scrollContainerRef = computed(() => getScrollContainer());
+
 const initialize = () => {
 	const scrollContainer = getScrollContainer();
 	
@@ -394,23 +396,22 @@ const initialize = () => {
 	handleScroll();
 };
 
+if (props.loadMore) {
+	useIntersectionObserver(loadMoreRef, async entries => {
+		if (entries[0] && props.hasMore && !props.isLoadingMore && props.loadMore) {
+			await props.loadMore();
+		}
+	}, {
+		threshold: 0.1,
+		rootMargin: "300px",
+		root: scrollContainerRef,
+		enabled: computed(() => props.hasMore && !props.isLoadingMore && showLoadMore.value)
+	});
+}
+
 onMounted(() => {
 	nextTick(() => {
 		initialize();
-
-		if (props.loadMore) {
-			useIntersectionObserver(loadMoreRef, async entries => {
-				if (entries[0] && props.hasMore && !props.isLoadingMore && props.loadMore) {
-					await props.loadMore();
-				}
-			}, {
-				threshold: 0.1,
-				rootMargin: "300px",
-				root: getScrollContainer(),
-				enabled: computed(() => props.hasMore && !props.isLoadingMore && showLoadMore.value)
-			});
-		}
-
 		setTimeout(initialize, 100);
 	});
 });

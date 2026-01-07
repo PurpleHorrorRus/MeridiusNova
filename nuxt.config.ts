@@ -34,7 +34,6 @@ export default defineNuxtConfig({
 		"/playlist/**": { swr: true },
 		"/artist/**": { swr: true },
 		"/search/**": { ssr: false },
-		"/queue": { ssr: false },
 		"/songs/**": { ssr: false }
 	},
 

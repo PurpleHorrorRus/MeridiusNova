@@ -31,41 +31,43 @@
 						:has-more="hasMore"
 						:is-loading-more="isLoadingMore"
 						:load-more="loadMore"
+						:sortable="canEdit"
+						@sorted="handleReorderSongs"
 						ref="virtualListRef"
 						class="playlist-virtual-list"
 					>
-						<template #item="{ items: visibleItems, startIndex, handleClick, handleAlbumClick, handleArtistClick, handleAction, handleLongPress }">
-							<div
+						<template #item="{ items: visibleItems, startIndex, handleClick, handleAlbumClick, handleArtistClick, handleAction, handleLongPress, handleMouseDown, draggedIndex, draggedOverIndex, shouldShiftUp, shouldShiftDown }">
+							<VirtualSongItem
 								v-for="(audio, relativeIndex) in visibleItems"
 								:key="`${audio.owner_id}-${audio.id}-${startIndex + relativeIndex}`"
-								class="song-wrapper"
-								:class="{
-									'dragging': dragAndDrop.draggedIndex.value === startIndex + relativeIndex,
-									'drag-shift-up': shouldShiftUp(startIndex + relativeIndex),
-									'drag-shift-down': shouldShiftDown(startIndex + relativeIndex)
-								}"
+								:index="startIndex + relativeIndex"
+								@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
 							>
-								<VirtualSongItem
-									:index="startIndex + relativeIndex"
-									@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
+								<div
+									class="song-wrapper"
+									:class="{
+										'dragging': draggedIndex === startIndex + relativeIndex,
+										'drag-shift-up': shouldShiftUp(startIndex + relativeIndex),
+										'drag-shift-down': shouldShiftDown(startIndex + relativeIndex)
+									}"
 								>
 									<div
 										class="song-drag-handle"
-										:class="{ 'draggable': canEdit }"
-										@mousedown="(e) => { if (canEdit) { dragAndDrop.handleMouseDown(e, startIndex + relativeIndex); } }"
+										:class="{ 'draggable': handleMouseDown }"
+										@mousedown="handleMouseDown ? (e: MouseEvent) => handleMouseDown(e, startIndex + relativeIndex) : undefined"
 									>
-									<LazySong
-										:audio="audio"
-										:index="startIndex + relativeIndex"
-										@click="handleClick(audio)"
-										@album-click="handleAlbumClick"
-										@artist-click="handleArtistClick"
-										@action="handleAction"
-										@long-press="handleLongPress(audio)"
-									/>
+										<LazySong
+											:audio="audio"
+											:index="startIndex + relativeIndex"
+											@click="handleClick(audio)"
+											@album-click="handleAlbumClick"
+											@artist-click="handleArtistClick"
+											@action="handleAction"
+											@long-press="handleLongPress(audio)"
+										/>
 									</div>
-								</VirtualSongItem>
-							</div>
+								</div>
+							</VirtualSongItem>
 						</template>
 					</SongList>
 				</template>
@@ -80,7 +82,6 @@ import type { TParsedPayload } from "~~/server/api/vk/audio/types";
 import { type TPlaylist, type TMore, type TAudio } from "~~/server/utils/types";
 import { provideSongsContext } from "~/composables/useSongsContext";
 import { authenticatedFetch } from "~/utils/api";
-import { useDragAndDrop } from "~/composables/useDragAndDrop";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useVkStore } from "~/stores/vk";
 import { useAudioStore } from "~/stores/audio";
@@ -527,39 +528,6 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 	}
 };
 
-const dragAndDrop = useDragAndDrop(audios, handleReorderSongs, {
-	isDisabled: () => !canEdit.value
-});
-
-const shouldShiftUp = (index: number): boolean => {
-	const draggedIndex = dragAndDrop.draggedIndex.value;
-	const draggedOverIndex = dragAndDrop.draggedOverIndex.value;
-	
-	if (draggedIndex === null || draggedOverIndex === null) {
-		return false;
-	}
-	
-	if (draggedIndex === draggedOverIndex) {
-		return false;
-	}
-	
-	return draggedIndex < draggedOverIndex && index > draggedIndex && index <= draggedOverIndex;
-};
-
-const shouldShiftDown = (index: number): boolean => {
-	const draggedIndex = dragAndDrop.draggedIndex.value;
-	const draggedOverIndex = dragAndDrop.draggedOverIndex.value;
-	
-	if (draggedIndex === null || draggedOverIndex === null) {
-		return false;
-	}
-	
-	if (draggedIndex === draggedOverIndex) {
-		return false;
-	}
-	
-	return draggedIndex > draggedOverIndex && index >= draggedOverIndex && index < draggedIndex;
-};
 
 
 </script>

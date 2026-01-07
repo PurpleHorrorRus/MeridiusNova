@@ -134,7 +134,6 @@ export class Http {
 		}
 
 		const request = await fetch(url, requestOptions);
-		console.log(url, requestOptions.body, (requestOptions.headers as any).Cookie, request.status);
 
 		if (request.headers.has("set-cookie")) {
 			for (const cookie of request.headers.getSetCookie()) {
@@ -252,8 +251,6 @@ export class Http {
 			app_id: configuration.webToken.app_id,
 			access_token
 		}, configuration.auth.options);
-
-		console.log(response);
 
 		if ((response as TWebTokenError).type === "error" || (response as TWebTokenError).error_code) {
 			throw response;

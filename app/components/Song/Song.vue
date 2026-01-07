@@ -3,6 +3,8 @@
 		class="song"
 		:class="{ 'playing': isPlaying, 'table-mode': isTableMode, 'restricted': isRestricted }"
 		@click="handleClick"
+		@mousedown="(e: MouseEvent) => { $emit('mousedown', e); }"
+		@dragstart.prevent="(e: DragEvent) => e.preventDefault()"
 		@contextmenu.prevent="handleContextMenu"
 		@touchstart="handleTouchStart"
 		@touchmove="handleTouchMove"
@@ -112,6 +114,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	click: [];
+	"mousedown": [event: MouseEvent];
 	"album-click": [albumInfo: { owner_id: number; playlist_id: number; access_hash: string }];
 	"artist-click": [artist: { id?: string; link?: string; name?: string }];
 	"context-menu": [event: MouseEvent];
