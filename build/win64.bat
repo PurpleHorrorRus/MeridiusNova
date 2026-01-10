@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 echo ===================================
 echo Building Meridius Redux for Windows
 echo ===================================
@@ -10,11 +10,7 @@ set ESBUILD_WORKER_THREADS=0
 set ESBUILD_USE_INLINE_CACHE=1
 set TAURI=1
 set TAURI_PLATFORM=windows
-if defined NUXT_SESSION_PASSWORD set NUXT_SESSION_PASSWORD=%NUXT_SESSION_PASSWORD%
-if defined NUXT_COOKIE_KEY set NUXT_COOKIE_KEY=%NUXT_COOKIE_KEY%
-if defined DISCORD_CLIENT_ID set DISCORD_CLIENT_ID=%DISCORD_CLIENT_ID%
-if defined DISCORD_CLIENT_SECRET set DISCORD_CLIENT_SECRET=%DISCORD_CLIENT_SECRET%
-npm run build
+call npx --yes nuxt build
 if %errorlevel% neq 0 (
     echo Error: Nuxt build failed
     exit /b %errorlevel%
