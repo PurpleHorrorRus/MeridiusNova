@@ -55,7 +55,7 @@ jobs:
         run: node scripts/generate-version.js
         env:
           GITHUB_REF: ${{ github.ref }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPOSITORY: ${{ github.repository }}
           TAURI_PUBLIC_KEY: ${{ secrets.TAURI_PUBLIC_KEY }}
 
       - name: Build application
@@ -142,7 +142,7 @@ jobs:
         run: node scripts/generate-version.js
         env:
           GITHUB_REF: ${{ github.ref }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPOSITORY: ${{ github.repository }}
           TAURI_PUBLIC_KEY: ${{ secrets.TAURI_PUBLIC_KEY }}
 
       - name: Make build script executable

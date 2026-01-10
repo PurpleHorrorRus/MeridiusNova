@@ -22,3 +22,8 @@ DISCORD_CLIENT_SECRET=
 # Путь к бинарному файлу FFmpeg
 # Установите путь к вашему FFmpeg, если он не находится в PATH
 FFMPEG_BINARY=
+
+# GitHub репозиторий для проверки обновлений
+# Формат: owner/repo (например: username/meridius-nova)
+# Необходимо для работы функции проверки обновлений
+REPOSITORY=

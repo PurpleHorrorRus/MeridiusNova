@@ -77,7 +77,7 @@ function updateVersionInFiles(version) {
 	const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf-8"));
 	tauriConfig.version = version;
 
-	const githubRepo = process.env.GITHUB_REPOSITORY || "";
+	const githubRepo = process.env.REPOSITORY || "";
 	if (githubRepo && tauriConfig.plugins?.updater) {
 		const [owner, repo] = githubRepo.split("/");
 		const publicKey = process.env.TAURI_PUBLIC_KEY || "{{TAURI_PUBLIC_KEY}}";

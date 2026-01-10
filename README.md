@@ -62,6 +62,7 @@ cp env-example .env
 - `DISCORD_CLIENT_ID` — ID клиента Discord для Rich Presence
 - `DISCORD_CLIENT_SECRET` — секретный ключ Discord приложения
 - `FFMPEG_BINARY` — путь к бинарному файлу FFmpeg (если не в PATH)
+- `REPOSITORY` — GitHub репозиторий для проверки обновлений (формат: `owner/repo`, например: `username/meridius-nova`)
 
 #### Генерация ключей
 

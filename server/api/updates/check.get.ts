@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 	const channel = (query.channel as string) || "production";
 	const currentVersion = (query.currentVersion as string) || "0.0.0";
 
-	const githubRepo = process.env.GITHUB_REPOSITORY || "";
+	const githubRepo = process.env.REPOSITORY || "";
 	if (!githubRepo) {
 		return {
 			available: false,
