@@ -15,6 +15,7 @@
 			<div
 				v-for="(audio, relativeIndex) in visibleItems"
 				:key="audio.full_id || `${audio.owner_id}-${audio.id}-${startIndex + relativeIndex}`"
+				:data-song-index="startIndex + relativeIndex"
 				class="song-wrapper"
 				:class="{
 					'dragging': sortable && dragAndDrop.draggedIndex.value === startIndex + relativeIndex,
@@ -26,7 +27,7 @@
 				<div
 					class="song-drag-handle"
 					:class="{ 'draggable': sortable }"
-					@mousedown.stop="sortable ? (e: MouseEvent) => dragAndDrop.handleMouseDown(e, startIndex + relativeIndex) : undefined"
+					@mousedown.stop.prevent="(e: MouseEvent) => dragAndDrop.handleMouseDown(e, startIndex + relativeIndex)"
 				>
 					<VirtualSongItem
 						:index="startIndex + relativeIndex"
@@ -41,7 +42,7 @@
 							:handle-artist-click="handleArtistClick"
 							:handle-action="handleSongAction"
 							:handle-long-press="handleLongPress"
-							:handle-mouse-down="sortable ? (e: MouseEvent) => dragAndDrop.handleMouseDown(e, startIndex + relativeIndex) : undefined"
+							:handle-mouse-down="(e: MouseEvent) => dragAndDrop.handleMouseDown(e, startIndex + relativeIndex)"
 						>
 							<LazySong
 								:audio="audio"
@@ -66,6 +67,7 @@
 		<div
 			v-for="(audio, index) in props.sortable ? sortedSongs : props.songs"
 			:key="audio.full_id || `${audio.owner_id}-${audio.id}-${index}`"
+			:data-song-index="index"
 			class="song-wrapper"
 			:class="{
 				'dragging': sortable && dragAndDrop.draggedIndex.value === index,
@@ -77,7 +79,7 @@
 		<div
 			class="song-drag-handle"
 			:class="{ 'draggable': sortable }"
-			@mousedown.stop="sortable ? (e: MouseEvent) => dragAndDrop.handleMouseDown(e, index) : undefined"
+			@mousedown.stop.prevent="(e: MouseEvent) => dragAndDrop.handleMouseDown(e, index)"
 		>
 				<LazySong
 					v-memo="[audio.full_id, index, tableMode, sortable]"
@@ -176,11 +178,9 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 	emit("sorted", newOrder, originalOrder || [...props.songs], fromIndex, toIndex);
 };
 
-const dragAndDrop = props.sortable ? useDragAndDrop(sortedSongs, handleReorderSongs) : {
-	draggedIndex: ref<number | null>(null),
-	draggedOverIndex: ref<number | null>(null),
-	handleMouseDown: () => {}
-};
+const dragAndDrop = useDragAndDrop(sortedSongs, handleReorderSongs, {
+	isDisabled: () => !props.sortable
+});
 
 const shouldShiftUp = (index: number): boolean => {
 	if (!props.sortable || dragAndDrop.draggedIndex.value === null || dragAndDrop.draggedOverIndex.value === null || dragAndDrop.draggedIndex.value === dragAndDrop.draggedOverIndex.value) {

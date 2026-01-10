@@ -22,7 +22,7 @@
 				:height="isTableMode ? 40 : 50"
 			/>
 			<div v-if="isTableMode" class="song-cover-overlay">
-				<Icon :name="isPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
+				<Icon :name="isPlaying && playerIsPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
 			</div>
 
 			<div v-if="isPlaying" class="song-cover-playing-indicator">
@@ -47,8 +47,10 @@
 					<span v-if="index < audio.artists.length - 1" class="artist-separator">, </span>
 				</template>
 			</template>
+
 			<template v-if="audio.feat && audio.feat.length > 0">
 				<span class="feat-label"> feat. </span>
+
 				<template v-for="(featItem, index) in audio.feat" :key="featItem.id || index">
 					<span
 						class="artist-link feat-artist"
@@ -77,7 +79,8 @@
 			<span v-if="isRestricted" class="restricted-badge" title="Трек недоступен">
 				<Icon name="mdi:lock" size="14" />
 			</span>
-			<span v-else>{{ duration }}</span>
+
+			<span v-else v-text="duration" />
 		</div>
 
 		<SongContextMenu

@@ -565,22 +565,26 @@ export const usePlaylistStore = defineStore("playlist", {
 			}
 		},
 
-		shuffleSongs() {
+		shuffleSongs(targetSong?: TAudio) {
 			if (this.playingSongs.length <= 1) {
 				return;
 			}
 
+			// Определяем трек, который должен быть первым
+			const songToPlaceFirst = targetSong || this.currentSong || (this.currentIndex >= 0 && this.currentIndex < this.playingSongs.length ? this.playingSongs[this.currentIndex] : null);
+			const targetFullId = songToPlaceFirst?.full_id;
+
 		// Используем lodash shuffle для перемешивания массива
 		const shuffled = lodash.shuffle([...this.playingSongs]);
 
-			// Находим индекс текущего трека в перемешанном массиве
-			const currentSongIndex = this.currentSong?.full_id ? shuffled.findIndex(songItem => songItem?.full_id === this.currentSong?.full_id) : -1;
+			// Находим индекс целевого трека в перемешанном массиве
+			const targetSongIndex = targetFullId ? shuffled.findIndex(songItem => songItem?.full_id === targetFullId) : -1;
 
-			// Ставим текущий трек на первое место
-			if (currentSongIndex >= 0 && currentSongIndex !== 0) {
-				const temp = shuffled[currentSongIndex];
+			// Ставим целевой трек на первое место
+			if (targetSongIndex >= 0 && targetSongIndex !== 0) {
+				const temp = shuffled[targetSongIndex];
 				if (temp && shuffled[0]) {
-					shuffled[currentSongIndex] = shuffled[0];
+					shuffled[targetSongIndex] = shuffled[0];
 					shuffled[0] = temp;
 				}
 			}
@@ -594,8 +598,8 @@ export const usePlaylistStore = defineStore("playlist", {
 			}
 
 			this.playingSongs = shuffled;
-			// Текущий трек всегда на первом месте после перемешивания, если он был найден
-			this.currentIndex = currentSongIndex >= 0 ? 0 : -1;
+			// Целевой трек всегда на первом месте после перемешивания, если он был найден
+			this.currentIndex = targetSongIndex >= 0 ? 0 : -1;
 		},
 
 		async toggleShuffle() {
@@ -613,6 +617,9 @@ export const usePlaylistStore = defineStore("playlist", {
 			} else {
 				// Выключаем shuffle - восстанавливаем оригинальный порядок
 				if (this.originalSongsOrder.length > 0) {
+					const playerStore = usePlayerStore();
+					const currentSongFullId = playerStore.song?.full_id || this.currentSong?.full_id;
+
 					// Создаем Map для быстрого поиска треков по full_id
 					const songsMap = new Map<string, TAudio>();
 
@@ -642,8 +649,8 @@ export const usePlaylistStore = defineStore("playlist", {
 					this.playingSongs = restored;
 
 					// Обновляем currentIndex чтобы текущий трек остался активным
-					if (this.currentSong?.full_id) {
-						const restoredIndex = restored.findIndex(songItem => songItem?.full_id === this.currentSong?.full_id);
+					if (currentSongFullId) {
+						const restoredIndex = restored.findIndex(songItem => songItem?.full_id === currentSongFullId);
 						if (restoredIndex >= 0) {
 							this.currentIndex = restoredIndex;
 						}
@@ -1048,23 +1055,38 @@ export const usePlaylistStore = defineStore("playlist", {
 			// Устанавливаем очередь треков (setSongs автоматически фильтрует restricted треки)
 			this.setSongs(songs);
 
-			// Устанавливаем индекс, если передан
-			// Используем playingSongs для получения правильного индекса после фильтрации
+			// Определяем целевой трек для перемешивания (если передан startIndex)
+			let targetSongForShuffle: TAudio | undefined;
 			if (startIndex !== undefined && startIndex >= 0 && startIndex < songs.length) {
-				// Находим трек по индексу в исходном списке
 				const targetSong = songs[startIndex];
-
 				if (targetSong) {
-					// Используем поле _index из трека для быстрого доступа
-					const targetSongWithIndex = targetSong as TAudio & { _index?: number };
-					const filteredIndex = targetSongWithIndex._index !== undefined && targetSongWithIndex._index >= 0 && targetSongWithIndex._index < this.playingSongs.length
-						? targetSongWithIndex._index
-						: this.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
+					// Находим трек в отфильтрованной очереди
+					const filteredIndex = this.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
+					if (filteredIndex >= 0) {
+						targetSongForShuffle = this.playingSongs[filteredIndex];
+					}
+				}
+			}
 
+			// Если shuffle включен, перемешиваем очередь
+			if (this.shuffle && this.playingSongs.length > 1) {
+				// Сохраняем оригинальный порядок, если еще не сохранен
+				if (this.originalSongsOrder.length === 0) {
+					this.originalSongsOrder = new Array(this.playingSongs.length);
+					for (let i = 0; i < this.playingSongs.length; i++) {
+						this.originalSongsOrder[i] = this.playingSongs[i]?.full_id || "";
+					}
+				}
+				// Перемешиваем, ставя целевой трек первым (если он указан)
+				this.shuffleSongs(targetSongForShuffle);
+			} else if (startIndex !== undefined && startIndex >= 0 && startIndex < songs.length) {
+				// Если shuffle не включен, просто устанавливаем индекс
+				const targetSong = songs[startIndex];
+				if (targetSong) {
+					const filteredIndex = this.playingSongs.findIndex(s => s.full_id === targetSong.full_id);
 					if (filteredIndex >= 0) {
 						this.setCurrentIndex(filteredIndex);
 					} else {
-						// Если трек не найден (возможно, был отфильтрован), используем первый доступный
 						this.setCurrentIndex(0);
 					}
 				} else {

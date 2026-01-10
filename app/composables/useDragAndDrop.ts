@@ -34,7 +34,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 		currentDragElement.value = dragHandle;
 
 		const originalElement = ((event.target as HTMLElement)?.closest(".song") || dragHandle.querySelector(".song")) as HTMLElement;
-		
+
 		if (originalElement) {
 			const rect = originalElement.getBoundingClientRect();
 			dragOffset.value = {
@@ -59,12 +59,12 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 
 				if (currentDragElement.value && dragOffset.value) {
 					const songElement = currentDragElement.value.querySelector(".song") as HTMLElement || (currentDragElement.value.closest(".song-wrapper")?.querySelector(".song") as HTMLElement);
-					
+
 					if (songElement) {
 						const rect = songElement.getBoundingClientRect();
 						originalElementRect.value = rect;
 						const ghost = songElement.cloneNode(true) as HTMLElement;
-						
+
 						Object.assign(ghost.style, {
 							position: "fixed",
 							pointerEvents: "none",
@@ -80,16 +80,16 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 							borderRadius: "8px",
 							background: "var(--bg-secondary, #181818)"
 						});
-						
+
 						ghost.classList.add("drag-ghost");
-						
+
 						ghost.querySelectorAll("*").forEach((el) => {
 							Object.assign((el as HTMLElement).style, {
 								pointerEvents: "none",
 								transition: "none"
 							});
 						});
-						
+
 						document.body.appendChild(ghost);
 						ghostElement.value = ghost;
 					}
@@ -99,7 +99,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 						visibility: "hidden",
 						cursor: "move"
 					});
-					
+
 					const innerSong = currentDragElement.value.querySelector(".song") as HTMLElement;
 					if (innerSong) {
 						innerSong.style.pointerEvents = "none";
@@ -117,7 +117,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 				}
 
 				let foundIndex: number | null = null;
-				
+
 				if (originalElementRect.value && draggedIndex.value !== null) {
 					const rect = originalElementRect.value;
 					const tolerance = 10;
@@ -125,37 +125,43 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 						foundIndex = draggedIndex.value;
 					}
 				}
-				
+
 				if (foundIndex === null) {
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "none";
 					}
-					
+
 					const elementBelow = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY);
-					
+
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "";
 					}
-					
+
 					if (elementBelow && draggedIndex.value !== null) {
 						const wrapper = (elementBelow.closest(".song-drag-handle")?.closest(".song-wrapper") || elementBelow.closest(".song-wrapper")) as HTMLElement;
-						
+
 						if (wrapper) {
-							const listContainer = wrapper.closest(".song-list, .song-list-virtualized") as HTMLElement;
-							if (listContainer) {
-								const allWrappers = Array.from(listContainer.querySelectorAll(".song-wrapper"));
-								const currentIndex = allWrappers.indexOf(wrapper);
-								
-								if (currentIndex !== -1) {
+							const songIndexAttr = wrapper.getAttribute("data-song-index");
+							if (songIndexAttr !== null) {
+								const currentIndex = parseInt(songIndexAttr, 10);
+								if (!isNaN(currentIndex)) {
 									const wrapperRect = wrapper.getBoundingClientRect();
-									const insertIndex = Math.max(0, Math.min(allWrappers.length - 1, (moveEvent.clientY - wrapperRect.top < wrapperRect.height / 2 ? currentIndex : currentIndex + 1) - (currentIndex > draggedIndex.value ? 1 : 0)));
-									foundIndex = insertIndex;
+									const listContainer = wrapper.closest(".song-list, .song-list-virtualized") as HTMLElement;
+									if (listContainer) {
+										const allWrappers = Array.from(listContainer.querySelectorAll(".song-wrapper"));
+										const maxIndex = allWrappers.length > 0 ? Math.max(...Array.from(allWrappers).map(w => {
+											const idx = w.getAttribute("data-song-index");
+											return idx !== null ? parseInt(idx, 10) : -1;
+										}).filter(i => i >= 0)) : currentIndex;
+										const insertIndex = Math.max(0, Math.min(maxIndex, (moveEvent.clientY - wrapperRect.top < wrapperRect.height / 2 ? currentIndex : currentIndex + 1) - (currentIndex > draggedIndex.value ? 1 : 0)));
+										foundIndex = insertIndex;
+									}
 								}
 							}
 						}
 					}
 				}
-				
+
 				if (foundIndex !== null && foundIndex !== draggedOverIndex.value) {
 					draggedOverIndex.value = foundIndex;
 				}
@@ -175,21 +181,23 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "none";
 					}
-					
+
 					const elementBelow = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
-					
+
 					if (ghostElement.value) {
 						ghostElement.value.style.display = "";
 					}
-					
+
 					if (elementBelow) {
 						const wrapper = (elementBelow.closest(".song-drag-handle")?.closest(".song-wrapper") || elementBelow.closest(".song-wrapper")) as HTMLElement;
-						
+
 						if (wrapper) {
-							const listContainer = wrapper.closest(".song-list, .song-list-virtualized") as HTMLElement;
-							if (listContainer) {
-								const allWrappers = Array.from(listContainer.querySelectorAll(".song-wrapper"));
-								toIndex = allWrappers.indexOf(wrapper);
+							const songIndexAttr = wrapper.getAttribute("data-song-index");
+							if (songIndexAttr !== null) {
+								const parsedIndex = parseInt(songIndexAttr, 10);
+								if (!isNaN(parsedIndex)) {
+									toIndex = parsedIndex;
+								}
 							}
 						}
 					}
@@ -247,7 +255,7 @@ export const useDragAndDrop = <T extends { [key: string]: any }>(
 		const originalItems = [...items.value];
 		const newItems = [...items.value];
 		const [movedItem] = newItems.splice(fromIndex, 1);
-		
+
 		if (movedItem) {
 			newItems.splice(toIndex, 0, movedItem);
 			items.value = newItems;

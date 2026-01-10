@@ -35,41 +35,7 @@
 						@sorted="handleReorderSongs"
 						ref="virtualListRef"
 						class="playlist-virtual-list"
-					>
-						<template #item="{ items: visibleItems, startIndex, handleClick, handleAlbumClick, handleArtistClick, handleAction, handleLongPress, handleMouseDown, draggedIndex, draggedOverIndex, shouldShiftUp, shouldShiftDown }">
-							<VirtualSongItem
-								v-for="(audio, relativeIndex) in visibleItems"
-								:key="`${audio.owner_id}-${audio.id}-${startIndex + relativeIndex}`"
-								:index="startIndex + relativeIndex"
-								@height="(height: number) => virtualListRef?.updateItemHeight(startIndex + relativeIndex, height)"
-							>
-								<div
-									class="song-wrapper"
-									:class="{
-										'dragging': draggedIndex === startIndex + relativeIndex,
-										'drag-shift-up': shouldShiftUp(startIndex + relativeIndex),
-										'drag-shift-down': shouldShiftDown(startIndex + relativeIndex)
-									}"
-								>
-									<div
-										class="song-drag-handle"
-										:class="{ 'draggable': handleMouseDown }"
-										@mousedown="handleMouseDown ? (e: MouseEvent) => handleMouseDown(e, startIndex + relativeIndex) : undefined"
-									>
-										<LazySong
-											:audio="audio"
-											:index="startIndex + relativeIndex"
-											@click="handleClick(audio)"
-											@album-click="handleAlbumClick"
-											@artist-click="handleArtistClick"
-											@action="handleAction"
-											@long-press="handleLongPress(audio)"
-										/>
-									</div>
-								</div>
-							</VirtualSongItem>
-						</template>
-					</SongList>
+					/>
 				</template>
 			</div>
 		</div>
@@ -77,11 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
-
-const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
 import SongList from "~/components/SongList.vue";
-import VirtualSongItem from "~/components/VirtualSongItem.vue";
 
 import { usePlaylistStore } from "~/stores/playlist";
 import { useVkStore } from "~/stores/vk";
@@ -106,45 +68,36 @@ const playlistStore = usePlaylistStore();
 const playlistData = inject<Ref<TPlaylist | null>>("playlistInfo", ref(null));
 
 const canEdit = computed(() => {
-	if (!playlistData.value) {
-		return false;
-	}
-	return playlistData.value.owner_id === vkStore.user_id;
+	return !!(playlistData.value &&
+		playlistData.value.owner_id === vkStore.user_id);
 });
 
 const isRestricted = computed(() => {
-	// Проверяем restricted только для коллекций (playlist_id === -1)
 	if (playlistId.value !== -1) {
 		return false;
 	}
 	
-	// Проверяем только после загрузки данных
 	if (pending.value) {
 		return false;
 	}
 	
-	// Если есть треки, музыка не скрыта
 	if (audios.value && audios.value.length > 0) {
 		return false;
 	}
 	
-	// Для коллекций проверяем флаг restricted из плейлиста или отсутствие данных
 	const playlist = playlistData.value;
+
 	if (!playlist) {
 		return false;
 	}
-	
-	// Если есть ошибка и нет данных, считаем что музыка скрыта
+
 	if (error.value && !data.value) {
 		return true;
 	}
 	
-	// Возвращаем true если явно установлен флаг restricted И нет треков
 	return playlist.restricted === true;
 });
 
-// Для коллекций загружаем треки через /api/vk/audio
-// Для обычных плейлистов используем треки из playlistData.list (которые приходят из /api/vk/playlists с list=true)
 const audioUrl = computed(() => {
 	if (isCollection.value) {
 		return `/api/vk/audio/${ownerId.value}/${playlistId.value}`;
@@ -175,7 +128,6 @@ const { data, pending, error, refresh } = useAsyncData<TParsedPayload>(
 	}
 );
 
-// Запускаем загрузку только для коллекций
 watch([audioUrl, isCollection], ([url, isCollectionValue]) => {
 	if (url && isCollectionValue) {
 		refresh();
@@ -186,10 +138,8 @@ watch([audioUrl, isCollection], ([url, isCollectionValue]) => {
 const audios = ref<TAudio[]>([]);
 
 watch([playlistData, data, isCollection], () => {
-	// Для обычных плейлистов используем треки из playlist.list (которые приходят из /api/vk/playlists с list=true)
 	if (!isCollection.value && playlistData.value?.list && Array.isArray(playlistData.value.list)) {
 		const list = playlistData.value.list;
-		// Обновляем только если массив действительно изменился
 		if (audios.value.length !== list.length || 
 			audios.value.length === 0 || 
 			audios.value[0]?.full_id !== list[0]?.full_id ||
@@ -199,11 +149,9 @@ watch([playlistData, data, isCollection], () => {
 		return;
 	}
 
-	// Для коллекций используем треки из audio endpoint
 	if (isCollection.value && data.value) {
 		const audiosList = (data.value as unknown as TParsedPayload)?.audios;
 		if (audiosList) {
-			// Обновляем только если массив действительно изменился
 			if (audios.value.length !== audiosList.length || 
 				audios.value.length === 0 || 
 				audios.value[0]?.full_id !== audiosList[0]?.full_id ||
@@ -219,15 +167,6 @@ watch([playlistData, data, isCollection], () => {
 	}
 }, { immediate: true, flush: "post", deep: true });
 
-// Синхронизируем изменения обратно в playlistData для обычных плейлистов
-// Отключаем для избежания циклических обновлений - playlistData.list уже является источником истины
-// watch(audios, (newAudios) => {
-// 	if (!isCollection.value && playlistData.value) {
-// 		playlistData.value.list = newAudios;
-// 	}
-// }, { flush: "post" });
-
-// Обновляем restricted в playlistData для коллекций на основе ответа API
 watch([data, pending, error, isCollection], ([newData, isPending, hasError, isCollectionValue]) => {
 	if (!isCollectionValue || !playlistData.value) {
 		return;
@@ -243,21 +182,16 @@ watch([data, pending, error, isCollection], ([newData, isPending, hasError, isCo
 	}
 }, { immediate: true });
 
-// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(audios);
 
-// Предоставляем доступ к data для обновлений
-// ВАЖНО: предоставляем сам массив audios как computed, а не data
 provide("playlistAudiosComputed", audios);
 provide("playlistData", data);
 
 const hasMore = computed(() => {
-	// Для обычных плейлистов все треки загружаются сразу, loadMore не нужен
 	if (!isCollection.value) {
 		return false;
 	}
 
-	// Для коллекций (пользовательских библиотек) проверяем more из data
 	if (data.value) {
 		const payload = data.value as unknown as TParsedPayload;
 		if (payload?.more) {
@@ -268,11 +202,9 @@ const hasMore = computed(() => {
 	return false;
 });
 
-const virtualListRef = ref<InstanceType<typeof SongList> | null>(null);
 const isLoadingMore = ref(false);
 
 const loadMore = async () => {
-	// Double check hasMore before loading
 	if (!hasMore.value || pending.value || isLoadingMore.value) {
 		return;
 	}
@@ -280,14 +212,14 @@ const loadMore = async () => {
 	isLoadingMore.value = true;
 
 	if (isCollection.value) {
-		// Для коллекций используем more из data
 		if (!data.value) {
 			isLoadingMore.value = false;
 			return;
 		}
+
 		const payload = data.value as unknown as TParsedPayload;
 		const more = payload?.more;
-		// Verify more parameters are not empty
+
 		if (!more?.section_id || !more?.next_from) {
 			isLoadingMore.value = false;
 			return;
@@ -303,7 +235,6 @@ const loadMore = async () => {
 		if (result && data.value) {
 			const payloadResult = data.value as unknown as TParsedPayload;
 			
-			// Создаем новый объект data.value с новыми ссылками на массивы и объекты
 			data.value = {
 				...payloadResult,
 				audios: result.audios && result.audios.length > 0 
@@ -317,7 +248,6 @@ const loadMore = async () => {
 			} as TParsedPayload;
 		}
 	} else {
-		// Для обычных плейлистов загружаем через /api/vk/playlists с offset
 		if (!playlistData.value) {
 			isLoadingMore.value = false;
 			return;
@@ -335,16 +265,13 @@ const loadMore = async () => {
 		}).catch(() => (null));
 
 		if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
-			// Создаем новый массив с добавленными треками, чтобы watch увидел изменение
 			const currentList = playlistData.value.list || [];
 			playlistData.value.list = [...currentList, ...playlistResult.list];
 
-			// Обновляем size, если он изменился
 			if (playlistResult.size !== undefined) {
 				playlistData.value.size = playlistResult.size;
 			}
 
-			// Обновляем more из результата (для обратной совместимости)
 			if (playlistResult.more) {
 				playlistData.value.more = playlistResult.more;
 			} else {
@@ -355,7 +282,6 @@ const loadMore = async () => {
 				};
 			}
 		} else {
-			// Если больше нет треков, сбрасываем more
 			if (playlistData.value) {
 				playlistData.value.more = {
 					section_id: "",
@@ -369,46 +295,28 @@ const loadMore = async () => {
 	isLoadingMore.value = false;
 };
 
-// loadMore теперь обрабатывается внутри VirtualSongList через IntersectionObserver
-
 const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], fromIndex?: number, toIndex?: number) => {
 	if (!canEdit.value) {
 		return;
 	}
 
 	if (isCollection.value) {
-		// Для коллекций используем reorderAudio с audio_id и next_audio_id
-		// API перемещает трек audio_id перед треком next_audio_id (или в конец, если next_audio_id = 0)
 		const original = originalOrder || [...audios.value];
 		
-		// Если у нас есть fromIndex и toIndex, используем их для точного определения перемещенного элемента
 		if (fromIndex !== undefined && toIndex !== undefined && fromIndex !== toIndex) {
 			const movedAudio = original[fromIndex];
 			if (!movedAudio) {
 				return;
 			}
 
-			// Определяем next_audio_id - это id трека, ПЕРЕД которым нужно вставить перемещаемый трек
-			// VK API: next_audio_id = 0 означает переместить в начало (первое место)
-			// next_audio_id = <id> означает переместить ПЕРЕД треком с этим id
-			// Если перемещаем на позицию toIndex, используем id трека, который будет на позиции toIndex - 1 в новом порядке
 			let nextAudioId = 0;
 			if (toIndex === 0) {
-				// Перемещаем на первое место - используем 0
 				nextAudioId = 0;
 			} else if (toIndex > 0) {
-				// Перемещаем на позицию toIndex
-				// В новом порядке на позиции toIndex находится перемещенный элемент
-				// Трек, который будет ПЕРЕД ним (на позиции toIndex - 1 в новом порядке):
-				// Вычисляем, какой трек будет на позиции toIndex - 1 в новом порядке
 				let targetIndexInOriginal: number;
 				if (fromIndex > toIndex) {
-					// Перемещаем вверх: трек на позиции toIndex - 1 в новом порядке
-					// это трек, который был на позиции toIndex - 1 в исходном порядке
 					targetIndexInOriginal = toIndex - 1;
 				} else {
-					// Перемещаем вниз: трек на позиции toIndex - 1 в новом порядке
-					// это трек, который был на позиции toIndex в исходном порядке
 					targetIndexInOriginal = toIndex;
 				}
 				
@@ -416,7 +324,6 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 				if (targetAudio && targetAudio.id !== movedAudio.id) {
 					nextAudioId = targetAudio.id;
 				} else if (targetIndexInOriginal > 0) {
-					// Если трек на вычисленной позиции - это сам перемещаемый элемент, берем предыдущий
 					const prevAudio = original[targetIndexInOriginal - 1];
 					if (prevAudio && prevAudio.id !== movedAudio.id) {
 						nextAudioId = prevAudio.id;
@@ -432,14 +339,11 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 					owner_id: ownerId.value
 				});
 			} catch (error) {
-				// В случае ошибки возвращаем исходный порядок
 				audios.value = original;
 			}
 		} else {
-			// Fallback: если fromIndex/toIndex не переданы, используем старую логику
 			let hasError = false;
 
-			// Находим элементы, которые изменили свою позицию
 			const movedItems: Array<{ audio: TAudio; newIndex: number; originalIndex: number }> = [];
 			
 			for (let i = 0; i < newOrder.length; i++) {
@@ -450,27 +354,20 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 
 				const originalIndex = original.findIndex(a => a.full_id === currentAudio.full_id);
 				
-				// Если трек уже на правильной позиции, пропускаем
 				if (originalIndex === i) {
 					continue;
 				}
 
-				// Сохраняем информацию о перемещенном элементе
 				movedItems.push({ audio: currentAudio, newIndex: i, originalIndex });
 			}
 
-			// Если нет перемещенных элементов, выходим
 			if (movedItems.length === 0) {
 				return;
 			}
 
-			// Для коллекций VK API нам нужно перемещать элементы в правильном порядке
-			// Перемещаем элементы, начиная с тех, которые находятся ближе к концу нового порядка
 			movedItems.sort((a, b) => b.newIndex - a.newIndex);
 
-			// Выполняем перемещения последовательно
 			for (const moved of movedItems) {
-				// Определяем next_audio_id - это id следующего трека в новом порядке
 				const nextAudio = moved.newIndex < newOrder.length - 1 ? newOrder[moved.newIndex + 1] : null;
 				const nextAudioId = nextAudio ? nextAudio.id : 0;
 
@@ -488,13 +385,10 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 			}
 
 			if (hasError) {
-				// В случае ошибки возвращаем исходный порядок
 				audios.value = original;
 			}
 		}
 	} else {
-		// Для обычных плейлистов используем reorderSongsInPlaylist с массивом full_id
-		// Каждый full_id должен заканчиваться подчеркиванием
 		if (!playlistData.value) {
 			return;
 		}
@@ -511,17 +405,13 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 		await playlistStore.reorderSongsInPlaylist({
 			playlist_id: playlistData.value.playlist_id,
 			Audios: audioIds
-		}).catch((error) => {
-			// В случае ошибки возвращаем исходный порядок
+		}).catch(() => {
 			if (playlistData.value && playlistData.value.list) {
 				audios.value = [...playlistData.value.list];
 			}
 		});
 	}
 };
-
-
-
 </script>
 
 <style scoped lang="scss">

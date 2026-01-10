@@ -448,6 +448,12 @@ const isPlaylistChanged = (newItems: any[], oldItems: any[]): boolean => {
 	
 	// Проверяем первые и последние элементы напрямую без промежуточных переменных
 	if (newItems.length > 0 && oldItems.length > 0) {
+		// Если новый массив длиннее старого, это может быть добавление элементов (loadMore)
+		// В этом случае проверяем, что первый элемент не изменился
+		if (newItems.length > oldItems.length) {
+			return newItems[0]?.full_id && oldItems[0]?.full_id && newItems[0].full_id !== oldItems[0].full_id;
+		}
+		// Если массивы одинаковой длины или новый короче, проверяем первый и последний элементы
 		return (newItems[0]?.full_id && oldItems[0]?.full_id && newItems[0].full_id !== oldItems[0].full_id) ||
 			(newItems[newItems.length - 1]?.full_id && oldItems[oldItems.length - 1]?.full_id && 
 			 newItems[newItems.length - 1].full_id !== oldItems[oldItems.length - 1].full_id);
@@ -546,15 +552,6 @@ watch(() => props.items, (newItems) => {
 		invalidatedFromIndex = 0;
 		updateOffsetsCache(0);
 		invalidatedFromIndex = props.items.length;
-
-		nextTick(() => {
-			const scrollContainer = getScrollContainer();
-			if (scrollContainer) {
-				scrollTop.value = 0;
-				containerHeight.value = scrollContainer.clientHeight;
-				handleScroll();
-			}
-		});
 	}
 	// Не обновляем кэш здесь - это делает watch на items.length, чтобы избежать двойного обновления
 	previousItemsRef.value = newItems;
