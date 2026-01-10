@@ -35,6 +35,7 @@ const defaultSettings: TSettings = {
 		},
 		server: {
 			enable: false,
+			type: "local" as "local" | "remote",
 			url: "",
 			port: 31415
 		}

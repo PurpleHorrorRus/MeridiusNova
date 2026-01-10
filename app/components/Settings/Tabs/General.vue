@@ -129,6 +129,32 @@
 		<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
+				<label class="settings-label settings-label-block">{{ getString("settings.general.server.type") }}</label>
+				<div class="settings-radio-group">
+					<label class="settings-radio-label">
+						<input
+							type="radio"
+							:checked="settings.general.server.type === 'local'"
+							@change="updateServerType('local')"
+							class="settings-radio"
+							name="server-type"
+						/>
+						{{ getString("settings.general.server.local") }}
+					</label>
+					<label class="settings-radio-label">
+						<input
+							type="radio"
+							:checked="settings.general.server.type === 'remote'"
+							@change="updateServerType('remote')"
+							class="settings-radio"
+							name="server-type"
+						/>
+						{{ getString("settings.general.server.remote") }}
+					</label>
+				</div>
+			</div>
+
+			<div v-if="settings.general.server.type === 'remote'" class="settings-item">
 				<label class="settings-label">
 					<input
 						type="checkbox"
@@ -140,7 +166,7 @@
 				</label>
 			</div>
 
-			<div v-if="settings.general.server.enable" class="settings-item">
+			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable" class="settings-item">
 				<label class="settings-label settings-label-block">{{ getString("settings.general.server.url") }}</label>
 				<div class="settings-input-group">
 					<input
@@ -182,14 +208,23 @@
 				</div>
 			</div>
 
-			<div v-if="settings.general.server.enable && serverError" class="settings-tip settings-error">
+			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable && serverError" class="settings-tip settings-error">
 				<Icon name="mdi:alert-circle" class="settings-tip-icon" />
 				{{ serverError }}
 			</div>
 
-			<div v-if="settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
+			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
 				<Icon name="mdi:check-circle" class="settings-tip-icon" />
 				{{ getString("settings.general.server.available") }}
+			</div>
+
+			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable" class="settings-item">
+				<button
+					@click="switchToLocalServer"
+					class="settings-button"
+				>
+					{{ getString("settings.general.server.switchToLocal") }}
+				</button>
 			</div>
 		</div>
 	</div>
@@ -390,6 +425,17 @@ const chooseStreamerPath = async () => {
 	}
 };
 
+const updateServerType = (type: "local" | "remote") => {
+	settingsStore.updateSection("general", {
+		server: {
+			...settings.value.general.server,
+			type: type,
+			enable: type === "remote" ? settings.value.general.server.enable : false
+		}
+	});
+	resetServerCheck();
+};
+
 const updateServerEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	settingsStore.updateSection("general", {
@@ -444,6 +490,26 @@ const checkServer = async () => {
 };
 
 const connectToServer = async () => {
+	if (isTauri() && import.meta.client) {
+		await settingsStore.save();
+		
+		await new Promise(resolve => setTimeout(resolve, 500));
+
+		const { invoke } = await import("@tauri-apps/api/core");
+		await invoke("restart_app");
+	}
+};
+
+const switchToLocalServer = async () => {
+	settingsStore.updateSection("general", {
+		server: {
+			...settings.value.general.server,
+			type: "local",
+			enable: false
+		}
+	});
+	resetServerCheck();
+
 	if (isTauri() && import.meta.client) {
 		await settingsStore.save();
 		
@@ -549,6 +615,40 @@ const installUpdate = async () => {
 .settings-checkbox {
 	width: 20px;
 	height: 20px;
+	cursor: pointer;
+	accent-color: var(--secondary, #e9003f);
+	transition: transform 0.15s ease;
+
+	&:hover {
+		transform: scale(1.1);
+	}
+}
+
+.settings-radio-group {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+}
+
+.settings-radio-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text, #fff);
+	cursor: pointer;
+	transition: color 0.2s ease;
+
+	&:hover {
+		color: var(--secondary, #e9003f);
+	}
+}
+
+.settings-radio {
+	width: 18px;
+	height: 18px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
 	transition: transform 0.15s ease;

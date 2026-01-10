@@ -204,28 +204,32 @@ export const usePlayerStore = defineStore("player", {
 				return this.song;
 			}
 
-			const currentIndex = playlistStore.currentIndex;
+		const currentIndex = playlistStore.currentIndex;
 
-			if (playlistStore.shuffle) {
-				// Собираем доступные индексы напрямую без создания массива песен
-				const availableIndices: number[] = [];
-				for (let i = 0; i < actualSongs.length; i++) {
-					if (!actualSongs[i]?.is_restriction && i !== currentIndex) {
-						availableIndices.push(i);
+		if (playlistStore.shuffle) {
+			// При включенном shuffle очередь уже перемешана, переходим к следующему треку по порядку
+			if (playlistStore.hasNext) {
+				// Ищем следующий доступный трек напрямую
+				for (let i = currentIndex + 1; i < actualSongs.length; i++) {
+					const song = actualSongs[i];
+					if (song && !song.is_restriction) {
+						playlistStore.setCurrentIndex(i);
+						return song;
 					}
 				}
-
-				if (availableIndices.length > 0) {
-					const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-					if (randomIndex !== undefined) {
-						const randomSong = actualSongs[randomIndex];
-						if (randomSong) {
-							playlistStore.setCurrentIndex(randomIndex);
-							return randomSong;
-						}
+			}
+			// Если дошли до конца и включен repeat, переходим к началу
+			if (playlistStore.repeat) {
+				for (let i = 0; i < currentIndex; i++) {
+					const song = actualSongs[i];
+					if (song && !song.is_restriction) {
+						playlistStore.setCurrentIndex(i);
+						return song;
 					}
 				}
-			} else if (playlistStore.hasNext) {
+			}
+			return null;
+		} else if (playlistStore.hasNext) {
 				// Ищем следующий доступный трек напрямую
 				for (let i = currentIndex + 1; i < actualSongs.length; i++) {
 					const song = actualSongs[i];

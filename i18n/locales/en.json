@@ -81,8 +81,11 @@
 				"choose": "Choose"
 			},
 			"server": {
-				"title": "Remote Server",
+				"title": "Server",
 				"enable": "Use remote server",
+				"type": "Server type",
+				"local": "Local server",
+				"remote": "Remote server",
 				"url": "Server URL",
 				"urlPlaceholder": "http://example.com",
 				"port": "Port",
@@ -90,7 +93,8 @@
 				"check": "Check",
 				"checking": "Checking...",
 				"available": "Server is available",
-				"connect": "Connect"
+				"connect": "Connect",
+				"switchToLocal": "Switch to local server"
 			},
 			"updates": {
 				"title": "Updates",

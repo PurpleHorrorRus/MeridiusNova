@@ -437,27 +437,30 @@ export const usePlaylistStore = defineStore("playlist", {
 				return;
 			}
 
-			let newIndex: number;
+		let newIndex: number;
 
-			if (this.shuffle) {
-				// При shuffle выбираем случайный доступный трек, но не текущий
-				// Собираем доступные индексы только если нужно
-				const otherIndices: number[] = [];
-				for (let i = 0; i < songsLength; i++) {
-					if (!this.playingSongs[i]?.is_restriction && i !== currentIndex) {
-						otherIndices.push(i);
-					}
+		if (this.shuffle) {
+			// При включенном shuffle очередь уже перемешана, переходим к следующему треку по порядку
+			// Ищем следующий доступный трек после текущего
+			for (let i = currentIndex + 1; i < songsLength; i++) {
+				if (!this.playingSongs[i]?.is_restriction) {
+					this.currentIndex = i;
+					return;
 				}
-
-				if (otherIndices.length === 0) {
-					if (!this.repeat) {
+			}
+			// Если дошли до конца и включен repeat, переходим к началу
+			if (this.repeat) {
+				for (let i = 0; i < currentIndex; i++) {
+					if (!this.playingSongs[i]?.is_restriction) {
+						this.currentIndex = i;
 						return;
 					}
-					newIndex = currentIndex;
-				} else {
-					newIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)] ?? currentIndex;
 				}
-			} else if (this.repeat) {
+				// Если нет доступных треков кроме текущего, остаемся на нем
+				this.currentIndex = currentIndex;
+			}
+			return;
+		} else if (this.repeat) {
 				// При repeat переходим на следующий доступный трек по кругу
 				// Находим текущий индекс в доступных и следующий
 				let currentInAvailable = -1;
@@ -491,23 +494,50 @@ export const usePlaylistStore = defineStore("playlist", {
 			this.currentIndex = newIndex;
 		},
 
-		async previous(): Promise<void> {
-			if (this.playingSongs.length === 0) {
-				return;
+	async previous(): Promise<void> {
+		if (this.playingSongs.length === 0) {
+			return;
+		}
+
+		// Если индекс не установлен, устанавливаем на последний доступный трек
+		if (this.currentIndex < 0) {
+			for (let i = this.playingSongs.length - 1; i >= 0; i--) {
+				if (!this.playingSongs[i]?.is_restriction) {
+					this.currentIndex = i;
+					return;
+				}
 			}
+			return;
+		}
 
-			let newIndex: number;
+		let newIndex: number;
 
+		if (this.shuffle) {
+			// При включенном shuffle очередь уже перемешана, переходим к предыдущему треку по порядку
+			if (this.currentIndex > 0) {
+				// Ищем предыдущий доступный трек
+				for (let i = this.currentIndex - 1; i >= 0; i--) {
+					if (!this.playingSongs[i]?.is_restriction) {
+						this.currentIndex = i;
+						return;
+					}
+				}
+			}
+			// Если дошли до начала и включен repeat, переходим к концу
 			if (this.repeat) {
-				newIndex = this.currentIndex <= 0
-					? this.playingSongs.length - 1
-					: this.currentIndex - 1;
-			} else if (this.shuffle) {
-				// При shuffle выбираем случайный трек, но не тот же самый
-				do {
-					newIndex = Math.floor(Math.random() * this.playingSongs.length);
-				} while (newIndex === this.currentIndex && this.playingSongs.length > 1);
-			} else if (this.currentIndex > 0) {
+				for (let i = this.playingSongs.length - 1; i > this.currentIndex; i--) {
+					if (!this.playingSongs[i]?.is_restriction) {
+						this.currentIndex = i;
+						return;
+					}
+				}
+			}
+			return;
+		} else if (this.repeat) {
+			newIndex = this.currentIndex <= 0
+				? this.playingSongs.length - 1
+				: this.currentIndex - 1;
+		} else if (this.currentIndex > 0) {
 				newIndex = this.currentIndex - 1;
 			} else {
 				return;
@@ -1781,6 +1811,7 @@ export const usePlaylistStore = defineStore("playlist", {
 										updatedDirectly = true;
 									} else if (updated !== null) {
 										injectedData.value.audios[audioIndex] = updated;
+										triggerRef(injectedData as Ref);
 										updatedDirectly = true;
 									}
 								}

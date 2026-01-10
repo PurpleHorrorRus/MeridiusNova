@@ -80,6 +80,14 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	let general = settings.get("general")?.as_object()?;
 	let server = general.get("server")?.as_object()?;
 	
+	let server_type = server.get("type")
+		.and_then(|v| v.as_str())
+		.unwrap_or("local");
+	
+	if server_type == "local" {
+		return None;
+	}
+	
 	let enable = server.get("enable")?.as_bool()?;
 	let url_str = server.get("url")?.as_str()?;
 	

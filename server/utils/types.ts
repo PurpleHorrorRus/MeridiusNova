@@ -428,6 +428,7 @@ export type TSettings = {
 		};
 		server: {
 			enable: boolean;
+			type: "local" | "remote";
 			url: string;
 			port: number;
 		};
