@@ -67,6 +67,7 @@ jobs:
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          REPOSITORY: ${{ github.repository }}
 
       - name: Build Tauri app
         run: npm run tauri:build
@@ -157,6 +158,7 @@ jobs:
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          REPOSITORY: ${{ github.repository }}
 
       - name: Build Tauri app
         run: npm run tauri:build
