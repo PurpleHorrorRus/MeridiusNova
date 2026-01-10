@@ -188,29 +188,44 @@ const audios = ref<TAudio[]>([]);
 watch([playlistData, data, isCollection], () => {
 	// Для обычных плейлистов используем треки из playlist.list (которые приходят из /api/vk/playlists с list=true)
 	if (!isCollection.value && playlistData.value?.list && Array.isArray(playlistData.value.list)) {
-		audios.value = playlistData.value.list;
+		const list = playlistData.value.list;
+		// Обновляем только если массив действительно изменился
+		if (audios.value.length !== list.length || 
+			audios.value.length === 0 || 
+			audios.value[0]?.full_id !== list[0]?.full_id ||
+			audios.value[audios.value.length - 1]?.full_id !== list[list.length - 1]?.full_id) {
+			audios.value = [...list];
+		}
 		return;
 	}
 
 	// Для коллекций используем треки из audio endpoint
 	if (isCollection.value && data.value) {
-		const payload = data.value as unknown as TParsedPayload;
-		if (payload?.audios) {
-			audios.value = payload.audios;
+		const audiosList = (data.value as unknown as TParsedPayload)?.audios;
+		if (audiosList) {
+			// Обновляем только если массив действительно изменился
+			if (audios.value.length !== audiosList.length || 
+				audios.value.length === 0 || 
+				audios.value[0]?.full_id !== audiosList[0]?.full_id ||
+				audios.value[audios.value.length - 1]?.full_id !== audiosList[audiosList.length - 1]?.full_id) {
+				audios.value = [...audiosList];
+			}
 			return;
 		}
 	}
 
-	audios.value = [];
-}, { immediate: true, flush: "post" });
+	if (audios.value.length > 0) {
+		audios.value = [];
+	}
+}, { immediate: true, flush: "post", deep: true });
 
 // Синхронизируем изменения обратно в playlistData для обычных плейлистов
-// Используем прямое присваивание для лучшей производительности
-watch(audios, (newAudios) => {
-	if (!isCollection.value && playlistData.value) {
-		playlistData.value.list = newAudios;
-	}
-}, { flush: "post" });
+// Отключаем для избежания циклических обновлений - playlistData.list уже является источником истины
+// watch(audios, (newAudios) => {
+// 	if (!isCollection.value && playlistData.value) {
+// 		playlistData.value.list = newAudios;
+// 	}
+// }, { flush: "post" });
 
 // Обновляем restricted в playlistData для коллекций на основе ответа API
 watch([data, pending, error, isCollection], ([newData, isPending, hasError, isCollectionValue]) => {
@@ -237,23 +252,13 @@ provide("playlistAudiosComputed", audios);
 provide("playlistData", data);
 
 const hasMore = computed(() => {
-	// Для обычных плейлистов проверяем, есть ли еще треки для загрузки
-	if (!isCollection.value && playlistData.value) {
-		const loadedCount = playlistData.value.list?.length || 0;
-		const totalCount = playlistData.value.size || 0;
-		// Если загружено меньше, чем всего треков, значит есть еще
-		if (totalCount > 0 && loadedCount < totalCount) {
-			return true;
-		}
-		// Если totalCount неизвестен, проверяем more (для обратной совместимости)
-		if (totalCount === 0 && playlistData.value.more) {
-			return Boolean(playlistData.value.more.section_id && playlistData.value.more.next_from);
-		}
+	// Для обычных плейлистов все треки загружаются сразу, loadMore не нужен
+	if (!isCollection.value) {
 		return false;
 	}
 
-	// Для коллекций проверяем more из data
-	if (isCollection.value && data.value) {
+	// Для коллекций (пользовательских библиотек) проверяем more из data
+	if (data.value) {
 		const payload = data.value as unknown as TParsedPayload;
 		if (payload?.more) {
 			return Boolean(payload.more.section_id && payload.more.next_from);
@@ -272,103 +277,86 @@ const loadMore = async () => {
 		return;
 	}
 
-	let more: TMore | null = null;
+	isLoadingMore.value = true;
 
-	// Для обычных плейлистов используем offset и count (не more)
-	if (!isCollection.value) {
-		if (!playlistData.value) {
-			return;
-		}
-		// Для обычных плейлистов не используем more, а используем offset
-		// Продолжаем выполнение без проверки more
-	} else {
+	if (isCollection.value) {
 		// Для коллекций используем more из data
 		if (!data.value) {
+			isLoadingMore.value = false;
 			return;
 		}
 		const payload = data.value as unknown as TParsedPayload;
-		if (!payload?.more) {
-			return;
-		}
-		more = payload.more;
+		const more = payload?.more;
 		// Verify more parameters are not empty
-		if (!more.section_id || !more.next_from) {
+		if (!more?.section_id || !more?.next_from) {
+			isLoadingMore.value = false;
 			return;
 		}
-	}
 
-	isLoadingMore.value = true;
+		const result = await authenticatedFetch<TParsedPayload>(`/api/vk/audio/${ownerId.value}/${playlistId.value}`, {
+			params: {
+				section_id: more.section_id,
+				next_from: more.next_from
+			}
+		}).catch(() => (null));
 
-	const result = await authenticatedFetch<TParsedPayload>(`/api/vk/audio/${ownerId.value}/${playlistId.value}`, {
-		params: {
-			section_id: more?.section_id,
-			next_from: more?.next_from
-		}
-	}).catch(() => (null));
-
-	if (result) {
-		if (isCollection.value && data.value) {
-			// Для коллекций обновляем data.value
-			const payload = data.value as unknown as TParsedPayload;
-
-			if (result.audios && result.audios.length > 0) {
-				// Directly push to array to ensure reactivity
-				if (!payload.audios) {
-					payload.audios = [];
+		if (result && data.value) {
+			const payloadResult = data.value as unknown as TParsedPayload;
+			
+			// Создаем новый объект data.value с новыми ссылками на массивы и объекты
+			data.value = {
+				...payloadResult,
+				audios: result.audios && result.audios.length > 0 
+					? [...(payloadResult.audios || []), ...result.audios]
+					: payloadResult.audios || [],
+				more: result.more || {
+					section_id: "",
+					next_from: "",
+					start_from: ""
 				}
+			} as TParsedPayload;
+		}
+	} else {
+		// Для обычных плейлистов загружаем через /api/vk/playlists с offset
+		if (!playlistData.value) {
+			isLoadingMore.value = false;
+			return;
+		}
 
-				payload.audios.push(...result.audios);
-				audios.value.push(...result.audios);
+		const currentOffset = playlistData.value.list?.length || 0;
+
+		const playlistResult = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
+			params: {
+				list: "true",
+				access_hash: playlistData.value.access_hash || accessHash.value,
+				count: "50",
+				offset: String(currentOffset)
+			}
+		}).catch(() => (null));
+
+		if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
+			// Создаем новый массив с добавленными треками, чтобы watch увидел изменение
+			const currentList = playlistData.value.list || [];
+			playlistData.value.list = [...currentList, ...playlistResult.list];
+
+			// Обновляем size, если он изменился
+			if (playlistResult.size !== undefined) {
+				playlistData.value.size = playlistResult.size;
 			}
 
-			// Always update more, even if empty (to stop loading)
-			if (result.more) {
-				payload.more = result.more;
+			// Обновляем more из результата (для обратной совместимости)
+			if (playlistResult.more) {
+				playlistData.value.more = playlistResult.more;
 			} else {
-				payload.more = {
+				playlistData.value.more = {
 					section_id: "",
 					next_from: "",
 					start_from: ""
 				};
 			}
-		} else if (!isCollection.value && playlistData.value) {
-			// Для обычных плейлистов загружаем через /api/vk/playlists с offset
-			const currentOffset = playlistData.value.list?.length || 0;
-
-			const playlistResult = await authenticatedFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
-				params: {
-					list: "true",
-					access_hash: playlistData.value.access_hash || accessHash.value,
-					count: "50",
-					offset: String(currentOffset)
-				}
-			}).catch(() => (null));
-
-			if (playlistResult && playlistResult.list && playlistResult.list.length > 0) {
-				if (!playlistData.value.list) {
-					playlistData.value.list = [];
-				}
-
-				playlistData.value.list.push(...playlistResult.list);
-				audios.value.push(...playlistResult.list);
-
-				// Обновляем size, если он изменился
-				if (playlistResult.size !== undefined) {
-					playlistData.value.size = playlistResult.size;
-				}
-
-				// Обновляем more из результата (для обратной совместимости)
-				if (playlistResult.more) {
-					playlistData.value.more = playlistResult.more;
-				} else {
-					playlistData.value.more = {
-						section_id: "",
-						next_from: "",
-						start_from: ""
-					};
-				}
-			} else {
-				// Если больше нет треков, сбрасываем more
+		} else {
+			// Если больше нет треков, сбрасываем more
+			if (playlistData.value) {
 				playlistData.value.more = {
 					section_id: "",
 					next_from: "",

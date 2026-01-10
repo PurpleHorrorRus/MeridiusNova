@@ -464,20 +464,69 @@ watch(() => props.items.length, (newLength, oldLength) => {
 			for (let i = newLength; i < oldLength; i++) {
 				itemHeights.value.delete(i);
 			}
+			// При удалении обновляем кэш с начала удаления
+			invalidatedFromIndex = Math.min(invalidatedFromIndex, newLength);
+		} else if (newLength > oldLength) {
+			// При добавлении обновляем кэш только для новых элементов
+			invalidatedFromIndex = Math.min(invalidatedFromIndex, oldLength);
 		}
 
-		invalidatedFromIndex = Math.min(invalidatedFromIndex, newLength);
-		updateOffsetsCache(invalidatedFromIndex);
-		invalidatedFromIndex = props.items.length;
-
-		nextTick(() => {
+		// Используем requestAnimationFrame для плавного обновления без дёргания
+		// Отменяем предыдущий запрос, если он ещё не выполнен
+		if (updateCacheRafId !== null) {
+			cancelAnimationFrame(updateCacheRafId);
+		}
+		
+		updateCacheRafId = requestAnimationFrame(() => {
 			const scrollContainer = getScrollContainer();
-
-			if (scrollContainer) {
-				scrollTop.value = scrollContainer.scrollTop;
-				containerHeight.value = scrollContainer.clientHeight;
-				handleScroll();
+			if (!scrollContainer) {
+				updateCacheRafId = null;
+				return;
 			}
+			
+			// Сохраняем текущую позицию скролла перед обновлением кэша
+			const currentScrollTop = scrollContainer.scrollTop;
+			const wasNearBottom = scrollContainer.scrollHeight - currentScrollTop - scrollContainer.clientHeight < 100;
+			
+			// Сохраняем индекс первого видимого элемента для восстановления позиции
+			let firstVisibleIndex = -1;
+			if (offsetsCache.value.length > 0) {
+				for (let i = 0; i < props.items.length; i++) {
+					const itemTop = offsetsCache.value[i];
+					if (itemTop !== undefined && itemTop <= currentScrollTop) {
+						firstVisibleIndex = i;
+					} else {
+						break;
+					}
+				}
+			}
+			
+			updateOffsetsCache(invalidatedFromIndex);
+			invalidatedFromIndex = props.items.length;
+			updateCacheRafId = null;
+			
+			// Восстанавливаем позицию скролла после обновления кэша
+			requestAnimationFrame(() => {
+				if (scrollContainer && newLength > oldLength) {
+					// При добавлении элементов сохраняем позицию относительно начала
+					if (wasNearBottom) {
+						// Если был внизу, остаёмся внизу
+						scrollContainer.scrollTop = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+					} else if (firstVisibleIndex >= 0 && offsetsCache.value.length > firstVisibleIndex) {
+						// Восстанавливаем позицию по первому видимому элементу
+						const savedOffset = offsetsCache.value[firstVisibleIndex];
+						if (savedOffset !== undefined) {
+							scrollContainer.scrollTop = savedOffset;
+						}
+					}
+				}
+				
+				if (scrollContainer) {
+					scrollTop.value = scrollContainer.scrollTop;
+					containerHeight.value = scrollContainer.clientHeight;
+					handleScroll();
+				}
+			});
 		});
 	} else if (oldLength === undefined) {
 		// Первая инициализация
@@ -489,7 +538,9 @@ watch(() => props.items.length, (newLength, oldLength) => {
 
 // Отслеживаем полную смену плейлиста для очистки кэша
 watch(() => props.items, (newItems) => {
-	if (isPlaylistChanged(newItems, previousItemsRef.value)) {
+	const oldItems = previousItemsRef.value;
+	
+	if (isPlaylistChanged(newItems, oldItems)) {
 		// Полностью очищаем кэш при смене плейлиста для освобождения памяти
 		clearCache();
 		invalidatedFromIndex = 0;
@@ -504,12 +555,8 @@ watch(() => props.items, (newItems) => {
 				handleScroll();
 			}
 		});
-	} else {
-		// Обновляем кэш даже если плейлист не сменился полностью (например, добавили/удалили треки)
-		invalidatedFromIndex = 0;
-		updateOffsetsCache(0);
-		invalidatedFromIndex = props.items.length;
 	}
+	// Не обновляем кэш здесь - это делает watch на items.length, чтобы избежать двойного обновления
 	previousItemsRef.value = newItems;
 }, { deep: false });
 
