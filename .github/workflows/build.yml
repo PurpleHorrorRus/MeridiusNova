@@ -78,6 +78,7 @@ jobs:
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          REPOSITORY: ${{ github.repository }}
 
       - name: Get version
         id: get_version
@@ -169,6 +170,7 @@ jobs:
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          REPOSITORY: ${{ github.repository }}
 
       - name: Get version
         id: get_version
