@@ -5,7 +5,7 @@ import { BaseRequest } from "~~/server/utils/base";
 
 import { IRequest, TPayload, TRawResponse, TGetCatalogSectionPayload, TGetGeneralSectionPayload } from "~~/server/utils/types";
 
-import type { ERawAudio, EAudioFlags, TGetAudioParams, TParsedPayload } from "./types";
+import { ERawAudio, EAudioFlags, type TGetAudioParams, type TParsedPayload } from "./types";
 import type { TReloadAudiosPayload, TAudio, TRawAudio } from "./types";
 
 const n = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0PQRSTUVWXYZO123456789+/=";

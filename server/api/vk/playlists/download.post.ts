@@ -10,67 +10,11 @@ import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 import { AudioDownloader } from "~~/server/utils/audio-downloader";
 import { downloadManager } from "~~/server/utils/download-manager";
 import { getAudioUrls } from "../audio/url.get";
+import { isExternalServer, getDownloadSettings, formatFilename } from "~~/server/utils/download-utils";
 
 import type { TAudio } from "../audio/types";
 import type { IPlaylistDownload } from "~~/server/utils/download-manager";
 import type { TGetSectionPayload, TGetCatalogSectionPayload, TMore } from "~~/server/utils/types";
-
-const isExternalServer = (): boolean => {
-	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
-};
-
-const getSettings = async (): Promise<{ downloadPath: string; template: string; ffmpegPath: string; concurrency: number }> => {
-	const settingsFile = path.resolve(os.homedir(), ".meridius", "settings.json");
-	let downloadPath = path.join(os.homedir(), "Music");
-	let template = "{{ performer }} - {{ title }}";
-	let ffmpegPath = "";
-	let concurrency = 2;
-
-	if (isExternalServer()) {
-		downloadPath = os.tmpdir();
-	} else if (fs.pathExistsSync(settingsFile)) {
-		const settings = await fs.readJson(settingsFile) as any;
-		if (settings.download?.path) {
-			downloadPath = settings.download.path;
-		}
-		if (settings.download?.template) {
-			template = settings.download.template;
-		}
-		if (settings.optimization?.download) {
-			if (settings.optimization.download.auto) {
-				concurrency = Math.round(os.cpus().length / 2);
-			} else {
-				concurrency = settings.optimization.download.fixed || 2;
-			}
-		}
-	}
-
-	if (isExternalServer()) {
-		const ffmpegDir = path.join(os.homedir(), ".meridius", "ffmpeg");
-		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
-	} else {
-		const ffmpegDir = path.join(os.homedir(), ".ffmpeg");
-		const ffmpegExe = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-		ffmpegPath = path.join(ffmpegDir, ffmpegExe);
-
-		if (!fs.existsSync(ffmpegPath)) {
-			ffmpegPath = process.env.FFMPEG_BINARY || "";
-		}
-	}
-
-	return { downloadPath, template, ffmpegPath, concurrency };
-};
-
-const formatFilename = (template: string, audio: TAudio, index?: number): string => {
-	return template
-		.replace(/\{\{\s*index\s*\}\}/g, index !== undefined ? String(index + 1) : "")
-		.replace(/\{\{\s*performer\s*\}\}/g, audio.performer || "")
-		.replace(/\{\{\s*title\s*\}\}/g, audio.title || "")
-		.replace(/\{\{\s*id\s*\}\}/g, String(audio.id))
-		.replace(/\{\{\s*owner\s*\}\}/g, String(audio.owner_id))
-		.trim();
-};
 
 export default defineEventHandler(async (event) => {
 	const playlistsRequests = getPlaylistsRequestsInstance(event);
@@ -87,7 +31,7 @@ export default defineEventHandler(async (event) => {
 	const clientType = getHeader(event, "x-client-type") || "browser";
 	const isBrowser = clientType === "browser";
 
-	const { downloadPath, template, ffmpegPath, concurrency } = await getSettings();
+	const { downloadPath, template, ffmpegPath, concurrency } = await getDownloadSettings();
 
 	if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
 		throw createError({
