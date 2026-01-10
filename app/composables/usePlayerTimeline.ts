@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { throttle } from "lodash";
+import * as lodash from "lodash";
 import { storeToRefs } from "pinia";
 
 import { usePlayerStore } from "~/stores/player";
@@ -14,7 +14,7 @@ export const usePlayerTimeline = (throttleDelay: number = 150) => {
 	const tooltipTime = ref(0);
 	const tooltipPosition = ref(0);
 
-	const updateThrottledProgress = throttle((value: number) => {
+	const updateThrottledProgress = lodash.throttle((value: number) => {
 		throttledProgress.value = value;
 	}, throttleDelay);
 
