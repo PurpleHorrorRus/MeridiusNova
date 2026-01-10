@@ -35,10 +35,12 @@ ENV EXTERNAL_SERVER=true
 ENV FFMPEG_BINARY=/usr/bin/ffmpeg
 
 RUN apk update && \
-    apk add --no-cache ffmpeg su-exec && \
-    npm install --only=production --ignore-scripts && \
-    npm cache clean --force && \
-    mkdir -p /home/node/.meridius/.cache && \
+    apk add --no-cache ffmpeg su-exec
+
+RUN npm install --only=production --ignore-scripts && \
+    npm cache clean --force
+
+RUN mkdir -p /home/node/.meridius/.cache && \
     chown -R node:node /home/node/.meridius
 
 COPY docker-entrypoint.sh /usr/local/bin/
