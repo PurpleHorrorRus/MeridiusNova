@@ -49,9 +49,7 @@
 					/>
 				</div>
 
-				<div v-if="volumeDividerHint" class="settings-tip">
-					{{ volumeDividerHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.player.volumeDivider')" />
 			</div>
 		</div>
 
@@ -111,9 +109,7 @@
 					</label>
 				</div>
 
-				<div v-if="rewindHint" class="settings-tip">
-					{{ rewindHint }}
-				</div>
+				<div class="settings-tip" v-text="i18n(getString('settings.hints.player.rewind'), { rewind: 5 })" />
 			</div>
 		</div>
 
@@ -132,9 +128,7 @@
 					</label>
 				</div>
 
-				<div v-if="normalizerTipHint" class="settings-tip">
-					{{ normalizerTipHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.player.normalizer.tip')" />
 
 				<div v-if="settings.player.normalizer.enable" class="settings-item">
 					<label class="settings-label">
@@ -152,9 +146,7 @@
 					/>
 				</div>
 
-				<div v-if="normalizerMaxHint" class="settings-tip">
-					{{ normalizerMaxHint }}
-				</div>
+				<div v-if="settings.player.normalizer.enable" class="settings-tip" v-text="getString('settings.hints.player.normalizer.max')" />
 			</div>
 		</div>
 
@@ -316,18 +308,6 @@ interface AudioDevice {
 const outputDevices = ref<AudioDevice[]>([]);
 const outputDeviceIndex = ref(0);
 
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const volumeDividerHint = computed(() => settings.value.settingHints[lang.value]?.player?.volumeDivider);
-const rewindHint = computed(() => {
-	const hint = settings.value.settingHints[lang.value]?.player?.rewind;
-	if (hint) {
-		const rewindValue = 5;
-		return i18n(hint, { rewind: rewindValue });
-	}
-	return hint;
-});
-const normalizerTipHint = computed(() => settings.value.settingHints[lang.value]?.player?.normalizer?.tip);
-const normalizerMaxHint = computed(() => settings.value.settingHints[lang.value]?.player?.normalizer?.max);
 
 const loadDevices = async () => {
 	if (!import.meta.client) {

@@ -8,11 +8,8 @@ TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
 NUXT_SESSION_PASSWORD=
 
 # Приватный ключ для шифрования cookies
-# Формат: приватный ключ в формате PEM (-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----)
-NUXT_COOKIE_KEY="-----BEGIN PRIVATE KEY-----
-..............
------END PRIVATE KEY-----
-"
+# Формат: приватный ключ в формате PEM
+NUXT_COOKIE_KEY="-----BEGIN PRIVATE KEY-----\n..............\n-----END PRIVATE KEY-----"
 
 # ID клиента Discord приложения для Rich Presence
 # Получить можно в Discord Developer Portal: https://discord.com/developers/applications

@@ -370,30 +370,6 @@ export type TAccount = {
 	[key: string]: unknown;
 };
 
-export type TFavUser = {
-	id: number;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TFavGroup = {
-	id: number;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TFavArtist = {
-	id: string;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TTabHistoryItem = {
-	path: string;
-	title: string;
-	[key: string]: unknown;
-};
-
 export type TLyrics = {
 	credits?: string;
 	lyrics?: {
@@ -512,7 +488,6 @@ export type TSettings = {
 		roundedBottom: boolean;
 		hideTitlebarButtons: boolean;
 		fullFrame: boolean;
-		tabs: boolean;
 		customTheme: boolean;
 		theme: string;
 		acryl: {
@@ -545,119 +520,5 @@ export type TSettings = {
 		active: number;
 		accounts: TAccount[];
 	};
-	favs: {
-		users: TFavUser[];
-		groups: TFavGroup[];
-		artists: TFavArtist[];
-	};
 	hotkeys: Record<string, string>;
-	latest: {
-		song: TAudio | null;
-		playlist: TPlaylist | null;
-	};
-	tabs: {
-		active: number;
-		list: Array<{
-			page: number;
-			title: string;
-			icon: string;
-			history: TTabHistoryItem[];
-		}>;
-	};
-	settingHints: {
-		ru: {
-			general: {
-				hardwareAcceleration?: string;
-				beta?: string;
-				streamer?: string;
-				proxy?: {
-					url?: string;
-				};
-			};
-			appearance: {
-				windowControlButtons?: string;
-				fullFrame?: string;
-				acrylic?: string;
-				zoom?: string | string[];
-				themes?: {
-					download?: string;
-				};
-			};
-			player: {
-				volumeDivider?: string;
-				miniwindow?: {
-					minimode?: string;
-				};
-				rewind?: string;
-				normalizer?: {
-					tip?: string;
-					max?: string;
-				};
-			};
-			optimization: {
-				multithreading?: string;
-				hardwareAcceleration?: string;
-				stashSize?: string;
-				loadingRestriction?: string;
-				download?: {
-					auto?: string;
-					fixed?: string;
-				};
-			};
-			downloads: {
-				ffmpeg?: string;
-				template?: string;
-			};
-			server: {
-				password?: string;
-			};
-		};
-		en: {
-			general: {
-				hardwareAcceleration?: string;
-				beta?: string;
-				streamer?: string;
-				proxy?: {
-					url?: string;
-				};
-			};
-			appearance: {
-				windowControlButtons?: string;
-				fullFrame?: string;
-				acrylic?: string;
-				zoom?: string | string[];
-				themes?: {
-					download?: string;
-				};
-			};
-			player: {
-				volumeDivider?: string;
-				miniwindow?: {
-					minimode?: string;
-				};
-				rewind?: string;
-				normalizer?: {
-					tip?: string;
-					max?: string;
-				};
-			};
-			optimization: {
-				multithreading?: string;
-				hardwareAcceleration?: string;
-				stashSize?: string;
-				loadingRestriction?: string;
-				download?: {
-					auto?: string;
-					fixed?: string;
-				};
-			};
-			downloads: {
-				ffmpeg?: string;
-				template?: string;
-			};
-			server: {
-				password?: string;
-			};
-		};
-	};
 };

@@ -18,9 +18,7 @@
 					</div>
 				</div>
 
-				<div v-if="ffmpegHint" class="settings-tip">
-					{{ ffmpegHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.ffmpeg')" />
 			</div>
 		</div>
 
@@ -69,9 +67,7 @@
 					/>
 				</div>
 
-				<div v-if="templateHint" class="settings-tip">
-					{{ templateHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.template')" />
 
 				<div class="settings-tip">
 					{{ getString("settings.downloads.template.headers") }}: {{ headers }}
@@ -93,9 +89,6 @@ const { settings } = storeToRefs(settingsStore);
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const ffmpegHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.ffmpeg);
-const templateHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.template);
 
 const headers = "{{ index }}, {{ performer }}, {{ title }}, {{ id }}, {{ owner }}";
 const templatePlaceholder = "{{ performer }} - {{ title }}";

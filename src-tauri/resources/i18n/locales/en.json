@@ -171,6 +171,58 @@
 			"add": "Add Account",
 			"switch": "Switch",
 			"remove": "Remove"
+		},
+		"hints": {
+			"general": {
+				"hardwareAcceleration": "Requires application restart",
+				"beta": "Test builds may be unstable, but you get the opportunity to test new features before others. Requires application restart",
+				"streamer": "Writes information about the current track to files located in the specified folder for display via OBS and other applications for live broadcasts",
+				"proxy": {
+					"url": "Requires application restart"
+				}
+			},
+			"appearance": {
+				"windowControlButtons": "It will be useful if you use a tiling window manager",
+				"fullFrame": "Using the entire space disables the transparent window, which will make outer shadows at the window borders and rounding at the edges inaccessible, but guarantees full functionality of the native window. Requires application restart",
+				"acrylic": "Not recommended. You need to enable acrylic effects in Windows settings. Requires application restart",
+				"zoom": [
+					"Use keyboard shortcuts to change the scale of the interface:",
+					"Ctrl + to zoom in",
+					"Ctrl - to zoom out",
+					"Ctrl 0 to reset"
+				],
+				"themes": {
+					"download": "Fill in all the fields. Only data from GitHub is accepted"
+				}
+			},
+			"player": {
+				"volumeDivider": "If it seems to you that the volume of the tracks does not correspond to the specified percentage of the volume in the player, then change the volume divider",
+				"miniwindow": {
+					"minimode": "Disables mini window controls and styles keeping only current track information"
+				},
+				"rewind": "By enabling this option, when you press the \"previous track\" button, the player will start playing the track again instead of playing the previous track if the listening progress has reached {{ rewind }} seconds or more ",
+				"normalizer": {
+					"tip": "Averages the volume level of the music. Do not enable this option if you are listening to music at a medium or high volume level (from 20% and above)",
+					"max": "The volume of music is a subjective concept. Choose for yourself the maximum percentage of music volume increase"
+				}
+			},
+			"optimization": {
+				"multithreading": "Requires application restart",
+				"hardwareAcceleration": "Requires application restart",
+				"stashSize": "To optimize work with system resources, Meridius uses its own music storage system when downloading. This setting determines how many audios will be displayed when redirecting to the playlist. You can set number in the range from 20 to 100",
+				"loadingRestriction": "Here you can set the desired maximum number of tracks that will be loaded when playing playlists. By default, the number of downloaded tracks is 1000, the minimum is 100, the maximum is 10000. It is not recommended to set a value higher than 2000, this cause long downloads, freezes, crashes and high consumption of system resources with a large amount of audio",
+				"download": {
+					"auto": "Recommended for use. The number of downloads is determined depending on the performance of your processor in order to avoid application or system freezes",
+					"fixed": "You can set a fixed value for simultaneous downloads. The value cannot be greater than 10. Increase the value at your own risk if you have a low performance CPU"
+				}
+			},
+			"downloads": {
+				"ffmpeg": "FFmpeg - it's free open-source tool to processing media files. Requires for combining streaming files into one",
+				"template": "Set a template for the file name when downloading using headers"
+			},
+			"server": {
+				"password": "Your password is encrypted once and is not stored anywhere, so it should be written down. The server verifies the authenticity of the password upon request. Open the manual for more detailed information about server and connection"
+			}
 		}
 	},
 	"playlist": {

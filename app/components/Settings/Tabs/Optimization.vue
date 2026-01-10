@@ -15,9 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="isTauri() && hardwareAccelerationHint" class="settings-tip">
-					{{ hardwareAccelerationHint }}
-				</div>
+				<div v-if="isTauri()" class="settings-tip" v-text="getString('settings.hints.optimization.hardwareAcceleration')" />
 
 				<div class="settings-item">
 					<label class="settings-label">
@@ -34,9 +32,7 @@
 					</label>
 				</div>
 
-				<div v-if="downloadAutoHint" class="settings-tip">
-					{{ downloadAutoHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.optimization.download.auto')" />
 
 				<div v-if="!settings.optimization.download.auto" class="settings-item">
 					<label class="settings-label">
@@ -54,9 +50,7 @@
 					/>
 				</div>
 
-				<div v-if="downloadFixedHint" class="settings-tip">
-					{{ downloadFixedHint }}
-				</div>
+				<div v-if="!settings.optimization.download.auto" class="settings-tip" v-text="getString('settings.hints.optimization.download.fixed')" />
 			</div>
 		</div>
 
@@ -76,7 +70,8 @@
 				</div>
 
 				<div class="settings-item">
-					<label class="settings-label">{{ getString("settings.downloads.template.title") }}</label>
+					<label class="settings-label" v-text="getString('settings.downloads.template.title')" />
+
 					<input
 						:value="settings.download.template"
 						@input="updateTemplate"
@@ -86,16 +81,14 @@
 					/>
 				</div>
 
-				<div v-if="templateHint" class="settings-tip">
-					{{ templateHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.template')" />
 
 				<div class="settings-tip">
 					{{ getString("settings.downloads.template.headers") }}: {{ headers }}
 				</div>
 
 				<div class="settings-tip settings-info">
-					{{ getString("settings.downloads.mobile.note") || "На мобильных устройствах файлы скачиваются в папку загрузок браузера. Выбор папки недоступен." }}
+					{{ getString("settings.downloads.mobile.note") }}
 				</div>
 			</div>
 		</div>
@@ -109,16 +102,11 @@ const { getString } = useStrings();
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
 
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
-const downloadAutoHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.auto);
-const downloadFixedHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.fixed);
-const templateHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.template);
-
 const autoDownloadCount = computed(() => {
 	if (import.meta.client && typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
 		return Math.round(navigator.hardwareConcurrency / 2);
 	}
+
 	return 2;
 });
 

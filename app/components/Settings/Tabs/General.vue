@@ -102,9 +102,7 @@
 				</label>
 			</div>
 
-			<div v-if="streamerHint" class="settings-tip">
-				{{ streamerHint }}
-			</div>
+			<div class="settings-tip" v-text="getString('settings.hints.general.streamer')" />
 
 			<div v-if="settings.general.streamer.enable" class="settings-item">
 				<label class="settings-label">{{ getString("settings.general.streamer.path") }}</label>
@@ -276,10 +274,6 @@ const {
 	installUpdate: installUpdateHandler
 } = useUpdater();
 
-const streamerHint = computed(() => {
-	const lang = settings.value.general.lang as "ru" | "en";
-	return settings.value.settingHints[lang]?.general?.streamer;
-});
 
 const updateLang = async (event: Event) => {
 	const target = event.target as HTMLSelectElement;
