@@ -21,7 +21,7 @@ RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD \
 	NUXT_COOKIE_KEY="$(cat /run/secrets/NUXT_COOKIE_KEY)" \
 	DISCORD_CLIENT_ID="$(cat /run/secrets/DISCORD_CLIENT_ID)" \
 	DISCORD_CLIENT_SECRET="$(cat /run/secrets/DISCORD_CLIENT_SECRET)" \
-	npx nuxt build
+    npx nuxt build
 
 FROM node:alpine
 

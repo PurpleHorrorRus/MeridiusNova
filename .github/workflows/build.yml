@@ -291,7 +291,7 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           registry: docker.io
 
@@ -299,7 +299,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova
+          images: ${{ vars.DOCKERHUB_USERNAME }}/meridius-nova
           tags: |
             type=raw,value=${{ steps.image_tag.outputs.tag }}
 
@@ -315,5 +315,5 @@ jobs:
             NUXT_COOKIE_KEY=${{ secrets.NUXT_COOKIE_KEY }}
             DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
             DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/meridius-nova:buildcache,mode=max
+          cache-from: type=registry,ref=${{ vars.DOCKERHUB_USERNAME }}/meridius-nova:buildcache
+          cache-to: type=registry,ref=${{ vars.DOCKERHUB_USERNAME }}/meridius-nova:buildcache,mode=max
