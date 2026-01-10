@@ -36,17 +36,18 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import type { TPlaylist } from "~~/server/utils/types";
+import { usePlaylistStore } from "~/stores/playlist";
+
 import { authenticatedFetch } from "~/utils/api";
 import { isTauri } from "~/utils/tauri";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 const route = useRoute();
 const vkStore = useVkStore();
 const ownerId = computed(() => Number(route.params.owner_id));
 const playlistId = computed(() => Number(route.params.playlist_id));
 const accessHash = computed(() => route.query.access_hash as string | undefined);
-
-import { usePlaylistStore } from "~/stores/playlist";
 
 const playlistStore = usePlaylistStore();
 

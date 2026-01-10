@@ -34,9 +34,12 @@
 
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
+
 import { useVkStore } from "~/stores/vk";
-import type { TPlaylist } from "~~/server/utils/types";
+
 import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));
 

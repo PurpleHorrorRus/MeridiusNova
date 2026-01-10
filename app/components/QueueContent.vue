@@ -82,11 +82,14 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { storeToRefs } from "pinia";
+
 import Song from "~/components/Song/Song.vue";
 import SongList from "~/components/SongList.vue";
+
 import { usePlaylistStore } from "~/stores/playlist";
+
 import { useQueueScroll } from "~/utils/queue-scroll";
-import { storeToRefs } from "pinia";
 
 const props = withDefaults(defineProps<{
 	autoScroll?: boolean;

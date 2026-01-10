@@ -1,13 +1,13 @@
 import HTMLParser, { HTMLElement } from "node-html-parser";
 import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getSearchRequestsInstance } from "../search/search";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TPlaylistCollection, TMore, TPlaylist } from "~~/server/utils/types";
 import { IRequest, TRawResponse, TGetSectionPayload } from "~~/server/utils/types";
+import type { TPlaylistCollection, TMore, TPlaylist } from "~~/server/utils/types";
 
 class GeneralRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {

@@ -78,16 +78,20 @@
 
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
-import type { TParsedPayload } from "~~/server/api/vk/audio/types";
-import { type TPlaylist, type TMore, type TAudio } from "~~/server/utils/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
-import { authenticatedFetch } from "~/utils/api";
+
+const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
+import SongList from "~/components/SongList.vue";
+import VirtualSongItem from "~/components/VirtualSongItem.vue";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { useVkStore } from "~/stores/vk";
 import { useAudioStore } from "~/stores/audio";
-import SongList from "~/components/SongList.vue";
-const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
-import VirtualSongItem from "~/components/VirtualSongItem.vue";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+import { authenticatedFetch } from "~/utils/api";
+
+import type { TParsedPayload } from "~~/server/api/vk/audio/types";
+import { type TPlaylist, type TMore, type TAudio } from "~~/server/utils/types";
 
 const { getString } = useStrings();
 const route = useRoute();

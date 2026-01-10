@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { useModalStore } from "~/stores/modal";
+
 import { useIsMobile } from "~/composables/useIsMobile";
 
 const { getString } = useStrings();

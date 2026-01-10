@@ -20,9 +20,11 @@
 </template>
 
 <script setup lang="ts">
-import { usePlayerStore } from "~/stores/player";
-import { useEventListener } from "~/composables/useEventListener";
 import QueueContent from "~/components/QueueContent.vue";
+
+import { usePlayerStore } from "~/stores/player";
+
+import { useEventListener } from "~/composables/useEventListener";
 
 const playerStore = usePlayerStore();
 

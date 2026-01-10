@@ -13,16 +13,15 @@ COPY public ./public
 COPY i18n ./i18n
 COPY locales ./locales
 
-ARG NUXT_SESSION_PASSWORD
-ARG NUXT_COOKIE_KEY
-ARG DISCORD_CLIENT_ID
-ARG DISCORD_CLIENT_SECRET
-
-RUN NUXT_SESSION_PASSWORD="$NUXT_SESSION_PASSWORD" \
-    NUXT_COOKIE_KEY="$(echo -e "$NUXT_COOKIE_KEY")" \
-    DISCORD_CLIENT_ID="$DISCORD_CLIENT_ID" \
-    DISCORD_CLIENT_SECRET="$DISCORD_CLIENT_SECRET" \
-    npx nuxt build
+RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD \
+	--mount=type=secret,id=NUXT_COOKIE_KEY \
+	--mount=type=secret,id=DISCORD_CLIENT_ID \
+	--mount=type=secret,id=DISCORD_CLIENT_SECRET \
+	NUXT_SESSION_PASSWORD="$(cat /run/secrets/NUXT_SESSION_PASSWORD)" \
+	NUXT_COOKIE_KEY="$(cat /run/secrets/NUXT_COOKIE_KEY)" \
+	DISCORD_CLIENT_ID="$(cat /run/secrets/DISCORD_CLIENT_ID)" \
+	DISCORD_CLIENT_SECRET="$(cat /run/secrets/DISCORD_CLIENT_SECRET)" \
+	npx nuxt build
 
 FROM node:alpine
 

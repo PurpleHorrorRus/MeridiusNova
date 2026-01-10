@@ -77,9 +77,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { useModalStore } from "~/stores/modal";
+
 import { useStrings } from "~/composables/useStrings";
 
 const playerStore = usePlayerStore();

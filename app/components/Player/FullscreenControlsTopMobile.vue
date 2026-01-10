@@ -33,11 +33,13 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useStrings } from "~/composables/useStrings";
-import { useModalStore } from "~/stores/modal";
-import { useIsMobile } from "~/composables/useIsMobile";
+
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
+import { useModalStore } from "~/stores/modal";
+
+import { useStrings } from "~/composables/useStrings";
+import { useIsMobile } from "~/composables/useIsMobile";
 
 const playerStore = usePlayerStore();
 const playlistStore = usePlaylistStore();

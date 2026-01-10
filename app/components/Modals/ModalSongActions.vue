@@ -138,15 +138,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import type { TAudio } from "~~/server/api/vk/audio/types";
+import { storeToRefs } from "pinia";
+
+import Cover from "~/components/Cover.vue";
+
 import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useAudioStore } from "~/stores/audio";
+
 import { useIsTauri } from "~/composables/useIsTauri";
 import { navigateToSimilarTracks } from "~/utils/navigation";
-import { storeToRefs } from "pinia";
-import Cover from "~/components/Cover.vue";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{
 	audio: TAudio;

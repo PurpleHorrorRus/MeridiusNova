@@ -82,8 +82,9 @@
 </template>
 
 <script setup lang="ts">
-import { isTauri } from "~/utils/tauri";
 import { useFFmpegStore } from "~/stores/ffmpeg";
+
+import { isTauri } from "~/utils/tauri";
 
 const { getString } = useStrings();
 const ffmpegStore = useFFmpegStore();

@@ -7,6 +7,7 @@ import { Parser as M3U8Parser } from "m3u8-parser";
 import Bluebird from "bluebird";
 // @ts-ignore - нет типов для node-fetch-retry
 import fetch from "node-fetch-retry";
+
 import type { TAudio } from "../api/vk/audio/types";
 
 const fetchOptions = {

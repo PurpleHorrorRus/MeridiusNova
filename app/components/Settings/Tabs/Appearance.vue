@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+
 import { useSettingsStore } from "~/stores/settings";
 
 const { getString } = useStrings();

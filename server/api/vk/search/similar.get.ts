@@ -1,6 +1,8 @@
+import type { EventHandlerRequest, H3Event } from "h3";
+
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "../audio/audio";
-import type { EventHandlerRequest, H3Event } from "h3";
+
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 class SimilarSearchRequests extends BaseRequest {

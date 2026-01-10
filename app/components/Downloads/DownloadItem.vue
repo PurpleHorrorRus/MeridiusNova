@@ -52,7 +52,6 @@
 </template>
 
 <script setup lang="ts">
-import type { TDownload } from "~~/server/utils/download-manager";
 import DownloadProgress from "./DownloadProgress.vue";
 import Cover from "../Cover.vue";
 
@@ -61,6 +60,8 @@ const props = defineProps<{
 }>();
 
 import { isTauri } from "~/utils/tauri";
+
+import type { TDownload } from "~~/server/utils/download-manager";
 
 const { getString } = useStrings();
 const config = useRuntimeConfig();

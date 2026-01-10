@@ -38,13 +38,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, watch, onMounted, onUnmounted, nextTick } from "vue";
+
 import { useEqualizerStore } from "~/stores/equalizer";
+import { usePlayerStore } from "~/stores/player";
+
 import { useSpectrumAnalyzer } from "~/composables/useSpectrumAnalyzer";
 import { useEventListener } from "~/composables/useEventListener";
 import { useStrings } from "~/composables/useStrings";
-import { storeToRefs } from "pinia";
-import { useSettingsStore } from "~/stores/settings";
 
 interface Props {
 	levels: number[];
@@ -67,9 +68,7 @@ const graphCanvas = ref<HTMLCanvasElement | null>(null);
 let animationFrameId: number | null = null;
 const analyserData = ref<Uint8Array | null>(null);
 
-const settingsStore = useSettingsStore();
-const { settings } = storeToRefs(settingsStore);
-const spectrumVisualizationEnabled = computed(() => settings.value.equalizer.spectrumVisualization);
+const spectrumVisualizationEnabled = ref(false);
 
 const UPDATE_INTERVAL = 40;
 let lastUpdateTime = performance.now();
@@ -103,12 +102,10 @@ const getPixelsX = (): number => {
 };
 
 onMounted(() => {
+	spectrumVisualizationEnabled.value = false;
 	nextTick(() => {
 		resizeCanvas();
 		useEventListener(window, "resize", resizeCanvas);
-		if (spectrumVisualizationEnabled.value && playerStore.isPlaying) {
-			startSpectrumAnalysis();
-		}
 	});
 });
 
@@ -199,10 +196,9 @@ watch(() => [playerStore.isPlaying, spectrumVisualizationEnabled.value], ([playi
 }, { immediate: false });
 
 const toggleSpectrumVisualization = () => {
-	const newValue = !spectrumVisualizationEnabled.value;
-	settingsStore.updateSection("equalizer", { spectrumVisualization: newValue });
+	spectrumVisualizationEnabled.value = !spectrumVisualizationEnabled.value;
 	
-	if (!newValue) {
+	if (!spectrumVisualizationEnabled.value) {
 		stopSpectrumAnalysis();
 		analyserData.value = null;
 		drawGraph();

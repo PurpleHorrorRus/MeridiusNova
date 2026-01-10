@@ -30,10 +30,11 @@
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { usePlayerTimeline } from "~/composables/usePlayerTimeline";
-
 import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
+
+import { usePlayerTimeline } from "~/composables/usePlayerTimeline";
 
 const playerStore = usePlayerStore();
 const { currentTime, duration, progress } = storeToRefs(playerStore);

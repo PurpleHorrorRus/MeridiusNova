@@ -46,6 +46,7 @@ import ModalShareAudio from "~/components/Modals/ModalShareAudio.vue";
 import ModalSongActions from "~/components/Modals/ModalSongActions.vue";
 
 import { useModalStore } from "~/stores/modal";
+
 import { useEventListener } from "~/composables/useEventListener";
 
 const modalStore = useModalStore();

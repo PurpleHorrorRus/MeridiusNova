@@ -30,13 +30,16 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from "vue";
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TPlaylist } from "~~/server/utils/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
-import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
+
 import WallPost from "~/components/Wall/WallPost.vue";
 import SkeletonFeedPost from "~/components/Skeleton/SkeletonFeedPost.vue";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
+import type { TPlaylist } from "~~/server/utils/types";
 
 interface WallPostItem {
 	id: number;

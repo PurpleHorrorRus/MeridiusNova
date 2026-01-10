@@ -27,6 +27,7 @@
 
 <script setup lang="ts">
 import { useModalStore } from "~/stores/modal";
+
 import type { ModalConfirmProps } from "~/stores/modal";
 
 const modalStore = useModalStore();

@@ -1,4 +1,5 @@
 import { computed, onUnmounted } from "vue";
+
 import { useEqualizerStore } from "~/stores/equalizer";
 import { usePlayerStore } from "~/stores/player";
 

@@ -62,8 +62,10 @@
 </template>
 
 <script setup lang="ts">
-import { useDownloadsStore } from "~/stores/downloads";
 import DownloadItem from "./DownloadItem.vue";
+
+import { useDownloadsStore } from "~/stores/downloads";
+
 import { useEventListener } from "~/composables/useEventListener";
 
 const props = withDefaults(defineProps<{

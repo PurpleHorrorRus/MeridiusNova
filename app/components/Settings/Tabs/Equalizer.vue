@@ -20,13 +20,16 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue";
-import { useEqualizerStore } from "~/stores/equalizer";
 import { storeToRefs } from "pinia";
-import { useSettingsStore } from "~/stores/settings";
-import { useSpectrumAnalyzer } from "~/composables/useSpectrumAnalyzer";
-import { EQUALIZER_PRESETS } from "./EqualizerPresets";
+
 import EqualizerSettings from "./EqualizerSettings.vue";
 import EqualizerGraph from "./EqualizerGraph.vue";
+
+import { useEqualizerStore } from "~/stores/equalizer";
+import { useSettingsStore } from "~/stores/settings";
+
+import { useSpectrumAnalyzer } from "~/composables/useSpectrumAnalyzer";
+import { EQUALIZER_PRESETS } from "./EqualizerPresets";
 
 const equalizerStore = useEqualizerStore();
 const settingsStore = useSettingsStore();

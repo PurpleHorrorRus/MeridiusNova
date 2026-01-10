@@ -101,11 +101,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
 import { useModalStore } from "~/stores/modal";
-import { useStrings } from "~/composables/useStrings";
 import { useSettingsStore } from "~/stores/settings";
+
+import { useStrings } from "~/composables/useStrings";
 
 const playerStore = usePlayerStore();
 const playlistStore = usePlaylistStore();

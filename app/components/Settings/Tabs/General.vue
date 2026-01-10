@@ -249,13 +249,15 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
+import { useStreamerStore } from "~/stores/streamer";
+import { useSettingsStore } from "~/stores/settings";
+
 import { useServerCheck } from "~/composables/useServerCheck";
 import { useUpdater } from "~/composables/useUpdater";
 
-import { useStreamerStore } from "~/stores/streamer";
-
-import { storeToRefs } from "pinia";
-import { useSettingsStore } from "~/stores/settings";
+import { isTauri } from "~/utils/tauri";
 
 const { getString, loadLanguage } = useStrings();
 const settingsStore = useSettingsStore();
@@ -273,8 +275,6 @@ const {
 	checkForUpdates,
 	installUpdate: installUpdateHandler
 } = useUpdater();
-
-import { isTauri } from "~/utils/tauri";
 
 const streamerHint = computed(() => {
 	const lang = settings.value.general.lang as "ru" | "en";

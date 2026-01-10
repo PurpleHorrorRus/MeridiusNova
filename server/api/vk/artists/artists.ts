@@ -1,11 +1,10 @@
 import HTMLParser from "node-html-parser";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
+
 import { IRequest, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
-
-import type { EventHandlerRequest, H3Event } from "h3";
-
 import type { TArtist, TMore, TPlaylistCollection } from "~~/server/utils/types";
 
 class ArtistsRequests extends BaseRequest implements IRequest {

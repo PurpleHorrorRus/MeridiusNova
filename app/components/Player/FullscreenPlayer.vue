@@ -74,9 +74,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { usePlaylistStore } from "~/stores/playlist";
-import { useIsMobile } from "~/composables/useIsMobile";
-import { useLyrics } from "~/composables/useLyrics";
+
 import FullscreenCover from "~/components/Player/FullscreenCover.vue";
 import FullscreenTrackInfo from "~/components/Player/FullscreenTrackInfo.vue";
 import FullscreenVolume from "~/components/Player/FullscreenVolume.vue";
@@ -88,6 +86,12 @@ import FullscreenLyrics from "~/components/Player/FullscreenLyrics.vue";
 import FullscreenQueue from "~/components/Player/FullscreenQueue.vue";
 import FullscreenQueuePreview from "~/components/Player/FullscreenQueuePreview.vue";
 import FullscreenQueueIndicator from "~/components/Player/FullscreenQueueIndicator.vue";
+
+import { usePlaylistStore } from "~/stores/playlist";
+
+import { useIsMobile } from "~/composables/useIsMobile";
+import { useLyrics } from "~/composables/useLyrics";
+
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{

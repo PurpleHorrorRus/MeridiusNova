@@ -1,11 +1,12 @@
 import jwt from "jsonwebtoken";
 
-import type { TCookie } from "~~/server/types/auth";
-import type { TAuthSession } from "~~/server/utils/types";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
 import { configuration, getHttpInstance, migrateCookies } from "~~/server/utils/http";
 import { cookieSignOptions } from "./web-token.post";
+
+import type { TCookie } from "~~/server/types/auth";
+import type { TAuthSession } from "~~/server/utils/types";
 
 export default defineEventHandler(async (event) => {
 	const http = getHttpInstance();

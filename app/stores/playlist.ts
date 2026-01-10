@@ -1,19 +1,22 @@
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TPlaylist, TMore } from "~~/server/utils/types";
-import type { TParsedPayload } from "~~/server/api/vk/audio/types";
-import { authenticatedFetch } from "~/utils/api";
+import { triggerRef } from "vue";
+import type { Ref, ComputedRef } from "vue";
+import * as lodash from "lodash";
+
 import { usePlayerStore } from "./player";
 import { useVkStore } from "./vk";
 import { useAudioStore } from "./audio";
 import { useSearchStore } from "./search";
-import { createAudioBody } from "~/utils/audio-api";
 import { useDownloadsStore } from "~/stores/downloads";
+
+import { authenticatedFetch } from "~/utils/api";
+import { createAudioBody } from "~/utils/audio-api";
 import { getUserFullName } from "~/utils/user";
 import { isTauri } from "~/utils/tauri";
 import { isSearchPage, isUserLibraryPage } from "~/utils/route";
-import { triggerRef } from "vue";
-import type { Ref, ComputedRef } from "vue";
-import { shuffle } from "lodash";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
+import type { TPlaylist, TMore } from "~~/server/utils/types";
+import type { TParsedPayload } from "~~/server/api/vk/audio/types";
 
 type TSongWithFrom = TAudio & {
 	from?: string | TPlaylist;
@@ -537,8 +540,8 @@ export const usePlaylistStore = defineStore("playlist", {
 				return;
 			}
 
-			// Используем lodash shuffle для перемешивания массива
-			const shuffled = shuffle([...this.playingSongs]);
+		// Используем lodash shuffle для перемешивания массива
+		const shuffled = lodash.shuffle([...this.playingSongs]);
 
 			// Находим индекс текущего трека в перемешанном массиве
 			const currentSongIndex = this.currentSong?.full_id ? shuffled.findIndex(songItem => songItem?.full_id === this.currentSong?.full_id) : -1;

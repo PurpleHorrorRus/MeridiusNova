@@ -34,9 +34,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount, inject, shallowRef, type Ref } from "vue";
+
+import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
 import { useIntersectionObserver } from "~/composables/useIntersectionObserver";
 import { useEventListener } from "~/composables/useEventListener";
-import LoadingSpinner from "~/components/LoadingSpinner.vue";
 
 export interface VirtualSongListProps {
 	items: any[];

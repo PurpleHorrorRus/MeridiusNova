@@ -1,5 +1,9 @@
+import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
+import { useSettingsStore } from "~/stores/settings";
+
 import { isTauri } from "~/utils/tauri";
 
 const hotkeyCooldowns = new Map<string, number>();

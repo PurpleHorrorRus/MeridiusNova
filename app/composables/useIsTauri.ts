@@ -1,5 +1,6 @@
-import { isTauri as checkTauri } from "~/utils/tauri";
 import { inject, provide, ref, type Ref } from "vue";
+
+import { isTauri as checkTauri } from "~/utils/tauri";
 
 const IS_TAURI_KEY = Symbol("isTauri");
 

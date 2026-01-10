@@ -93,10 +93,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import type { TAudio } from "~~/server/utils/types";
+
 import { useModalStore } from "~/stores/modal";
 import { usePlayerStore } from "~/stores/player";
 import { useAudioStore } from "~/stores/audio";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;

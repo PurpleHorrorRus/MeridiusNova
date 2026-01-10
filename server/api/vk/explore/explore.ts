@@ -1,12 +1,12 @@
 import HTMLParser, { HTMLElement } from "node-html-parser";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "../audio/audio";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TExploreData, TMore, TPlaylistCollection, TExploreSection, TAlbumRawItem, TAudio, TRadio, TVkMixResponse } from "~~/server/utils/types";
 import { IRequest, TRawResponse, TGetSectionPayload } from "~~/server/utils/types";
+import type { TExploreData, TMore, TPlaylistCollection, TExploreSection, TAlbumRawItem, TAudio, TRadio, TVkMixResponse } from "~~/server/utils/types";
 
 class ExploreRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {

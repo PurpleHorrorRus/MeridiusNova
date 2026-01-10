@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import { throttle } from "lodash";
 import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 
 export const usePlayerTimeline = (throttleDelay: number = 150) => {

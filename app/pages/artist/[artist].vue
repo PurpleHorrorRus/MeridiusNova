@@ -79,9 +79,11 @@
 </template>
 
 <script setup lang="ts">
-import SongList from "~/components/SongList.vue";
-import { useArtistsStore } from "~/stores/artists";
 import { storeToRefs } from "pinia";
+
+import SongList from "~/components/SongList.vue";
+
+import { useArtistsStore } from "~/stores/artists";
 
 const route = useRoute();
 const artistParam = route.params.artist as string;

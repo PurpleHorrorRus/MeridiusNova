@@ -22,9 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import { useIsMobile } from "~/composables/useIsMobile";
-import { usePlaylistStore } from "~/stores/playlist";
 import { storeToRefs } from "pinia";
+
+import { usePlaylistStore } from "~/stores/playlist";
+
+import { useIsMobile } from "~/composables/useIsMobile";
 
 const { isMobile } = useIsMobile();
 const playlistStore = usePlaylistStore();

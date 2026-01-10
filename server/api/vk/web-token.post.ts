@@ -1,11 +1,11 @@
 import jwt from "jsonwebtoken";
+import type { H3Event, EventHandlerRequest } from "h3";
 
-import type { TCookie, TWebTokenResponse } from "~~/server/types/auth";
 import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
 import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
 import { getHttpInstance } from "~~/server/utils/http";
 
-import type { H3Event, EventHandlerRequest } from "h3";
+import type { TCookie, TWebTokenResponse } from "~~/server/types/auth";
 
 export const cookieSignOptions: jwt.SignOptions = {
 	algorithm: "RS256"

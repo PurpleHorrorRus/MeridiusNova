@@ -181,11 +181,14 @@
 
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
-import type { TSearchCategory } from "~~/server/utils/types";
-import type { TPlaylist, TAudio } from "~~/server/utils/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
+
 import { useSearchStore } from "~/stores/search";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+
+import type { TSearchCategory } from "~~/server/utils/types";
+import type { TPlaylist, TAudio } from "~~/server/utils/types";
 
 const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
 const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));

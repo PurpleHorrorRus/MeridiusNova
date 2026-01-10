@@ -1,6 +1,7 @@
+import type { EventHandlerRequest, H3Event } from "h3";
+
 import { BaseRequest } from "~~/server/utils/base";
 import { requireAuth } from "~~/server/utils/auth-check";
-import type { EventHandlerRequest, H3Event } from "h3";
 
 type TUserInfo = {
 	id: number;

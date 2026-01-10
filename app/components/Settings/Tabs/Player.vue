@@ -296,12 +296,12 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 import { useSettingsStore } from "~/stores/settings";
 
 import { isTauri } from "~/utils/tauri";
-
-import { storeToRefs } from "pinia";
 
 const { getString, i18n } = useStrings();
 const settingsStore = useSettingsStore();

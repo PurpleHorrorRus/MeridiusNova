@@ -65,9 +65,11 @@
 </template>
 
 <script setup lang="ts">
-import { useVkStore } from "~/stores/vk";
 import { storeToRefs } from "pinia";
+
+import { useVkStore } from "~/stores/vk";
 import { useSettingsStore } from "~/stores/settings";
+
 import { getUserFullName } from "~/utils/user";
 
 const props = defineProps<{

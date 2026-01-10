@@ -165,13 +165,15 @@
 <script setup lang="ts">
 const { getString } = useStrings();
 import { ref, onMounted, defineAsyncComponent } from "vue";
-import type { TPlaylistCollection, TExploreData, TPlaylist, TArtist } from "~~/server/utils/types";
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
-import UserPlaylist from "~/components/General/UserPlaylist.vue";
 
 const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
 const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));
+import UserPlaylist from "~/components/General/UserPlaylist.vue";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+
+import type { TPlaylistCollection, TExploreData, TPlaylist, TArtist } from "~~/server/utils/types";
+import type { TAudio } from "~~/server/api/vk/audio/types";
 const LazyArtistCard = defineAsyncComponent(() => import("~/components/ArtistCard.vue"));
 const LazyAlbumCard = defineAsyncComponent(() => import("~/components/AlbumCard.vue"));
 

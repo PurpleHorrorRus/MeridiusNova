@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import { createError, getCookie } from "h3";
 import { useRuntimeConfig } from "#imports";
-
 import type { EventHandlerRequest, H3Event } from "h3";
 import type { UserSession } from "#auth-utils";
 import type { HTMLElement } from "node-html-parser";

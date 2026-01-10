@@ -1,10 +1,11 @@
 import HTMLParser from "node-html-parser";
 import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
+
 import { IRequest, type TRawResponse, type TGetCatalogSectionPayload } from "~~/server/utils/types";
-import type { EventHandlerRequest, H3Event } from "h3";
 import type { TPlaylist, TPlaylistCollection } from "~~/server/utils/types";
 
 class PlaylistsRequests extends BaseRequest implements IRequest {

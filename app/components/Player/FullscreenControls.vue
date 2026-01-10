@@ -44,8 +44,10 @@
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { usePlayerStore } from "~/stores/player";
+
 import { useStrings } from "~/composables/useStrings";
 import { useIsMobile } from "~/composables/useIsMobile";
 

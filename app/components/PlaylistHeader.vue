@@ -102,14 +102,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
-import { useEventListener } from "~/composables/useEventListener";
-import type { TPlaylist } from "~~/server/utils/types";
+
+import EditPlaylistModal from "~/components/Modals/EditPlaylistModal.vue";
+import SharePlaylistModal from "~/components/Modals/SharePlaylistModal.vue";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
+
+import { useEventListener } from "~/composables/useEventListener";
 import { isTauri } from "~/utils/tauri";
-import EditPlaylistModal from "~/components/Modals/EditPlaylistModal.vue";
-import SharePlaylistModal from "~/components/Modals/SharePlaylistModal.vue";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	playlist: TPlaylist;

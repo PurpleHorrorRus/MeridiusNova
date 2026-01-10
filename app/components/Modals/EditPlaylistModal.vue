@@ -75,11 +75,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import type { TPlaylist } from "~~/server/utils/types";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
+
 import { isTauri } from "~/utils/tauri";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	playlist: TPlaylist;

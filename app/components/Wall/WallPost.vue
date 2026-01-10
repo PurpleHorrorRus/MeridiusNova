@@ -82,13 +82,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TPlaylist } from "~~/server/utils/types";
-import { useVkStore } from "~/stores/vk";
+
 import Song from "~/components/Song/Song.vue";
 import WallPlaylist from "./WallPlaylist.vue";
 import WallPin from "./WallPin.vue";
 import WallSocial from "./WallSocial.vue";
+
+import { useVkStore } from "~/stores/vk";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
+import type { TPlaylist } from "~~/server/utils/types";
 
 type TOwnerInfo = {
 	id: number;

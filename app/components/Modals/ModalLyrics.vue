@@ -42,10 +42,14 @@
 
 <script setup lang="ts">
 import { onMounted, watch, nextTick } from "vue";
-import type { TAudio } from "~~/server/utils/types";
-import { useModalStore } from "~/stores/modal";
-import { useLyrics } from "~/composables/useLyrics";
+
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
+import { useModalStore } from "~/stores/modal";
+
+import { useLyrics } from "~/composables/useLyrics";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;

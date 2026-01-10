@@ -32,6 +32,8 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
 import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
 import SettingsAppearance from "~/components/Settings/Tabs/Appearance.vue";
 import SettingsDownloads from "~/components/Settings/Tabs/Downloads.vue";
@@ -43,11 +45,9 @@ import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
 import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
 
 import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
 
 import { isTauri } from "~/utils/tauri";
-
-import { storeToRefs } from "pinia";
-import { useSettingsStore } from "~/stores/settings";
 
 const props = defineProps<{
 	isPage?: boolean;

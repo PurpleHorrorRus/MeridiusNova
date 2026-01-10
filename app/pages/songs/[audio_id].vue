@@ -17,11 +17,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import type { TAudio } from "~~/server/utils/types";
-import { useAudioStore } from "~/stores/audio";
-import { createAudioFromIds } from "~/utils/audio";
+
 import SongList from "~/components/SongList.vue";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
+import { useAudioStore } from "~/stores/audio";
+
+import { createAudioFromIds } from "~/utils/audio";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const route = useRoute();
 

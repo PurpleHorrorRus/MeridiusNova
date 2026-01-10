@@ -3,6 +3,7 @@ import path from "node:path";
 import os from "node:os";
 // @ts-ignore - нет типов для m3u8-parser
 import { Parser as M3U8Parser } from "m3u8-parser";
+
 import type { TSettings } from "./types";
 
 const SETTINGS_DIR = path.resolve(os.homedir(), ".meridius");

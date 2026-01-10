@@ -1,7 +1,7 @@
 import { Client } from "@xhayper/discord-rpc";
 import { ActivityType } from "discord-api-types/v10";
-
 import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";

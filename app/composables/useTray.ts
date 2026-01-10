@@ -1,12 +1,15 @@
-import { isTauri } from "~/utils/tauri";
-import type { TPlaylist } from "~~/server/utils/types";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { Menu, MenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resourceDir, join } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
+
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { isTauri } from "~/utils/tauri";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 let trayInstance: TrayIcon | null = null;
 let playMenuItems: MenuItem[] = [];

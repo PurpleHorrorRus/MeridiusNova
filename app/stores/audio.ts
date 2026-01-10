@@ -1,6 +1,8 @@
-import type { TAudio, TLyrics } from "~~/server/utils/types";
-import { authenticatedFetch } from "~/utils/api";
 import { useDownloadsStore } from "~/stores/downloads";
+
+import { authenticatedFetch } from "~/utils/api";
+
+import type { TAudio, TLyrics } from "~~/server/utils/types";
 
 const createAudioBody = (audio: TAudio, additionalFields?: Record<string, any>) => {
 	return {

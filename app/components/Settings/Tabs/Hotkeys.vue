@@ -38,8 +38,9 @@
 </template>
 
 <script setup lang="ts">
-import { useHotkeys } from "~/composables/useHotkeys";
 import HotkeyInput from "~/components/Settings/HotkeyInput.vue";
+
+import { useHotkeys } from "~/composables/useHotkeys";
 
 const { getString } = useStrings();
 const settingsStore = useSettingsStore();

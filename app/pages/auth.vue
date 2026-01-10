@@ -54,7 +54,10 @@
 import Qrcode from "qrcode.vue";
 
 import { useVkStore } from "~/stores/vk";
+
 import { useIsMobile } from "~/composables/useIsMobile";
+
+import { isTauri } from "~/utils/tauri";
 
 import type { TQrResponse } from "~~/server/utils/types";
 import type { TWebTokenResponse } from "~~/server/types/auth";
@@ -62,8 +65,6 @@ import type { TWebTokenResponse } from "~~/server/types/auth";
 definePageMeta({
 	layout: false
 });
-
-import { isTauri } from "~/utils/tauri";
 const vkStore = useVkStore();
 const authInit = useAuthInit();
 const { isMobile } = useIsMobile();

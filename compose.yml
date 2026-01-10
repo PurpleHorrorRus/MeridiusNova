@@ -5,11 +5,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-
-      args:
-        EXTERNAL_SERVER: true
-        NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
-        NUXT_COOKIE_KEY: ${NUXT_COOKIE_KEY}
+      secrets:
+        - NUXT_SESSION_PASSWORD
+        - NUXT_COOKIE_KEY
+        - DISCORD_CLIENT_ID
+        - DISCORD_CLIENT_SECRET
 
     cpus: 1
     mem_limit: 256M
@@ -91,6 +91,16 @@ services:
       - SETGID
       - SETUID
       - FOWNER
+
+secrets:
+  NUXT_SESSION_PASSWORD:
+    environment: NUXT_SESSION_PASSWORD
+  NUXT_COOKIE_KEY:
+    environment: NUXT_COOKIE_KEY
+  DISCORD_CLIENT_ID:
+    environment: DISCORD_CLIENT_ID
+  DISCORD_CLIENT_SECRET:
+    environment: DISCORD_CLIENT_SECRET
 
 volumes:
   data:

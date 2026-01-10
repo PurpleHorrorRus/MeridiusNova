@@ -21,6 +21,7 @@
 
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 
 const playerStore = usePlayerStore();

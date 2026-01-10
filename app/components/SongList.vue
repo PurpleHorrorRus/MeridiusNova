@@ -98,17 +98,21 @@
 <script setup lang="ts">
 import { inject, defineAsyncComponent, watch } from "vue";
 import { storeToRefs } from "pinia";
+
+const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
+import VirtualSongList from "~/components/VirtualSongList.vue";
+import VirtualSongItem from "~/components/VirtualSongItem.vue";
+
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useModalStore } from "~/stores/modal";
 import { useAudioStore } from "~/stores/audio";
+
 import { navigateToSimilarTracks } from "~/utils/navigation";
 import { useSongsContext } from "~/composables/useSongsContext";
 import { useIsMobile } from "~/composables/useIsMobile";
 import { useDragAndDrop } from "~/composables/useDragAndDrop";
-const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
-import VirtualSongList from "~/components/VirtualSongList.vue";
-import VirtualSongItem from "~/components/VirtualSongItem.vue";
+
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlaylist } from "~~/server/utils/types";
 

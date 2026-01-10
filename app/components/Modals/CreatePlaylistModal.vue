@@ -75,9 +75,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+
 import { usePlaylistStore } from "~/stores/playlist";
 import { useModalStore } from "~/stores/modal";
 import { useVkStore } from "~/stores/vk";
+
 import { isTauri } from "~/utils/tauri";
 
 const playlistStore = usePlaylistStore();

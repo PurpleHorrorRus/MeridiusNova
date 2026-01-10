@@ -1,9 +1,10 @@
-import { getAudioRequestsInstance } from "./audio";
-import { CacheManager } from "~~/server/utils/cache-manager";
 // @ts-ignore - нет типов для node-fetch-retry
 import fetch from "node-fetch-retry";
 // @ts-ignore - нет типов для m3u8-parser
 import { Parser as M3U8Parser } from "m3u8-parser";
+
+import { getAudioRequestsInstance } from "./audio";
+import { CacheManager } from "~~/server/utils/cache-manager";
 
 const fetchOptions = {
 	retry: 10,

@@ -1,12 +1,11 @@
 import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 
-import { ERawAudio, EAudioFlags, TGetAudioParams, TParsedPayload } from "./types";
 import { IRequest, TPayload, TRawResponse, TGetCatalogSectionPayload, TGetGeneralSectionPayload } from "~~/server/utils/types";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-
+import type { ERawAudio, EAudioFlags, TGetAudioParams, TParsedPayload } from "./types";
 import type { TReloadAudiosPayload, TAudio, TRawAudio } from "./types";
 
 const n = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0PQRSTUVWXYZO123456789+/=";

@@ -111,16 +111,20 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
+import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
+
 import { useVkStore } from "~/stores/vk";
 import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
+
 import { useEventListener } from "~/composables/useEventListener";
-import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
+import { getUserFullName } from "~/utils/user";
 
 const { getString } = useStrings();
 const route = useRoute();
 const vkStore = useVkStore();
-import { storeToRefs } from "pinia";
-import { useSettingsStore } from "~/stores/settings";
 
 const settingsStore = useSettingsStore();
 const { settings } = storeToRefs(settingsStore);
@@ -168,7 +172,6 @@ const isActive = (path: string): boolean => {
 };
 
 const user = computed(() => vkStore.user);
-import { getUserFullName } from "~/utils/user";
 
 const userName = computed(() => {
 	return getUserFullName(user.value, "Пользователь");

@@ -1,5 +1,6 @@
-import { ERequestMethod, type TAuthSession } from "~~/server/utils/types";
 import { configuration, regex$1, getHttpInstance } from "~~/server/utils/http";
+
+import { ERequestMethod, type TAuthSession } from "~~/server/utils/types";
 
 export default defineEventHandler(async (event) => {
 	const http = getHttpInstance();

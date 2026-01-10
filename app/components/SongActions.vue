@@ -67,11 +67,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { storeToRefs } from "pinia";
-import type { TAudio } from "~~/server/utils/types";
-import { useSongsContext } from "~/composables/useSongsContext";
-import { useIsTauri } from "~/composables/useIsTauri";
+
 import { useSettingsStore } from "~/stores/settings";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { useSongsContext } from "~/composables/useSongsContext";
+import { useIsTauri } from "~/composables/useIsTauri";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;

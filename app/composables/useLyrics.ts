@@ -1,8 +1,10 @@
 import { ref, computed, watch, nextTick, onUnmounted } from "vue";
-import type { TAudio, TLyrics } from "~~/server/utils/types";
+import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 import { useAudioStore } from "~/stores/audio";
-import { storeToRefs } from "pinia";
+
+import type { TAudio, TLyrics } from "~~/server/utils/types";
 
 export const useLyrics = (audio: () => TAudio | null) => {
 	const playerStore = usePlayerStore();

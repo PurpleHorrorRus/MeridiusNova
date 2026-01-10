@@ -53,12 +53,15 @@
 </template>
 
 <script setup lang="ts">
-import Downloads from "./Downloads/Downloads.vue";
-import { useUpdater } from "~/composables/useUpdater";
-import { useModalStore } from "~/stores/modal";
-import { useEventListener } from "~/composables/useEventListener";
-import { useSettingsStore } from "~/stores/settings";
 import { storeToRefs } from "pinia";
+
+import Downloads from "./Downloads/Downloads.vue";
+
+import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
+
+import { useUpdater } from "~/composables/useUpdater";
+import { useEventListener } from "~/composables/useEventListener";
 
 import { isTauri } from "~/utils/tauri";
 

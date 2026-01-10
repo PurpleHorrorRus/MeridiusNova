@@ -1,5 +1,6 @@
-import type { IDownloadProgress, TDownload } from "~~/server/utils/download-manager";
 import { isTauri } from "~/utils/tauri";
+
+import type { IDownloadProgress, TDownload } from "~~/server/utils/download-manager";
 
 export const useDownloadsStore = defineStore("downloads", {
 	state: (): {

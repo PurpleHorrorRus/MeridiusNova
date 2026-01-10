@@ -127,12 +127,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useEventListener } from "~/composables/useEventListener";
-import type { TAudio, TPlaylist } from "~~/server/utils/types";
+
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { useEventListener } from "~/composables/useEventListener";
 import { useIsTauri } from "~/composables/useIsTauri";
+
 import Cover from "~/components/Cover.vue";
+
+import type { TAudio, TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	show: boolean;

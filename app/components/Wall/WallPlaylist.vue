@@ -40,10 +40,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { TPlaylist } from "~~/server/utils/types";
-import type { TAudio } from "~~/server/api/vk/audio/types";
+
 import Song from "~/components/Song/Song.vue";
 import Cover from "~/components/Cover.vue";
+
+import type { TPlaylist } from "~~/server/utils/types";
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{
 	playlist: TPlaylist & {

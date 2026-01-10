@@ -1,16 +1,17 @@
 import Hls from "hls.js";
-
 import { storeToRefs } from "pinia";
-import { CrossFade } from "./player/nodes/crossfade";
-import { Normalizer } from "./player/nodes/normalizer";
+
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
+import { CrossFade } from "./player/nodes/crossfade";
+import { Normalizer } from "./player/nodes/normalizer";
+
 import { isMobileCheck } from "~/composables/useIsMobile";
+import { authenticatedFetch } from "~/utils/api";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 import type { TPlayerState } from "~~/server/utils/types";
-import { authenticatedFetch } from "~/utils/api";
 
 interface ControllerData {
 	controller: HTMLAudioElement | null;

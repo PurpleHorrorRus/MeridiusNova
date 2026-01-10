@@ -53,16 +53,19 @@
 </template>
 
 <script setup lang="ts">
-import { useVkStore } from "~/stores/vk";
-import { useEventListener } from "~/composables/useEventListener";
-import { usePlaylistStore } from "~/stores/playlist";
-import { usePlayerStore } from "~/stores/player";
 import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
 import SidebarSearch from "~/components/Navigation/SidebarSearch.vue";
 import SidebarNavigation from "~/components/Navigation/SidebarNavigation.vue";
 import SidebarSettingsButton from "~/components/Navigation/SidebarSettingsButton.vue";
 import SidebarUser from "~/components/Navigation/SidebarUser.vue";
 import Downloads from "~/components/Downloads/Downloads.vue";
+
+import { useVkStore } from "~/stores/vk";
+import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+
+import { useEventListener } from "~/composables/useEventListener";
+
 import { isTauri } from "~/utils/tauri";
 
 const playlistStore = usePlaylistStore();

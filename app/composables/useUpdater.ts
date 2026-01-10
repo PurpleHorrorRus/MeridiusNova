@@ -1,6 +1,8 @@
 import { storeToRefs } from "pinia";
-import { isTauri } from "~/utils/tauri";
+
 import { useSettingsStore } from "~/stores/settings";
+
+import { isTauri } from "~/utils/tauri";
 
 export const useUpdater = () => {
 	const settingsStore = useSettingsStore();

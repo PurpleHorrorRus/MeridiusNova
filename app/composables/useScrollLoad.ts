@@ -1,7 +1,6 @@
-import { ref, onMounted, onBeforeUnmount, inject } from "vue";
-import { useEventListener } from "./useEventListener";
+import { ref, onMounted, onBeforeUnmount, inject, type Ref } from "vue";
 
-import type { Ref } from "vue";
+import { useEventListener } from "./useEventListener";
 
 export interface UseScrollLoadOptions {
 	threshold?: number;

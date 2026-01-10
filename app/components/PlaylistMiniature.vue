@@ -41,9 +41,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+
+import { usePlaylistStore } from "~/stores/playlist";
+
 import type { TPlaylist } from "~~/server/utils/types";
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import { usePlaylistStore } from "~/stores/playlist";
 
 const props = defineProps<{
 	playlist: TPlaylist;

@@ -66,10 +66,11 @@
 </template>
 
 <script setup lang="ts">
-import { useVkStore } from "~/stores/vk";
-import { useModalStore } from "~/stores/modal";
 import SidebarPlaylists from "~/components/Navigation/SidebarPlaylists.vue";
 import CreatePlaylistModal from "~/components/Modals/CreatePlaylistModal.vue";
+
+import { useVkStore } from "~/stores/vk";
+import { useModalStore } from "~/stores/modal";
 
 const { getString } = useStrings();
 const route = useRoute();

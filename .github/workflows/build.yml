@@ -310,7 +310,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
+          secrets: |
             NUXT_SESSION_PASSWORD=${{ secrets.NUXT_SESSION_PASSWORD }}
             NUXT_COOKIE_KEY=${{ secrets.NUXT_COOKIE_KEY }}
             DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}

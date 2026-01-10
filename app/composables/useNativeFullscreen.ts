@@ -1,4 +1,5 @@
 import { ref, onMounted, onUnmounted } from "vue";
+
 import { useEventListener } from "~/composables/useEventListener";
 
 const isNativeFullscreen = ref(false);

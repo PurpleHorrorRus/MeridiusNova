@@ -44,10 +44,12 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
+import Cover from "~/components/Cover.vue";
+
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
-import { storeToRefs } from "pinia";
-import Cover from "~/components/Cover.vue";
 
 const props = defineProps<{
 	expanded: boolean;

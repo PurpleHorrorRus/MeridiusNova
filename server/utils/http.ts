@@ -3,11 +3,10 @@ import os from "node:os";
 import fs from "fs-extra";
 import { CookieJar } from "tough-cookie";
 import FileCookieStore from "tough-cookie-file-store";
-
-import { ERequestMethod } from "./types";
-
 import type { UserSession } from "#auth-utils";
 import type { H3Event, EventHandlerRequest } from "h3";
+
+import { ERequestMethod } from "./types";
 
 import type { TFetchCorsRequestInit } from "./types";
 import type { TWebTokenError, TWebTokenResponse } from "../types/auth";

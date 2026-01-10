@@ -45,9 +45,11 @@
 </template>
 
 <script setup lang="ts">
-import type { TPlaylist } from "~~/server/utils/types";
-import { usePlaylistButton } from "~/utils/playlist-button";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { usePlaylistButton } from "~/utils/playlist-button";
+
+import type { TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	playlist: TPlaylist;

@@ -1,11 +1,11 @@
 import HTMLParser from "node-html-parser";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
-import { IRequest, TPayload, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
 
-import type { EventHandlerRequest, H3Event } from "h3";
+import { IRequest, TPayload, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
 
 import type { TGetSectionParams } from "~~/server/utils/base";
 import type { TSearchResult, TMore, THintsPayload, TPlaylist, TSearchCategory } from "~~/server/utils/types";
@@ -28,13 +28,11 @@ class SearchRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const requestParams = {
+		const res = await this.getSection<TGetSectionPayload>({
 			owner_id: this.event.context.user.id,
 			section: "search",
 			q: String(params.q)
-		} as TGetSectionParams & { q: string };
-
-		const res = await this.getSection<TGetSectionPayload>(requestParams);
+		} as TGetSectionParams & { q: string });
 
 		const htmlRaw = res.payload?.[1]?.[0];
 		const html = Array.isArray(htmlRaw) ? htmlRaw.join("") : (htmlRaw || "");

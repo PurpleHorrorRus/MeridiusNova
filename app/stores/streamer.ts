@@ -1,5 +1,6 @@
-import type { TAudio } from "~~/server/api/vk/audio/types";
 import { isTauri } from "~/utils/tauri";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 interface StreamerPaths {
 	performer: string;

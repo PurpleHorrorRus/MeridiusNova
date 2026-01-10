@@ -24,18 +24,21 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
-import { useEventListener } from "~/composables/useEventListener";
 import { storeToRefs } from "pinia";
-import { usePlaylistStore } from "~/stores/playlist";
-import { usePlayerStore } from "~/stores/player";
-import { provideSongsContext } from "~/composables/useSongsContext";
-import { isMobileCheck } from "~/composables/useIsMobile";
+
 import PlayerTimeline from "~/components/Player/PlayerTimeline.vue";
 import PlayerLeft from "~/components/Player/PlayerLeft.vue";
 import PlayerCenter from "~/components/Player/PlayerCenter.vue";
 import PlayerRight from "~/components/Player/PlayerRight.vue";
 import PlayerCompact from "~/components/Player/PlayerCompact.vue";
 import FullscreenPlayer from "~/components/Player/FullscreenPlayer.vue";
+
+import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+
+import { useEventListener } from "~/composables/useEventListener";
+import { provideSongsContext } from "~/composables/useSongsContext";
+import { isMobileCheck } from "~/composables/useIsMobile";
 
 const playerStore = usePlayerStore();
 const { song: currentSong } = storeToRefs(playerStore);

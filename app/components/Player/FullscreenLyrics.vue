@@ -36,8 +36,11 @@
 
 <script setup lang="ts">
 import { watch } from "vue";
-import { useLyrics } from "~/composables/useLyrics";
+
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
+import { useLyrics } from "~/composables/useLyrics";
+
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{
