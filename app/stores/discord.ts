@@ -7,6 +7,7 @@ import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
+import { isExternalServer } from "~/utils/api";
 
 export type TDiscordActivity = {
 	type: ActivityType;
@@ -34,36 +35,21 @@ export const useDiscordStore = defineStore("discord", {
 				return true;
 			}
 
-			if (!import.meta.client) {
-				return false;
-			}
-
-			const config = useRuntimeConfig();
-			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
-				|| process.env.EXTERNAL_SERVER === "1"
-				|| config.public.externalServer;
-
-			if (isExternalServer) {
+			if (!import.meta.client || isExternalServer()) {
 				return false;
 			}
 
 			const settingsStore = useSettingsStore();
-
+			
 			if (!settingsStore.settings.general.discord.enable) {
 				return false;
 			}
 
-			const clientId = process.env.DISCORD_CLIENT_ID || "";
-			const clientSecret = process.env.DISCORD_CLIENT_SECRET || "";
-
-			if (!clientId || !clientSecret) {
-				console.error("[Discord RPC]: Client ID or Secret not configured");
-				return false;
-			}
-
+			const config = useRuntimeConfig();
+			
 			client = new Client({
-				clientId,
-				clientSecret,
+				clientId: config.public.discordClientId as string,
+				clientSecret: config.discordClientSecret as string,
 				transport: { type: "ipc" }
 			});
 
@@ -82,15 +68,6 @@ export const useDiscordStore = defineStore("discord", {
 
 		async setActivity(song?: TAudio) {
 			if (!import.meta.client) {
-				return false;
-			}
-
-			const config = useRuntimeConfig();
-			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
-				|| process.env.EXTERNAL_SERVER === "1"
-				|| config.public.externalServer;
-
-			if (isExternalServer) {
 				return false;
 			}
 

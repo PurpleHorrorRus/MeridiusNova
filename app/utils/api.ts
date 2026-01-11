@@ -81,3 +81,8 @@ export const authenticatedFetch = async <T = any>(
 	}
 };
 
+export const isExternalServer = () => {
+	return process.env.EXTERNAL_SERVER === "true"
+		|| process.env.EXTERNAL_SERVER === "1"
+		|| useRuntimeConfig().public.externalServer;
+};

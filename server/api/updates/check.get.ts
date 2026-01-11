@@ -6,7 +6,8 @@ export default defineEventHandler(async (event) => {
 	const channel = (query.channel as string) || "production";
 	const currentVersion = (query.currentVersion as string) || "0.0.0";
 
-	const githubRepo = process.env.REPOSITORY || "";
+	const githubRepo = useRuntimeConfig().public.repository as string || "";
+
 	if (!githubRepo) {
 		return {
 			available: false,
@@ -16,15 +17,12 @@ export default defineEventHandler(async (event) => {
 
 	const [owner, repo] = githubRepo.split("/");
 
-	const releasesResponse = await fetch(
-		`https://api.github.com/repos/${owner}/${repo}/releases?per_page=50`,
-		{
-			headers: {
-				"Accept": "application/vnd.github.v3+json",
-				"User-Agent": "Meridius-Nova-Updater"
-			}
+	const releasesResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=50`, {
+		headers: {
+			"Accept": "application/vnd.github.v3+json",
+			"User-Agent": "Meridius-Nova-Updater"
 		}
-	).catch(() => null);
+	}).catch(() => null);
 
 	if (!releasesResponse || !releasesResponse.ok) {
 		return {

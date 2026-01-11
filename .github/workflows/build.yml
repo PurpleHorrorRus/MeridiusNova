@@ -65,7 +65,7 @@ jobs:
           ESBUILD_USE_INLINE_CACHE: 1
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
           REPOSITORY: ${{ github.repository }}
 
@@ -76,7 +76,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
           REPOSITORY: ${{ github.repository }}
 
@@ -157,7 +157,7 @@ jobs:
           ESBUILD_USE_INLINE_CACHE: 1
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
           REPOSITORY: ${{ github.repository }}
 
@@ -168,7 +168,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_COOKIE_KEY: ${{ secrets.NUXT_COOKIE_KEY }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_ID: ${{ vars.DISCORD_CLIENT_ID }}
           DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
           REPOSITORY: ${{ github.repository }}
 
@@ -320,7 +320,7 @@ jobs:
           secrets: |
             NUXT_SESSION_PASSWORD=${{ secrets.NUXT_SESSION_PASSWORD }}
             NUXT_COOKIE_KEY=${{ secrets.NUXT_COOKIE_KEY }}
-            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            DISCORD_CLIENT_ID=${{ vars.DISCORD_CLIENT_ID }}
             DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
           cache-from: type=registry,ref=${{ vars.DOCKERHUB_USERNAME }}/meridius-nova:buildcache
           cache-to: type=registry,ref=${{ vars.DOCKERHUB_USERNAME }}/meridius-nova:buildcache,mode=max

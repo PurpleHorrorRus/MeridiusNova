@@ -78,12 +78,15 @@ function updateVersionInFiles(version) {
 	tauriConfig.version = version;
 
 	const githubRepo = process.env.REPOSITORY || "";
+
 	if (githubRepo && tauriConfig.plugins?.updater) {
 		const [owner, repo] = githubRepo.split("/");
 		const publicKey = process.env.TAURI_PUBLIC_KEY || "{{TAURI_PUBLIC_KEY}}";
+
 		tauriConfig.plugins.updater.endpoints = [
 			`https://api.github.com/repos/${owner}/${repo}/releases/latest`
 		];
+
 		if (publicKey !== "{{TAURI_PUBLIC_KEY}}") {
 			tauriConfig.plugins.updater.pubkey = publicKey;
 		}

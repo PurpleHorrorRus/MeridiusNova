@@ -155,9 +155,13 @@ export default defineNuxtConfig({
 			}
 		},
 
+		discordClientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+
 		public: {
 			externalServer: process.env.EXTERNAL_SERVER === "true"
-				|| process.env.EXTERNAL_SERVER === "1"
+				|| process.env.EXTERNAL_SERVER === "1",
+
+			discordClientId: process.env.DISCORD_CLIENT_ID || ""
 		}
 	}
 });
