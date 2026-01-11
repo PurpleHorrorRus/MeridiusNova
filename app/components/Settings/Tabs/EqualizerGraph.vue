@@ -782,20 +782,10 @@ const drawGraph = () => {
 	transition: all 0.2s ease;
 	white-space: nowrap;
 
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		color: var(--text, #fff);
-	}
-
 	&.active {
 		background: var(--secondary, #e9003f);
 		border-color: var(--secondary, #e9003f);
 		color: var(--text, #fff);
-
-		&:hover {
-			background: var(--primary-hover, #ff1a5c);
-		}
 	}
 
 	@media (max-width: 768px) {

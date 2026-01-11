@@ -34,6 +34,7 @@ export NUXT_SESSION_PASSWORD="${NUXT_SESSION_PASSWORD:-}"
 export NUXT_COOKIE_KEY="${NUXT_COOKIE_KEY:-}"
 export DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID:-}"
 export DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET:-}"
+export REPOSITORY="${REPOSITORY:-}"
 npx --no-install nuxt build
 
 if [ $? -ne 0 ]; then

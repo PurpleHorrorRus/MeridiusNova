@@ -166,7 +166,7 @@ const openInExplorer = async () => {
 		}
 
 		const { downloadDir } = await import("@tauri-apps/api/path");
-		const { writeBinaryFile } = await import("@tauri-apps/plugin-fs");
+		const { writeFile } = await import("@tauri-apps/plugin-fs");
 		const { join } = await import("@tauri-apps/api/path");
 
 		const downloadPath = await downloadDir();
@@ -174,7 +174,7 @@ const openInExplorer = async () => {
 		const arrayBuffer = await blob.arrayBuffer();
 		const uint8Array = new Uint8Array(arrayBuffer);
 
-		await writeBinaryFile(filePath, uint8Array);
+		await writeFile(filePath, uint8Array);
 
 		const { Command } = await import("@tauri-apps/plugin-shell");
 		const { revealItemInDir } = await import("@tauri-apps/plugin-opener");

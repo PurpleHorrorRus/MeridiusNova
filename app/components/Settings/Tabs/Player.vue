@@ -619,12 +619,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 		padding: 14px;
 		gap: 10px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-label {
@@ -643,11 +637,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	height: 20px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
-	transition: transform 0.15s ease;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .settings-range {
@@ -659,10 +648,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 
-	&:hover {
-		height: 8px;
-	}
-
 	&::-webkit-slider-thumb {
 		appearance: none;
 		width: 16px;
@@ -672,11 +657,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 		cursor: pointer;
 		transition: all 0.2s ease;
 		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
-	}
-
-	&::-webkit-slider-thumb:hover {
-		transform: scale(1.2);
-		box-shadow: 0 4px 8px rgba(233, 0, 63, 0.4);
 	}
 }
 
@@ -711,11 +691,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	@media (max-width: 480px) {
 		min-width: 0;
 		width: 100%;
-	}
-
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
 	}
 
 	&:focus {

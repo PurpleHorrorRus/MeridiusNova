@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
+import { useStreamerStore } from "./streamer";
 import { CrossFade } from "./player/nodes/crossfade";
 import { Normalizer } from "./player/nodes/normalizer";
 
@@ -388,6 +389,23 @@ export const usePlayerStore = defineStore("player", {
 			if (import.meta.client) {
 				const discordStore = useDiscordStore();
 				discordStore.setActivity(song);
+			}
+
+			// Streamer Mode
+			if (import.meta.client) {
+				const streamerStore = useStreamerStore();
+				const settingsStore = useSettingsStore();
+				const streamerEnabled = settingsStore.settings.general.streamer.enable;
+
+				if (streamerEnabled) {
+					if (!streamerStore.initialized) {
+						await streamerStore.init();
+					}
+
+					streamerStore.write(song).catch((error) => {
+						console.error("[Streamer Mode]: Failed to write song info", error);
+					});
+				}
 			}
 
 			this.loading = false;

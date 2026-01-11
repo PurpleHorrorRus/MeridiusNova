@@ -140,12 +140,16 @@ export class CacheManager {
 
 	public async isEnabled(): Promise<boolean> {
 		const settings = await getSettings();
-		return settings?.cache?.enable === true;
+		if (!settings || !settings.cache) {
+			return false;
+		}
+		return settings.cache.enable === true;
 	}
 
 	public async getMaxSize(): Promise<number> {
 		const settings = await getSettings();
-		return settings?.cache?.maxSize || 1024;
+		const maxSize = settings?.cache?.maxSize;
+		return maxSize && maxSize > 0 ? maxSize : 1024;
 	}
 
 	public async getCachePath(fullId: string): Promise<string> {

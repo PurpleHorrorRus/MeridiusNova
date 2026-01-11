@@ -10,6 +10,7 @@ set ESBUILD_WORKER_THREADS=0
 set ESBUILD_USE_INLINE_CACHE=1
 set TAURI=1
 set TAURI_PLATFORM=windows
+set REPOSITORY=%REPOSITORY%
 call npx --yes nuxt build
 if %errorlevel% neq 0 (
     echo Error: Nuxt build failed

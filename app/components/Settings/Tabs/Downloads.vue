@@ -175,12 +175,6 @@ const updateTemplate = (event: Event) => {
 		padding: 14px;
 		gap: 12px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-label {
@@ -199,11 +193,6 @@ const updateTemplate = (event: Event) => {
 	height: 20px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
-	transition: transform 0.15s ease;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .settings-input-group {
@@ -237,11 +226,6 @@ const updateTemplate = (event: Event) => {
 	outline: none;
 	transition: all 0.2s ease;
 
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
-	}
-
 	&:focus {
 		border-color: var(--secondary, #e9003f);
 		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.1);
@@ -263,12 +247,6 @@ const updateTemplate = (event: Event) => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	white-space: nowrap;
-
-	&:hover:not(:disabled) {
-		background: var(--primary-hover, #ff1a5c);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-	}
 
 	&:active:not(:disabled) {
 		transform: translateY(0);

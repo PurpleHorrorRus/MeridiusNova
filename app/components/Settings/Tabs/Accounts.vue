@@ -209,12 +209,6 @@ const openLogin = () => {
 		padding: 14px;
 		gap: 12px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-button {
@@ -228,12 +222,6 @@ const openLogin = () => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	white-space: nowrap;
-
-	&:hover {
-		background: var(--primary-hover, #ff1a5c);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-	}
 
 	&:active {
 		transform: translateY(0);
@@ -256,12 +244,6 @@ const openLogin = () => {
 	border-radius: 10px;
 	transition: all 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 
 	&.active {
 		border-color: var(--secondary, #e9003f);
@@ -320,22 +302,12 @@ const openLogin = () => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 
-	&:hover {
-		background: var(--bg-hover, #2a2a2a);
-		transform: translateY(-1px);
-	}
-
 	&:active {
 		transform: translateY(0);
 	}
 
 	&.danger {
 		background: var(--secondary, #e9003f);
-
-		&:hover {
-			background: var(--primary-hover, #ff1a5c);
-			box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-		}
 	}
 }
 </style>

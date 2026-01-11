@@ -23,7 +23,18 @@ export default defineEventHandler(async (event) => {
     }
 
     await ensureSettingsDir();
-    await fs.writeJson(SETTINGS_FILE, body, { spaces: 4 });
+
+    let existingSettings: Partial<TSettings> = {};
+    if (fs.pathExistsSync(SETTINGS_FILE)) {
+        try {
+            existingSettings = await fs.readJson(SETTINGS_FILE) as Partial<TSettings>;
+        } catch {
+            existingSettings = {};
+        }
+    }
+
+    const mergedSettings = { ...existingSettings, ...body };
+    await fs.writeJson(SETTINGS_FILE, mergedSettings, { spaces: 4 });
 
     return { success: true };
 });

@@ -94,7 +94,9 @@
 				"checking": "Checking...",
 				"available": "Server is available",
 				"connect": "Connect",
-				"switchToLocal": "Switch to local server"
+				"switchToLocal": "Return to local server",
+				"remoteActive": "Remote server is active",
+				"remoteActiveDescription": "The application is connected to a remote server. Click the button below to return to the local server."
 			},
 			"updates": {
 				"title": "Updates",

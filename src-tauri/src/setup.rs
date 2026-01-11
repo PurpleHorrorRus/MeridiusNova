@@ -160,9 +160,9 @@ pub fn setup_app(app: &mut tauri::App, host: String, port: u16) -> Result<(), Bo
 
 
 fn get_server_config(app: &tauri::App) -> Result<(bool, String), Box<dyn std::error::Error>> {
-	let config = if let Ok(store) = app.store(".settings.dat") {
-		if let Some(settings_value) = store.get("settings") {
-			check_from_settings(&settings_value)
+	let config = if let Ok(store) = app.store(".tauri-local.dat") {
+		if let Some(local_settings) = store.get("tauriLocal") {
+			check_from_settings(&local_settings)
 		} else {
 			None
 		}
@@ -183,9 +183,9 @@ fn get_server_config(app: &tauri::App) -> Result<(bool, String), Box<dyn std::er
 }
 
 fn get_hardware_acceleration_setting(app: &tauri::App) -> Result<bool, Box<dyn std::error::Error>> {
-	if let Ok(store) = app.store(".settings.dat") {
-		if let Some(settings_value) = store.get("settings") {
-			if let Some(settings_obj) = settings_value.as_object() {
+	if let Ok(store) = app.store(".tauri-local.dat") {
+		if let Some(local_settings) = store.get("tauriLocal") {
+			if let Some(settings_obj) = local_settings.as_object() {
 				if let Some(window_obj) = settings_obj.get("window").and_then(|v| v.as_object()) {
 					if let Some(hw_accel) = window_obj.get("hardwareAcceleration") {
 						if let Some(value) = hw_accel.as_bool() {

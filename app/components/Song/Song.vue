@@ -21,6 +21,7 @@
 				:width="isTableMode ? 40 : 50"
 				:height="isTableMode ? 40 : 50"
 			/>
+
 			<div v-if="isTableMode" class="song-cover-overlay">
 				<Icon :name="isPlaying && playerIsPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
 			</div>

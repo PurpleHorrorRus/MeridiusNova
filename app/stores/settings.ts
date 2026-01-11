@@ -1,4 +1,46 @@
 import type { TSettings } from "~~/server/utils/types";
+import { isTauri } from "~/utils/tauri";
+
+type TTauriLocalSettings = {
+	general: {
+		server: {
+			enable: boolean;
+			type: "local" | "remote";
+			url: string;
+			port: number;
+		};
+	};
+	window: {
+		hardwareAcceleration: boolean;
+	};
+};
+
+const loadTauriLocalSettings = async (): Promise<Partial<TTauriLocalSettings> | null> => {
+	if (!isTauri() || !import.meta.client) {
+		return null;
+	}
+
+	const { Store } = await import("@tauri-apps/plugin-store");
+	const store = await Store.load(".tauri-local.dat");
+	const saved = await store.get<Partial<TTauriLocalSettings>>("tauriLocal");
+
+	await store.close().catch(() => {});
+
+	return saved || null;
+};
+
+const saveTauriLocalSettings = async (localSettings: Partial<TTauriLocalSettings>): Promise<void> => {
+	if (!isTauri() || !import.meta.client) {
+		return;
+	}
+
+	const { Store } = await import("@tauri-apps/plugin-store");
+	const store = await Store.load(".tauri-local.dat");
+	await store.set("tauriLocal", localSettings);
+	await store.save();
+
+	await store.close().catch(() => {});
+};
 
 const defaultSettings: TSettings = {
 	window: {
@@ -139,25 +181,6 @@ const defaultSettings: TSettings = {
 	hotkeys: {}
 };
 
-import { isTauri } from "~/utils/tauri";
-
-const loadSettingsFromTauri = async (): Promise<Partial<TSettings> | null> => {
-	if (!isTauri() || !import.meta.client) {
-		return null;
-	}
-
-	const { Store } = await import("@tauri-apps/plugin-store");
-	const store = await Store.load(".settings.dat");
-	const saved = await store.get<Partial<TSettings>>("settings");
-
-	// Закрываем store после использования для освобождения памяти
-	await store.close().catch(() => {
-		// Игнорируем ошибки при закрытии
-	});
-
-	return saved || null;
-};
-
 const loadSettingsFromServer = async (): Promise<Partial<TSettings> | null> => {
 	if (!import.meta.client) {
 		return null;
@@ -166,30 +189,21 @@ const loadSettingsFromServer = async (): Promise<Partial<TSettings> | null> => {
 	return await $fetch<Partial<TSettings> | null>("/api/settings");
 };
 
-const saveSettingsToTauri = async (settings: TSettings): Promise<void> => {
-	if (!isTauri() || !import.meta.client) {
-		return;
-	}
-
-	const { Store } = await import("@tauri-apps/plugin-store");
-	const store = await Store.load(".settings.dat");
-	await store.set("settings", settings);
-	await store.save();
-	
-	// Закрываем store после использования для освобождения памяти
-	await store.close().catch(() => {
-		// Игнорируем ошибки при закрытии
-	});
-};
-
 const saveSettingsToServer = async (settings: TSettings): Promise<void> => {
 	if (!import.meta.client) {
 		return;
 	}
 
+	const { general, ...settingsWithoutGeneral } = settings;
+	const { server, ...generalWithoutServer } = general;
+	const settingsWithoutServer = {
+		...settingsWithoutGeneral,
+		general: generalWithoutServer
+	};
+
 	await $fetch("/api/settings", {
 		method: "POST",
-		body: settings
+		body: settingsWithoutServer
 	});
 };
 
@@ -228,16 +242,37 @@ export const useSettingsStore = defineStore("settings", {
 			}
 
 			if (import.meta.client) {
-				let saved: Partial<TSettings> | null = null;
+				let localSettings: Partial<TTauriLocalSettings> | null = null;
 
 				if (isTauri()) {
-					saved = await loadSettingsFromTauri();
-				} else {
-					saved = await loadSettingsFromServer();
+					localSettings = await loadTauriLocalSettings();
 				}
 
+				const saved = await loadSettingsFromServer();
+
 				if (saved) {
-					this.settings = mergeSettings(saved, defaultSettings);
+					const savedWithoutServer: Partial<TSettings> = { ...saved };
+					if (savedWithoutServer.general && saved.general) {
+						const { server, ...generalWithoutServer } = saved.general;
+						savedWithoutServer.general = generalWithoutServer as any;
+					}
+					this.settings = mergeSettings(savedWithoutServer, defaultSettings);
+				}
+
+				if (isTauri()) {
+					if (localSettings?.general?.server) {
+						this.settings.general.server = {
+							enable: localSettings.general.server.enable ?? defaultSettings.general.server.enable,
+							type: localSettings.general.server.type ?? defaultSettings.general.server.type,
+							url: localSettings.general.server.url ?? defaultSettings.general.server.url,
+							port: localSettings.general.server.port ?? defaultSettings.general.server.port
+						};
+					} else {
+						this.settings.general.server = { ...defaultSettings.general.server };
+					}
+					if (localSettings?.window?.hardwareAcceleration !== undefined) {
+						this.settings.window.hardwareAcceleration = localSettings.window.hardwareAcceleration;
+					}
 				}
 			}
 
@@ -249,10 +284,17 @@ export const useSettingsStore = defineStore("settings", {
 				return;
 			}
 
+			await saveSettingsToServer(this.settings);
+
 			if (isTauri()) {
-				await saveSettingsToTauri(this.settings);
-			} else {
-				await saveSettingsToServer(this.settings);
+				await saveTauriLocalSettings({
+					general: {
+						server: this.settings.general.server
+					},
+					window: {
+						hardwareAcceleration: this.settings.window.hardwareAcceleration
+					}
+				});
 			}
 		},
 

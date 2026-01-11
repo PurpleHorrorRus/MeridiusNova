@@ -44,6 +44,7 @@
 		"global-shortcut:allow-is-registered",
 		"global-shortcut:allow-register",
 		"global-shortcut:allow-unregister",
+		"global-shortcut:allow-unregister-all",
 		{
 			"identifier": "shell:allow-execute",
 			"allow": [
@@ -59,23 +60,77 @@
 		"opener:allow-reveal-item-in-dir",
 		"dialog:default",
 		"os:allow-platform",
-		"fs:allow-exists",
-		"fs:allow-read-file",
-		"fs:allow-read-dir",
-		"fs:allow-write-file",
-		"fs:allow-create",
-		"fs:allow-remove",
-		"fs:allow-rename",
-		"fs:allow-copy-file",
-		"fs:allow-read-text-file",
-		"fs:allow-write-text-file",
+		"fs:default",
+		{
+			"identifier": "fs:allow-exists",
+			"allow": [
+				{ "path": "$HOME" },
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-dir",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-write-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-create",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-remove",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-rename",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-copy-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-text-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-write-text-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
 		{
 			"identifier": "fs:scope",
 			"allow": [
-				"$APPDATA/**",
-				"$APPCACHE/**",
-				"$APPLOCALDATA/**",
-				"$HOME/.ffmpeg/**"
+				{ "path": "$APPDATA/**" },
+				{ "path": "$APPCACHE/**" },
+				{ "path": "$APPLOCALDATA/**" },
+				{ "path": "$HOME/.ffmpeg/**" },
+				{ "path": "$HOME/.meridius" },
+				{ "path": "$HOME/.meridius/**" }
 			]
 		}
 	]

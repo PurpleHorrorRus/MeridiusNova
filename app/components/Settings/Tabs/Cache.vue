@@ -36,21 +36,42 @@
 					</div>
 				</div>
 
-				<div v-if="settings.cache.enable" class="settings-item">
-					<label class="settings-label">{{ getString("settings.cache.maxSize") }}</label>
-					<div class="settings-input-group">
-						<input
-							:value="settings.cache.maxSize"
-							@input="updateMaxSize"
-							type="number"
-							min="100"
-							max="100000"
-							class="settings-input"
-							:placeholder="getString('settings.cache.maxSizePlaceholder')"
-						/>
-						<span class="settings-unit">MB</span>
-					</div>
+			<div v-if="settings.cache.enable" class="settings-item">
+				<label class="settings-label">
+					{{ getString("settings.cache.maxSize") }}
+				</label>
+				<input
+					type="range"
+					:value="getSliderValue(settings.cache.maxSize)"
+					@input="updateMaxSizeFromSlider"
+					min="0"
+					:max="cacheSizeSteps.length - 1"
+					step="1"
+					class="settings-range"
+				/>
+				<div class="cache-size-labels">
+					<span
+						v-for="(step, index) in cacheSizeSteps"
+						:key="index"
+						class="cache-size-label"
+						:class="{ 'cache-size-label-active': getSliderValue(settings.cache.maxSize) === index && isKeyValue(settings.cache.maxSize) }"
+					>
+						{{ formatCacheSize(step) }}
+					</span>
 				</div>
+				<div class="settings-input-group cache-custom-input-group">
+					<input
+						:value="settings.cache.maxSize"
+						@input="updateMaxSizeFromInput"
+						type="number"
+						min="32"
+						max="10240"
+						class="settings-input cache-custom-input"
+						:placeholder="getString('settings.cache.maxSizePlaceholder')"
+					/>
+					<span class="settings-unit">МБ</span>
+				</div>
+			</div>
 
 				<div v-if="settings.cache.enable && cacheStats" class="settings-item">
 					<div class="cache-stats">
@@ -118,6 +139,49 @@ const isExternalServer = process.env.EXTERNAL_SERVER === "true"
 const cacheStats = ref<{ size: number; tracks: number; sizeMB: number; maxSize: number; maxSizeMB: number } | null>(null);
 const clearing = ref(false);
 
+const cacheSizeSteps = [32, 128, 256, 512, 1024, 5120, 10240];
+
+const getSliderValue = (maxSizeMB: number): number => {
+	if (cacheSizeSteps.length === 0) {
+		return 0;
+	}
+
+	let closestIndex = 0;
+	const firstStep = cacheSizeSteps[0];
+	if (firstStep === undefined) {
+		return 0;
+	}
+
+	let minDiff = Math.abs(firstStep - maxSizeMB);
+
+	for (let index = 1; index < cacheSizeSteps.length; index++) {
+		const step = cacheSizeSteps[index];
+		if (step === undefined) {
+			continue;
+		}
+
+		const diff = Math.abs(step - maxSizeMB);
+		if (diff < minDiff) {
+			minDiff = diff;
+			closestIndex = index;
+		}
+	}
+
+	return closestIndex;
+};
+
+const formatCacheSize = (sizeMB: number): string => {
+	if (sizeMB < 1024) {
+		return `${sizeMB} МБ`;
+	}
+
+	return `${Math.round((sizeMB / 1024) * 100) / 100} ГБ`;
+};
+
+const isKeyValue = (maxSizeMB: number): boolean => {
+	return cacheSizeSteps.includes(maxSizeMB);
+};
+
 const cacheProgressPercent = computed(() => {
 	if (!cacheStats.value || cacheStats.value.maxSize === 0) {
 		return 0;
@@ -167,11 +231,23 @@ const updateCachePath = (event: Event) => {
 	}
 };
 
-const updateMaxSize = (event: Event) => {
+const updateMaxSizeFromSlider = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	const index = parseInt(target.value, 10);
+
+	if (!isNaN(index) && index >= 0 && index < cacheSizeSteps.length) {
+		const step = cacheSizeSteps[index];
+		if (step !== undefined) {
+			settingsStore.updateSection("cache", { maxSize: step });
+		}
+	}
+};
+
+const updateMaxSizeFromInput = (event: Event) => {
 	const target = event.target as HTMLInputElement;
 	const value = parseInt(target.value, 10);
 
-	if (!isNaN(value) && value >= 100 && value <= 100000) {
+	if (!isNaN(value) && value >= 32 && value <= 10240) {
 		settingsStore.updateSection("cache", { maxSize: value });
 	}
 };
@@ -323,6 +399,75 @@ onUnmounted(() => {
 	padding: 0 8px;
 }
 
+.settings-range {
+	flex: 1;
+	height: 6px;
+	background: var(--bg-tertiary, #535353);
+	border-radius: 3px;
+	outline: none;
+	cursor: pointer;
+	transition: all 0.2s ease;
+
+	&::-webkit-slider-thumb {
+		appearance: none;
+		width: 16px;
+		height: 16px;
+		background: var(--secondary, #e9003f);
+		border-radius: 50%;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
+	}
+
+	&::-moz-range-thumb {
+		width: 16px;
+		height: 16px;
+		background: var(--secondary, #e9003f);
+		border-radius: 50%;
+		cursor: pointer;
+		border: none;
+		transition: all 0.2s ease;
+		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
+	}
+}
+
+.settings-value {
+	min-width: 80px;
+	text-align: right;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-secondary, #b3b3b3);
+}
+
+.cache-size-labels {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 8px;
+	padding: 0 8px;
+	font-size: 11px;
+	color: var(--text-secondary, #b3b3b3);
+}
+
+.cache-size-label {
+	transition: all 0.2s ease;
+	opacity: 0.5;
+
+	&.cache-size-label-active {
+		opacity: 1;
+		color: var(--secondary, #e9003f);
+		font-weight: 600;
+	}
+}
+
+.cache-custom-input-group {
+	margin-top: 12px;
+}
+
+.cache-custom-input {
+	max-width: 150px;
+}
+
 .settings-button {
 	padding: 8px 16px;
 	background: var(--bg-tertiary, #2a2a2a);
@@ -337,11 +482,6 @@ onUnmounted(() => {
 	align-items: center;
 	gap: 8px;
 
-	&:hover:not(:disabled) {
-		background: var(--bg-hover, #333);
-		border-color: var(--secondary, #e9003f);
-	}
-
 	&:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
@@ -350,10 +490,6 @@ onUnmounted(() => {
 	&.settings-button-danger {
 		background: var(--error, #e9003f);
 		border-color: var(--error, #e9003f);
-
-		&:hover:not(:disabled) {
-			background: var(--error-hover, #d0003a);
-		}
 	}
 }
 

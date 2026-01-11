@@ -7,11 +7,13 @@ pub struct ServerConfig {
 }
 
 fn normalize_url(url_str: &str, port: Option<u64>) -> String {
-	let mut url = url_str.trim().to_string();
+	let url = url_str.trim();
 	
 	if url.is_empty() {
 		return "http://localhost:3001/".to_string();
 	}
+
+	let mut url = url.to_string();
 
 	if url.starts_with("http://://") || url.starts_with("https://://") {
 		url = url.replace("://://", "://");
@@ -33,20 +35,22 @@ fn normalize_url(url_str: &str, port: Option<u64>) -> String {
 		&url[..]
 	};
 
-	if host_and_path.is_empty() {
+	if host_and_path.is_empty() || host_and_path == "/" {
 		return "http://localhost:3001/".to_string();
 	}
 
 	let host_part = host_and_path.split('/').next().unwrap_or(host_and_path);
 	
-	if host_part.is_empty() {
+	if host_part.is_empty() || host_part == "/" {
 		return "http://localhost:3001/".to_string();
 	}
 
 	let (host, existing_port) = if let Some(colon_pos) = host_part.find(':') {
 		let h = &host_part[..colon_pos];
 		let p = &host_part[colon_pos + 1..];
-		if p.parse::<u16>().is_ok() {
+		if h.is_empty() {
+			return "http://localhost:3001/".to_string();
+		} else if p.parse::<u16>().is_ok() {
 			(h, Some(p.to_string()))
 		} else {
 			(host_part, None)
@@ -55,25 +59,28 @@ fn normalize_url(url_str: &str, port: Option<u64>) -> String {
 		(host_part, None)
 	};
 
-	if host.is_empty() {
+	if host.is_empty() || host == "/" {
 		return "http://localhost:3001/".to_string();
 	}
 
 	let path = if let Some(slash_pos) = host_and_path.find('/') {
-		&host_and_path[slash_pos..]
+		let p = &host_and_path[slash_pos..];
+		if p == "/" {
+			""
+		} else {
+			p
+		}
 	} else {
 		""
 	};
 
-	let result = if let Some(ref p) = existing_port {
+	if let Some(ref p) = existing_port {
 		format!("{}://{}:{}{}/", protocol, host, p, path)
 	} else if let Some(port_val) = port {
 		format!("{}://{}:{}{}/", protocol, host, port_val, path)
 	} else {
 		format!("{}://{}{}/", protocol, host, path)
-	};
-
-	result
+	}
 }
 
 pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
@@ -85,6 +92,7 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 		.unwrap_or("local");
 	
 	if server_type == "local" {
+		println!("[Server Check] Server type is local, skipping remote config");
 		return None;
 	}
 	
@@ -92,10 +100,13 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 	let url_str = server.get("url")?.as_str()?;
 	
 	if !enable || url_str.is_empty() {
+		println!("[Server Check] Remote server disabled or URL is empty (enable: {}, url: '{}')", enable, url_str);
 		return None;
 	}
 
 	let port = server.get("port").and_then(|v| v.as_u64());
+	
+	println!("[Server Check] Processing remote server URL: '{}', port: {:?}", url_str, port);
 	
 	let mut url = url_str.trim().to_string();
 	
@@ -105,11 +116,17 @@ pub fn check_from_settings(settings: &Value) -> Option<ServerConfig> {
 		url = url.replacen("https://://", "https://", 1);
 	}
 	
-	let url = normalize_url(&url, port);
+	let normalized_url = normalize_url(&url, port);
+	
+	if normalized_url == "http://localhost:3001/" && !url_str.trim().is_empty() {
+		println!("[Server Check] WARNING: normalize_url returned localhost for non-empty URL: '{}'", url_str);
+	}
+	
+	println!("[Server Check] Normalized URL: '{}'", normalized_url);
 
 	Some(ServerConfig {
 		use_remote: true,
-		remote_url: url,
+		remote_url: normalized_url,
 	})
 }
 

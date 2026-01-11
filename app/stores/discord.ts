@@ -34,6 +34,19 @@ export const useDiscordStore = defineStore("discord", {
 				return true;
 			}
 
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const config = useRuntimeConfig();
+			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
+				|| process.env.EXTERNAL_SERVER === "1"
+				|| config.public.externalServer;
+
+			if (isExternalServer) {
+				return false;
+			}
+
 			const settingsStore = useSettingsStore();
 
 			if (!settingsStore.settings.general.discord.enable) {
@@ -68,6 +81,19 @@ export const useDiscordStore = defineStore("discord", {
 		},
 
 		async setActivity(song?: TAudio) {
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const config = useRuntimeConfig();
+			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
+				|| process.env.EXTERNAL_SERVER === "1"
+				|| config.public.externalServer;
+
+			if (isExternalServer) {
+				return false;
+			}
+
 			const settingsStore = useSettingsStore();
 
 			if (!settingsStore.settings.general.discord.enable) {
@@ -127,6 +153,19 @@ export const useDiscordStore = defineStore("discord", {
 		},
 
 		async clearActivity() {
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const config = useRuntimeConfig();
+			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
+				|| process.env.EXTERNAL_SERVER === "1"
+				|| config.public.externalServer;
+
+			if (isExternalServer) {
+				return false;
+			}
+
 			if (!client) {
 				return false;
 			}

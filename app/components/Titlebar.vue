@@ -4,6 +4,9 @@
 			<span id="titlebar-left__logo">
 				Meridius
 			</span>
+			<span v-if="serverUrl" id="titlebar-left__server-url">
+				{{ serverUrl }}
+			</span>
 		</div>
 
 		<div v-if="showSearch" id="titlebar-center">
@@ -67,6 +70,8 @@ import { isTauri } from "~/utils/tauri";
 
 const { getString } = useStrings();
 const modalStore = useModalStore();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
 const appWindow = ref<any>(null);
 const { updateAvailable, checkForUpdates } = useUpdater();
@@ -80,8 +85,58 @@ const showSearch = computed(() => {
 	return windowWidth.value <= 600;
 });
 
+const serverUrl = computed(() => {
+	if (!settings.value.general.server) {
+		return "";
+	}
+
+	const serverConfig = settings.value.general.server;
+
+	if (serverConfig.type === "remote" && serverConfig.enable && serverConfig.url) {
+		let url = serverConfig.url.trim();
+		if (!url) {
+			return "";
+		}
+
+		let host = url;
+		if (url.includes("://")) {
+			const parts = url.split("://");
+			if (parts.length > 1 && parts[1]) {
+				host = parts[1];
+			}
+		}
+
+		const hostParts = host.split("/")[0];
+		if (!hostParts) {
+			return "";
+		}
+
+		const colonIndex = hostParts.indexOf(":");
+
+		if (colonIndex !== -1) {
+			return hostParts;
+		}
+
+		if (serverConfig.port) {
+			return `${hostParts}:${serverConfig.port}`;
+		}
+
+		return hostParts;
+	}
+
+	if (serverConfig.type === "local") {
+		return `localhost:${serverConfig.port || 31415}`;
+	}
+
+	return "";
+});
+
 onMounted(async () => {
 	await nextTick();
+
+	if (!settingsStore.loaded) {
+		await settingsStore.load();
+	}
 
 	if (typeof window !== "undefined") {
 		windowWidth.value = window.innerWidth;
@@ -173,7 +228,7 @@ const handleClose = async () => {
 	align-items: center;
 	
 	width: 100%;
-	height: 100%;
+	height: 35px;
 
 	background-color: var(--titlebar);
 
@@ -197,6 +252,24 @@ const handleClose = async () => {
 			@media (max-width: 600px) {
 				font-size: 12px;
 				padding-left: 8px;
+			}
+		}
+
+		&__server-url {
+			margin-left: 8px;
+			padding-left: 8px;
+			border-left: 1px solid var(--border, #2a2a2a);
+			flex-shrink: 0;
+
+			font-size: 11px;
+			font-weight: normal;
+			color: var(--text-secondary, #b3b3b3);
+			user-select: none;
+
+			@media (max-width: 600px) {
+				font-size: 10px;
+				margin-left: 6px;
+				padding-left: 6px;
 			}
 		}
 	}

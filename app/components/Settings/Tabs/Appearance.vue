@@ -97,12 +97,6 @@ const updateTheme = (event: Event) => {
 		padding: 14px;
 		gap: 12px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-label {
@@ -139,11 +133,6 @@ const updateTheme = (event: Event) => {
 	@media (max-width: 480px) {
 		min-width: 0;
 		width: 100%;
-	}
-
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
 	}
 
 	&:focus {

@@ -45,6 +45,9 @@ services:
     environment:
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
       NUXT_COOKIE_KEY: ${NUXT_COOKIE_KEY}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      REPOSITORY: ${REPOSITORY?:PurpleHorrorRus/MeridiusNova}
 
     volumes:
       - data:/home/node/.meridius:rw
