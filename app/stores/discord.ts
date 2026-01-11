@@ -50,7 +50,7 @@ export const useDiscordStore = defineStore("discord", {
 			client = new Client({
 				clientId: config.public.discordClientId as string,
 				clientSecret: config.discordClientSecret as string,
-				transport: { type: "ipc" }
+				transport: { type: "websocket" }
 			});
 
 			const connected = await client.connect().catch((error) => {
