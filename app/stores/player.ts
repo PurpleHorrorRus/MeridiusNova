@@ -1,5 +1,6 @@
 import Hls from "hls.js";
 import { storeToRefs } from "pinia";
+import * as lodash from "lodash";
 
 import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
@@ -30,6 +31,7 @@ const controllers: [ControllerData | null, ControllerData | null] = [null, null]
 let controllerIndex = -1;
 let opposedControllerIndex = -1;
 let contextTimeout: NodeJS.Timeout | null = null;
+let debouncedSaveVolume: ((volume: number) => void) | null = null;
 
 const emptySong: TAudio = {
 	id: -1,
@@ -828,7 +830,14 @@ export const usePlayerStore = defineStore("player", {
 			update(this.getCurrentController());
 			update(this.getOpposedController());
 
-			await settingsStore.updateSection("player", { volume: this.volume });
+			if (!debouncedSaveVolume) {
+				debouncedSaveVolume = lodash.debounce(async (volumeValue: number) => {
+					const currentSettingsStore = useSettingsStore();
+					await currentSettingsStore.updateSection("player", { volume: volumeValue });
+				}, 500);
+			}
+
+			debouncedSaveVolume(this.volume);
 		},
 
 		async toggleMute() {

@@ -103,21 +103,21 @@ pub fn setup_app(app: &mut tauri::App, host: String, port: u16) -> Result<(), Bo
 
 	let mut webview_args: Vec<String> = Vec::new();
 
-	webview_args.push("--disable-spell-checking".to_string());
-	webview_args.push("--disable-autofill".to_string());
-	webview_args.push("--disable-breakpad".to_string());
-	webview_args.push("--disable-client-side-phishing-detection".to_string());
-	webview_args.push("--disable-component-update".to_string());
-	webview_args.push("--disable-default-apps".to_string());
-	webview_args.push("--disable-features=TranslateUI".to_string());
-	webview_args.push("--disable-notifications".to_string());
-	webview_args.push("--disable-password-generation".to_string());
-	webview_args.push("--disable-prompt-on-repost".to_string());
-	webview_args.push("--disable-sync".to_string());
-	webview_args.push("--disable-translate".to_string());
-	webview_args.push("--no-first-run".to_string());
-	webview_args.push("--no-default-browser-check".to_string());
-	webview_args.push("--safebrowsing-disable-auto-update".to_string());
+	// webview_args.push("--disable-spell-checking".to_string());
+	// webview_args.push("--disable-autofill".to_string());
+	// webview_args.push("--disable-breakpad".to_string());
+	// webview_args.push("--disable-client-side-phishing-detection".to_string());
+	// webview_args.push("--disable-component-update".to_string());
+	// webview_args.push("--disable-default-apps".to_string());
+	// webview_args.push("--disable-features=TranslateUI".to_string());
+	// webview_args.push("--disable-notifications".to_string());
+	// webview_args.push("--disable-password-generation".to_string());
+	// webview_args.push("--disable-prompt-on-repost".to_string());
+	// webview_args.push("--disable-sync".to_string());
+	// webview_args.push("--disable-translate".to_string());
+	// webview_args.push("--no-first-run".to_string());
+	// webview_args.push("--no-default-browser-check".to_string());
+	// webview_args.push("--safebrowsing-disable-auto-update".to_string());
 
 	if !hardware_acceleration {
 		webview_args.push("--disable-gpu".to_string());

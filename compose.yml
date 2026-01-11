@@ -1,15 +1,15 @@
 services:
   meridius: &meridius
-    image: infinitehorror/meridius-nova:nightly
+    image: infinitehorror/meridius-nova
 
-    build:
-      context: .
-      dockerfile: Dockerfile
-      secrets:
-        - NUXT_SESSION_PASSWORD
-        - NUXT_COOKIE_KEY
-        - DISCORD_CLIENT_ID
-        - DISCORD_CLIENT_SECRET
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   secrets:
+    #     - NUXT_SESSION_PASSWORD
+    #     - NUXT_COOKIE_KEY
+    #     - DISCORD_CLIENT_ID
+    #     - DISCORD_CLIENT_SECRET
 
     cpus: 1
     mem_limit: 256M
