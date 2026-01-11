@@ -5,7 +5,6 @@ type TTauriLocalSettings = {
 	general: {
 		server: {
 			enable: boolean;
-			type: "local" | "remote";
 			url: string;
 			port: number;
 		};
@@ -77,7 +76,6 @@ const defaultSettings: TSettings = {
 		},
 		server: {
 			enable: false,
-			type: "local" as "local" | "remote",
 			url: "",
 			port: 31415
 		}
@@ -263,7 +261,6 @@ export const useSettingsStore = defineStore("settings", {
 					if (localSettings?.general?.server) {
 						this.settings.general.server = {
 							enable: localSettings.general.server.enable ?? defaultSettings.general.server.enable,
-							type: localSettings.general.server.type ?? defaultSettings.general.server.type,
 							url: localSettings.general.server.url ?? defaultSettings.general.server.url,
 							port: localSettings.general.server.port ?? defaultSettings.general.server.port
 						};

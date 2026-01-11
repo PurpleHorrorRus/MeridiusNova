@@ -109,7 +109,7 @@
 	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
 		<div class="settings-items">
-			<div v-if="(settings.general.server.type === 'remote' && settings.general.server.enable) || isExternalServer" class="settings-item settings-item-warning">
+			<div v-if="settings.general.server.enable || isExternalServer" class="settings-item settings-item-warning">
 				<div class="settings-warning-content">
 					<Icon name="mdi:server-network" class="settings-warning-icon" />
 					<div class="settings-warning-text">
@@ -130,7 +130,7 @@
 				<label class="settings-label">
 					<input
 						type="checkbox"
-						:checked="settings.general.server.type === 'remote' && settings.general.server.enable"
+						:checked="settings.general.server.enable"
 						@change="updateServerEnable"
 						class="settings-checkbox"
 					/>
@@ -138,7 +138,7 @@
 				</label>
 			</div>
 
-			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable" class="settings-item">
+			<div v-if="settings.general.server.enable" class="settings-item">
 				<label class="settings-label settings-label-block">{{ getString("settings.general.server.url") }}</label>
 				<div class="settings-input-group">
 					<input
@@ -180,12 +180,12 @@
 				</div>
 			</div>
 
-			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable && serverError" class="settings-tip settings-error">
+			<div v-if="settings.general.server.enable && serverError" class="settings-tip settings-error">
 				<Icon name="mdi:alert-circle" class="settings-tip-icon" />
 				{{ serverError }}
 			</div>
 
-			<div v-if="settings.general.server.type === 'remote' && settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
+			<div v-if="settings.general.server.enable && isServerAvailable === true && !serverError" class="settings-tip settings-success">
 				<Icon name="mdi:check-circle" class="settings-tip-icon" />
 				{{ getString("settings.general.server.available") }}
 			</div>
@@ -364,12 +364,10 @@ const updateStreamerEnable = async (event: Event) => {
 
 const updateServerEnable = (event: Event) => {
 	const target = event.target as HTMLInputElement;
-	const enabled = target.checked;
 	settingsStore.updateSection("general", {
 		server: {
 			...settings.value.general.server,
-			type: enabled ? "remote" : "local",
-			enable: enabled
+			enable: target.checked
 		}
 	});
 	resetServerCheck();
@@ -430,19 +428,13 @@ const connectToServer = async () => {
 };
 
 const switchToLocalServer = async () => {
-	settingsStore.updateSection("general", {
-		server: {
-			...settings.value.general.server,
-			type: "local",
-			enable: false
-		}
-	});
-	resetServerCheck();
-
 	if (isTauri() && import.meta.client) {
-		await settingsStore.save();
+		settingsStore.settings.general.server.enable = false;
 		
-		await new Promise(resolve => setTimeout(resolve, 500));
+		await settingsStore.save();
+		resetServerCheck();
+		
+		await new Promise(resolve => setTimeout(resolve, 1000));
 
 		const { invoke } = await import("@tauri-apps/api/core");
 		await invoke("restart_app");
