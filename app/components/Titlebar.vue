@@ -1,13 +1,16 @@
 <template>
-	<div id="titlebar">
-		<div id="titlebar-left" @mousedown="handleMouseDown">
+	<div id="titlebar" @mousedown="handleMouseDown">
+		<div id="titlebar-left">
 			<span id="titlebar-left__logo">
 				Meridius
 			</span>
+			<span v-if="serverUrl" id="titlebar-left__server-url">
+				{{ serverUrl }}
+			</span>
 		</div>
 
-		<div v-if="showSearch" id="titlebar-center" @mousedown.stop>
-			<div class="titlebar-search">
+		<div v-if="showSearch" id="titlebar-center">
+			<div class="titlebar-search" @mousedown.stop>
 				<div class="search-input-wrapper">
 					<Icon name="mdi:magnify" size="16" class="search-icon" />
 					<input
@@ -19,7 +22,7 @@
 					/>
 					<button
 						v-if="searchQuery"
-						@click="clearSearch"
+						@click="searchQuery = ''"
 						class="search-clear"
 					>
 						<Icon name="mdi:close" size="14" />
@@ -31,6 +34,11 @@
 
 		<div id="titlebar-right">
 			<Downloads />
+
+			<div v-if="updateAvailable" class="titlebar-update-notification" @click="modalStore.openSettings">
+				<Icon name="mdi:download" size="16" />
+				<span class="update-text" v-text="getString('titlebar.update.available')" />
+			</div>
 
 			<div class="titlebar-right__button" @click="handleMinimize">
 				<Icon name="bx:minus" />
@@ -48,41 +56,72 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
+
 import Downloads from "./Downloads/Downloads.vue";
 
+import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
+
+import { useUpdater } from "~/composables/useUpdater";
+import { useEventListener } from "~/composables/useEventListener";
+
+import { isTauri } from "~/utils/tauri";
+
 const { getString } = useStrings();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+const modalStore = useModalStore();
 
 const appWindow = ref<any>(null);
-
-onMounted(async () => {
-	if (isTauri && import.meta.client) {
-		const { getCurrentWindow } = await import("@tauri-apps/api/window");
-		appWindow.value = getCurrentWindow();
-	}
-});
+const { updateAvailable, checkForUpdates } = useUpdater();
 
 const searchQuery = ref("");
+const updateCheckInterval = ref<ReturnType<typeof setInterval> | null>(null);
 
-const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
+const windowWidth = ref(0);
 
 const showSearch = computed(() => {
 	return windowWidth.value <= 600;
 });
 
-if (typeof window !== "undefined") {
-	const handleResize = () => {
+const serverUrl = computed(() => {
+	if (typeof window === "undefined" || !window.location) {
+		return "";
+	}
+
+	return window.location.host;
+});
+
+onMounted(async () => {
+	await nextTick();
+
+	if (typeof window !== "undefined") {
 		windowWidth.value = window.innerWidth;
-	};
 
-	onMounted(() => {
-		window.addEventListener("resize", handleResize);
-	});
+		const handleResize = () => {
+			windowWidth.value = window.innerWidth;
+		};
 
-	onUnmounted(() => {
-		window.removeEventListener("resize", handleResize);
-	});
-}
+		useEventListener(window, "resize", handleResize);
+	}
+
+	if (isTauri() && import.meta.client) {
+		const { getCurrentWindow } = await import("@tauri-apps/api/window");
+		appWindow.value = getCurrentWindow();
+
+		await checkForUpdates();
+
+		updateCheckInterval.value = setInterval(async () => {
+			await checkForUpdates();
+		}, 10 * 60 * 1000);
+	}
+});
+
+		onUnmounted(() => {
+	if (updateCheckInterval.value) {
+		clearInterval(updateCheckInterval.value);
+		updateCheckInterval.value = null;
+	}
+});
 
 const handleSearchKeydown = (event: KeyboardEvent) => {
 	if (event.key === "Enter") {
@@ -93,13 +132,17 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	}
 };
 
-const clearSearch = () => {
-	searchQuery.value = "";
-};
-
 const handleMouseDown = (event: MouseEvent) => {
-	return event.button === 0
-		&& appWindow.value?.startDragging();
+	if (event.button !== 0 || !appWindow.value) {
+		return;
+	}
+
+	const target = event.target as HTMLElement;
+	const isInteractiveElement = target.closest("button, input, a, .titlebar-right__button, .titlebar-update-notification, .titlebar-search");
+
+	if (!isInteractiveElement) {
+		appWindow.value.startDragging();
+	}
 };
 
 const handleMinimize = () => {
@@ -117,19 +160,20 @@ const handleMaximize = async () => {
 };
 
 const handleClose = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-	if (isTauri && import.meta.client) {
-		const { useSettingsStore } = await import("~/stores/settings");
-		const settingsStore = useSettingsStore();
-		await settingsStore.load();
-
-		if (settingsStore.settings.window.hideOnClose) {
-			return appWindow.value?.hide();
-		}
+	if (!appWindow.value || !isTauri() || !import.meta.client) {
+		return;
 	}
 
-	return appWindow.value?.close();
+	const settingsStore = useSettingsStore();
+	const { settings, loaded } = storeToRefs(settingsStore);
+
+	if (!loaded.value) {
+		await settingsStore.load();
+	}
+
+	return settings.value.window.hideOnClose
+		? await appWindow.value.hide()
+		: await appWindow.value.close();
 };
 </script>
 
@@ -139,7 +183,8 @@ const handleClose = async () => {
 	grid-template-columns: auto 1fr auto;
 	align-items: center;
 	
-	height: 100%;
+	width: 100%;
+	height: 35px;
 
 	background-color: var(--titlebar);
 
@@ -150,6 +195,7 @@ const handleClose = async () => {
 		justify-content: flex-start;
 		height: 100%;
 		flex-shrink: 0;
+		grid-column: 1;
 	
 		&__logo {
 			padding-left: 10px;
@@ -164,6 +210,24 @@ const handleClose = async () => {
 				padding-left: 8px;
 			}
 		}
+
+		&__server-url {
+			margin-left: 8px;
+			padding-left: 8px;
+			border-left: 1px solid var(--border, #2a2a2a);
+			flex-shrink: 0;
+
+			font-size: 11px;
+			font-weight: normal;
+			color: var(--text-secondary, #b3b3b3);
+			user-select: none;
+
+			@media (max-width: 600px) {
+				font-size: 10px;
+				margin-left: 6px;
+				padding-left: 6px;
+			}
+		}
 	}
 
 	&-center {
@@ -172,6 +236,7 @@ const handleClose = async () => {
 		justify-content: center;
 		height: 100%;
 		position: relative;
+		grid-column: 2;
 	}
 
 	&-right {
@@ -181,6 +246,36 @@ const handleClose = async () => {
 		justify-content: flex-end;
 		height: 100%;
 		flex-shrink: 0;
+		gap: 8px;
+		grid-column: 3;
+
+		.titlebar-update-notification {
+			display: flex;
+			align-items: center;
+			gap: 6px;
+			padding: 4px 12px;
+			background: var(--secondary, #e9003f);
+			border-radius: 4px;
+			cursor: pointer;
+			transition: transform 0.2s ease, background-color 0.2s ease;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text, #fff);
+
+			&:hover {
+				background: var(--primary-hover, #ff1a5c);
+			}
+
+			.update-text {
+				white-space: nowrap;
+			}
+
+			@media (max-width: 600px) {
+				.update-text {
+					display: none;
+				}
+			}
+		}
 
 		.titlebar-right__button {
 			display: flex;

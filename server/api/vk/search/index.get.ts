@@ -1,4 +1,5 @@
 import { getSearchRequestsInstance } from "./search";
+
 import type { TMore } from "~~/server/utils/types";
 
 export default defineEventHandler(async (event) => {

@@ -20,17 +20,17 @@
 			</div>
 		</div>
 
-		<div v-if="searchError && !results" class="error">
-			{{ searchError }}
+		<div v-if="searchStore.error && !searchStore.results" class="error">
+			{{ searchStore.error }}
 		</div>
 
-		<div v-if="!results && loading" class="loading">
+		<div v-if="!searchStore.results && searchStore.loading" class="loading">
 			<LoadingSpinner />
 		</div>
 
-		<div v-else-if="results" class="search-results">
+		<div v-else-if="searchStore.results" class="search-results">
 			<!-- Отображаем категории, если они есть -->
-			<template v-if="results.categories && results.categories.length > 0">
+			<template v-if="searchStore.results.categories && searchStore.results.categories.length > 0">
 				<div
 					v-for="category in sortedCategories"
 					:key="category.id"
@@ -38,12 +38,12 @@
 					v-show="hasCategoryContent(category)"
 				>
 					<div class="section-header">
-						<h2 class="section-title">{{ category.title }}</h2>
+						<h2 class="section-title" v-text="category.title" />
 						<button
 							v-if="hasMoreCategory(category) && category.type !== 'global_audios'"
 							@click="handleLoadMoreCategory(category.id)"
 							class="show-more-button"
-							:disabled="loading || isLoadingCategory(category.id)"
+							:disabled="searchStore.loading || isLoadingCategory(category.id)"
 						>
 							<LoadingSpinner v-if="isLoadingCategory(category.id)" size="16" />
 							<span v-else>Показать еще</span>
@@ -59,18 +59,23 @@
 
 					<!-- Треки -->
 					<div v-if="category.audios && category.audios.length > 0" :class="category.type === 'owned_audios' ? 'songs-grid' : 'songs-list'">
-						<Song
-							v-for="audio in category.audios"
+						<LazySong
+							v-for="(audio, index) in category.audios"
 							:key="audio.full_id"
+							v-memo="[audio.full_id, index, category.type]"
+							hydrate-on-visible
 							:audio="audio"
+							:index="category.type === 'owned_audios' ? undefined : index"
 						/>
 					</div>
 
 					<!-- Плейлисты -->
 					<div v-if="category.playlists && category.playlists.length > 0" class="playlists-list">
-						<PlaylistCard
+						<LazyPlaylistCard
 							v-for="playlist in category.playlists"
 							:key="playlist.raw_id"
+							v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+							hydrate-on-visible
 							:playlist="playlist"
 							:show-play-button="true"
 						/>
@@ -78,9 +83,11 @@
 
 					<!-- Артисты -->
 					<div v-if="category.artists && category.artists.length > 0" class="artists-list">
-						<ArtistCard
+						<LazyArtistCard
 							v-for="artist in category.artists"
 							:key="artist.id"
+							v-memo="[artist.id]"
+							hydrate-on-visible
 							:artist="artist"
 						/>
 					</div>
@@ -91,25 +98,27 @@
 						class="load-more"
 						:ref="el => setLoadMoreRef(category.id, el)"
 					>
-						<LoadingSpinner v-if="loading || isLoadingCategory(category.id)" />
+						<LoadingSpinner v-if="searchStore.loading || isLoadingCategory(category.id)" />
 					</div>
 				</div>
 			</template>
 
 			<!-- Обратная совместимость: отображаем старые поля, если категорий нет -->
 			<template v-else>
-				<div v-if="results.collections && results.collections.length > 0" class="section">
+				<div v-if="searchStore.results.collections && searchStore.results.collections.length > 0" class="section">
 					<h2>Коллекции</h2>
 					<div
-						v-for="collection in results.collections"
+						v-for="collection in searchStore.results.collections"
 						:key="collection.title"
 						class="collection-item"
 					>
-						<h3>{{ collection.title }}</h3>
+						<h3 v-text="collection.title" />
 						<div class="playlists-list">
-							<PlaylistCard
+							<LazyPlaylistCard
 								v-for="playlist in collection.playlists"
 								:key="playlist.raw_id"
+								v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+								hydrate-on-visible
 								:playlist="playlist"
 								:show-play-button="true"
 							/>
@@ -117,42 +126,49 @@
 					</div>
 				</div>
 
-				<div v-if="results.playlists && results.playlists.length > 0" class="section">
+				<div v-if="searchStore.results.playlists && searchStore.results.playlists.length > 0" class="section">
 					<h2>Плейлисты</h2>
 					<div class="playlists-list">
-						<PlaylistCard
-							v-for="playlist in results.playlists"
+						<LazyPlaylistCard
+							v-for="playlist in searchStore.results.playlists"
 							:key="playlist.raw_id"
+							v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+							hydrate-on-visible
 							:playlist="playlist"
 							:show-play-button="true"
 						/>
 					</div>
 				</div>
 
-				<div v-if="results.artists && results.artists.length > 0" class="section">
+				<div v-if="searchStore.results.artists && searchStore.results.artists.length > 0" class="section">
 					<h2>Исполнители</h2>
 					<div class="artists-list">
-						<ArtistCard
-							v-for="artist in results.artists"
+						<LazyArtistCard
+							v-for="artist in searchStore.results.artists"
 							:key="artist.id"
+							v-memo="[artist.id]"
+							hydrate-on-visible
 							:artist="artist"
 						/>
 					</div>
 				</div>
 
-				<div v-if="results.audios && results.audios.length > 0" class="section">
+				<div v-if="searchStore.results.audios && searchStore.results.audios.length > 0" class="section">
 					<h2>Треки</h2>
 					<div class="songs-list">
-						<Song
-							v-for="audio in results.audios"
+						<LazySong
+							v-for="(audio, index) in searchStore.results.audios"
 							:key="audio.full_id"
+							v-memo="[audio.full_id, index]"
+							hydrate-on-visible
 							:audio="audio"
+							:index="index"
 						/>
 					</div>
 				</div>
 
 				<div v-if="hasMore" class="load-more" ref="loadMoreRef">
-					<LoadingSpinner v-if="loading" />
+					<LoadingSpinner v-if="searchStore.loading" />
 				</div>
 			</template>
 
@@ -164,17 +180,23 @@
 </template>
 
 <script setup lang="ts">
+import { defineAsyncComponent } from "vue";
+
+import { useSearchStore } from "~/stores/search";
+import { usePlaylistStore } from "~/stores/playlist";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+
 import type { TSearchCategory } from "~~/server/utils/types";
 import type { TPlaylist, TAudio } from "~~/server/utils/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
+
+const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
+const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));
+const LazyArtistCard = defineAsyncComponent(() => import("~/components/ArtistCard.vue"));
 
 const { getString } = useStrings();
 
-// useSearch is auto-imported from app/composables
-
-const { query: searchQuery, results, loading, error: searchError, search, loadMore, loadMoreCategory, clear: clearSearchStore } = useSearch();
-const { setCurrent } = usePlaylist();
-const { setQueue, appendToQueue } = useQueue();
+const searchStore = useSearchStore();
 const playlistStore = usePlaylistStore();
 
 const query = ref("");
@@ -183,37 +205,37 @@ const isInitializing = ref(false);
 
 const handleSearch = async () => {
 	if (query.value.trim()) {
-		await search(query.value);
+		await searchStore.search(query.value);
 	}
 };
 
 // Обертка для loadMore с добавлением треков в очередь
 const handleLoadMore = async () => {
-	if (!loading.value && hasMore.value) {
+	if (!searchStore.loading && hasMore.value) {
 		const oldAudiosCount = allSearchAudios.value.length;
-		await loadMore();
+		await searchStore.loadMore();
 		
 		// Если поиск играет, добавляем новые треки в очередь
 		const isSearchPlaying = playlistStore.playing && searchPlaylist.value && playlistStore.playing.raw_id === searchPlaylist.value.raw_id;
 		if (isSearchPlaying && allSearchAudios.value.length > oldAudiosCount) {
 			const newAudios = allSearchAudios.value.slice(oldAudiosCount);
-			appendToQueue(newAudios);
+			playlistStore.appendToQueue(newAudios);
 		}
 	}
 };
 
 // Обертка для loadMoreCategory с добавлением треков в очередь
 const handleLoadMoreCategory = async (categoryId: string) => {
-	const category = results.value?.categories?.find(c => c.id === categoryId);
+	const category = searchStore.results?.categories?.find(categoryItem => categoryItem.id === categoryId);
 	if (!category) {
 		return;
 	}
 	
 	const oldAudiosCount = category.audios ? category.audios.length : 0;
-	await loadMoreCategory(categoryId);
+	await searchStore.loadMoreCategory(categoryId);
 	
 	// Получаем обновленную категорию после загрузки
-	const updatedCategory = results.value?.categories?.find(c => c.id === categoryId);
+	const updatedCategory = searchStore.results?.categories?.find(categoryItem => categoryItem.id === categoryId);
 	if (!updatedCategory || !updatedCategory.audios) {
 		return;
 	}
@@ -222,21 +244,20 @@ const handleLoadMoreCategory = async (categoryId: string) => {
 	const isSearchPlaying = playlistStore.playing && searchPlaylist.value && playlistStore.playing.raw_id === searchPlaylist.value.raw_id;
 	if (isSearchPlaying && updatedCategory.audios.length > oldAudiosCount) {
 		const newAudios = updatedCategory.audios.slice(oldAudiosCount);
-		appendToQueue(newAudios);
+		playlistStore.appendToQueue(newAudios);
 	}
 };
 
 const clearSearch = () => {
 	query.value = "";
-	clearSearchStore();
+	searchStore.clear();
 };
 
 const hasMore = computed(() => {
-	if (!results.value?.more) {
+	if (!searchStore.results?.more) {
 		return false;
 	}
-	const more = results.value.more;
-	return Boolean(more.section_id && more.next_from);
+	return Boolean(searchStore.results.more.section_id && searchStore.results.more.next_from);
 });
 
 const hasMoreCategory = (category: TSearchCategory): boolean => {
@@ -253,17 +274,17 @@ const hasCategoryContent = (category: TSearchCategory): boolean => {
 };
 
 const sortedCategories = computed(() => {
-	if (!results.value?.categories) {
+	if (!searchStore.results?.categories) {
 		return [];
 	}
 
 	const order = ["playlists", "artists", "global_audios"];
 	
-	return [...results.value.categories]
-		.filter(cat => hasCategoryContent(cat))
-		.sort((a, b) => {
-			const indexA = order.indexOf(a.type);
-			const indexB = order.indexOf(b.type);
+	return [...searchStore.results.categories]
+		.filter(category => hasCategoryContent(category))
+		.sort((categoryA, categoryB) => {
+			const indexA = order.indexOf(categoryA.type);
+			const indexB = order.indexOf(categoryB.type);
 			
 			if (indexA === -1 && indexB === -1) {
 				return 0;
@@ -280,12 +301,12 @@ const sortedCategories = computed(() => {
 });
 
 const hasAnyResults = computed(() => {
-	if (!results.value) {
+	if (!searchStore.results) {
 		return false;
 	}
 
-	if (results.value.categories && results.value.categories.length > 0) {
-		return results.value.categories.some(cat => 
+	if (searchStore.results.categories && searchStore.results.categories.length > 0) {
+		return searchStore.results.categories.some(cat => 
 			(cat.audios && cat.audios.length > 0) ||
 			(cat.playlists && cat.playlists.length > 0) ||
 			(cat.artists && cat.artists.length > 0)
@@ -293,10 +314,10 @@ const hasAnyResults = computed(() => {
 	}
 
 	return Boolean(
-		(results.value.audios && results.value.audios.length > 0) ||
-		(results.value.playlists && results.value.playlists.length > 0) ||
-		(results.value.artists && results.value.artists.length > 0) ||
-		(results.value.collections && results.value.collections.length > 0)
+		(searchStore.results.audios && searchStore.results.audios.length > 0) ||
+		(searchStore.results.playlists && searchStore.results.playlists.length > 0) ||
+		(searchStore.results.artists && searchStore.results.artists.length > 0) ||
+		(searchStore.results.collections && searchStore.results.collections.length > 0)
 	);
 });
 
@@ -319,29 +340,39 @@ const isLoadingCategory = (categoryId: string) => {
 
 // Собираем все треки из поиска для контекста (фильтруем restricted)
 const allSearchAudios = computed<TAudio[]>(() => {
-	if (!results.value) {
+	if (!searchStore.results) {
 		return [];
 	}
 
 	const allAudios: TAudio[] = [];
 	
-	if (results.value.categories && results.value.categories.length > 0) {
-		// Собираем треки из всех категорий
-		results.value.categories.forEach(category => {
-			if (category.audios && category.audios.length > 0) {
-				allAudios.push(...category.audios);
+	if (searchStore.results.categories && searchStore.results.categories.length > 0) {
+		// Собираем треки из всех категорий напрямую без forEach
+		for (let i = 0; i < searchStore.results.categories.length; i++) {
+			const category = searchStore.results.categories[i];
+			if (category?.audios && category.audios.length > 0) {
+				for (let j = 0; j < category.audios.length; j++) {
+					const audio = category.audios[j];
+					if (audio && !audio.is_restriction) {
+						allAudios.push(audio);
+					}
+				}
 			}
-		});
-	} else if (results.value.audios && results.value.audios.length > 0) {
-		// Обратная совместимость
-		allAudios.push(...results.value.audios);
+		}
+	} else if (searchStore.results.audios && searchStore.results.audios.length > 0) {
+		// Обратная совместимость - фильтруем напрямую
+		for (let i = 0; i < searchStore.results.audios.length; i++) {
+			const audio = searchStore.results.audios[i];
+			if (audio && !audio.is_restriction) {
+				allAudios.push(audio);
+			}
+		}
 	}
 
-	// Фильтруем restricted треки
-	return allAudios.filter(audio => !audio.is_restriction);
+	return allAudios;
 });
 
-// Предоставляем контекст треков для компонентов Song
+// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(allSearchAudios);
 
 // Создаем виртуальный плейлист для поиска
@@ -350,13 +381,15 @@ const searchPlaylist = computed<TPlaylist | null>(() => {
 		return null;
 	}
 
+	const searchQueryValue = searchStore.query || "";
+	
 	return {
 		owner_id: 0,
 		playlist_id: -1,
-		raw_id: `search_${searchQuery.value || ""}`,
-		title: `Поиск: ${searchQuery.value || ""}`,
+		raw_id: `search_${searchQueryValue}`,
+		title: getString("queue.source.search"),
 		cover_url: "",
-		description: "",
+		description: searchQueryValue,
 		size: allSearchAudios.value.length,
 		listens: 0,
 		last_updated: 0,
@@ -367,25 +400,22 @@ const searchPlaylist = computed<TPlaylist | null>(() => {
 		access_hash: "",
 		follow_hash: "",
 		edit_hash: "",
-		list: allSearchAudios.value
+		list: allSearchAudios.value,
+		link: `/search?q=${encodeURIComponent(searchQueryValue)}`
 	};
 });
 
 // Устанавливаем поиск как текущий плейлист при изменении результатов
-watch([searchPlaylist, allSearchAudios], ([newPlaylist, newAudios]) => {
+watch([searchPlaylist, allSearchAudios], async ([newPlaylist, newAudios]) => {
 	if (newPlaylist && newAudios.length > 0) {
-		// Обновляем плейлист в store, чтобы треки были доступны для воспроизведения
-		setCurrent(newPlaylist);
+		await playlistStore.setCurrent(newPlaylist).catch(() => {});
 		
-		// Обновляем очередь треков только если поиск сейчас играет
 		const isSearchPlaying = playlistStore.playing && playlistStore.playing.raw_id === newPlaylist.raw_id;
-		
 		if (isSearchPlaying) {
-			// Если поиск играет, обновляем очередь
-			setQueue(newAudios, newPlaylist);
+			await playlistStore.setQueue(newAudios, newPlaylist);
 		}
 	}
-}, { immediate: true, deep: true });
+}, { immediate: true });
 
 watch(query, (newValue) => {
 	if (searchTimeout) {
@@ -406,7 +436,7 @@ watch(query, (newValue) => {
 			handleSearch();
 		}, 500);
 	} else {
-		clearSearchStore();
+		searchStore.clear();
 	}
 });
 
@@ -415,12 +445,12 @@ useScrollLoad(() => {
 	handleLoadMore();
 }, {
 	threshold: 200,
-	enabled: computed(() => hasMore.value && !loading.value && (!results.value?.categories || results.value.categories.length === 0))
+	enabled: computed(() => hasMore.value && !searchStore.loading && (!searchStore.results?.categories || searchStore.results.categories.length === 0))
 });
 
 // Обработчик скролла для категории "Все треки"
 useScrollLoad(() => {
-	if (loading.value) {
+	if (searchStore.loading) {
 		return;
 	}
 
@@ -448,9 +478,9 @@ useScrollLoad(() => {
 	threshold: 200,
 	enabled: computed(() => {
 		const categories = sortedCategories.value;
-		const globalAudiosCategories = categories.filter(cat => cat.type === "global_audios");
-		const hasGlobalAudiosWithMore = globalAudiosCategories.some(cat => hasMoreCategory(cat));
-		return !loading.value && hasGlobalAudiosWithMore;
+		const globalAudiosCategories = categories.filter(category => category.type === "global_audios");
+		const hasGlobalAudiosWithMore = globalAudiosCategories.some(category => hasMoreCategory(category));
+		return !searchStore.loading && hasGlobalAudiosWithMore;
 	})
 });
 
@@ -459,7 +489,7 @@ const getCategoryLink = (category: TSearchCategory) => {
 		return "";
 	}
 
-	const query = searchQuery.value || "";
+	const query = searchStore.query || "";
 	const params = new URLSearchParams();
 	params.set("link", category.link);
 	if (query) {

@@ -1,10 +1,13 @@
 import { Client } from "@xhayper/discord-rpc";
 import { ActivityType } from "discord-api-types/v10";
+import { storeToRefs } from "pinia";
 
-import type { TAudio } from "~~/server/api/vk/audio/types";
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
+import { isExternalServer } from "~/utils/api";
 
 export type TDiscordActivity = {
 	type: ActivityType;
@@ -32,26 +35,21 @@ export const useDiscordStore = defineStore("discord", {
 				return true;
 			}
 
+			if (!import.meta.client || isExternalServer()) {
+				return false;
+			}
+
 			const settingsStore = useSettingsStore();
-			const settings = settingsStore.settings;
-
-			if (!settings.general.discord.enable) {
+			
+			if (!settingsStore.settings.general.discord.enable) {
 				return false;
 			}
 
-			console.log("[Discord RPC]: Connecting...");
-
-			const clientId = process.env.DISCORD_CLIENT_ID || "";
-			const clientSecret = process.env.DISCORD_CLIENT_SECRET || "";
-
-			if (!clientId || !clientSecret) {
-				console.error("[Discord RPC]: Client ID or Secret not configured");
-				return false;
-			}
-
+			const config = useRuntimeConfig();
+			
 			client = new Client({
-				clientId,
-				clientSecret,
+				clientId: config.public.discordClientId as string,
+				clientSecret: config.discordClientSecret as string,
 				transport: { type: "ipc" }
 			});
 
@@ -63,17 +61,19 @@ export const useDiscordStore = defineStore("discord", {
 
 			if (connected) {
 				this.connected = true;
-				console.log("[Discord RPC]: Ready");
 			}
 
 			return connected;
 		},
 
 		async setActivity(song?: TAudio) {
-			const settingsStore = useSettingsStore();
-			const settings = settingsStore.settings;
+			if (!import.meta.client) {
+				return false;
+			}
 
-			if (!settings.general.discord.enable) {
+			const settingsStore = useSettingsStore();
+
+			if (!settingsStore.settings.general.discord.enable) {
 				return false;
 			}
 
@@ -96,29 +96,28 @@ export const useDiscordStore = defineStore("discord", {
 
 			const playlist = playlistStore.playing || playlistStore.current;
 
+			const albumThumb = currentSong.album && typeof currentSong.album === "object" && !Array.isArray(currentSong.album) && "thumb" in currentSong.album && currentSong.album.thumb && typeof currentSong.album.thumb === "object" && "photo_600" in currentSong.album.thumb
+				? currentSong.album.thumb.photo_600
+				: undefined;
+
 			const activity: TDiscordActivity = {
 				type: ActivityType.Listening,
 				details: currentSong.performer || "Meridius",
 				state: currentSong.title,
-				largeImageKey: currentSong.album && typeof currentSong.album === "object" && currentSong.album.thumb?.photo_600
-					? currentSong.album.thumb.photo_600
-					: (currentSong.coverUrl_p && !/\.svg/.test(currentSong.coverUrl_p) ? currentSong.coverUrl_p : "")
-					|| "meridiushq"
+				largeImageKey: albumThumb || (currentSong.coverUrl_p && !/\.svg/.test(currentSong.coverUrl_p) ? currentSong.coverUrl_p : "") || "meridiushq"
 			};
-
-			console.log("[Discord RPC]: Update activity", currentSong.full_id);
 
 			if (playlist && playlist.playlist_id && playlist.playlist_id !== -1) {
 				activity.smallImageText = playlist.title;
 				activity.smallImageKey = playlist.cover_url || "meridiushq";
 			}
 
-			if (!playerStore.paused && settings.general.discord.timeline) {
+			if (!playerStore.paused && settingsStore.settings.general.discord.timeline) {
 				activity.startTimestamp = Date.now() - playerStore.currentTime * 1000;
 				activity.endTimestamp = Date.now() + (currentSong.duration - playerStore.currentTime) * 1000;
 			}
 
-			if (settings.general.discord.reverse) {
+			if (settingsStore.settings.general.discord.reverse) {
 				const details = activity.details;
 				activity.details = activity.state;
 				activity.state = details;
@@ -131,12 +130,24 @@ export const useDiscordStore = defineStore("discord", {
 		},
 
 		async clearActivity() {
+			if (!import.meta.client) {
+				return false;
+			}
+
+			const config = useRuntimeConfig();
+			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
+				|| process.env.EXTERNAL_SERVER === "1"
+				|| config.public.externalServer;
+
+			if (isExternalServer) {
+				return false;
+			}
+
 			if (!client) {
 				return false;
 			}
 
 			await this.throttle();
-			console.log("[Discord RPC]: Clear activity");
 
 			return client.user?.clearActivity().catch((error) => {
 				console.error("[Discord RPC]: Failed to clear activity", error);
@@ -144,17 +155,14 @@ export const useDiscordStore = defineStore("discord", {
 			});
 		},
 
-		throttle(): Promise<number> {
+		async throttle(): Promise<number> {
 			const now = Date.now();
-			const settingsStore = useSettingsStore();
 			const delay = 2000; // 2 секунды задержка по умолчанию
 			const defaultDelay = 500; // 500мс минимальная задержка
 
 			const timeLeft = this.timestamp !== 0 && now - this.timestamp < delay
 				? delay - (now - this.timestamp)
 				: defaultDelay;
-
-			console.log("[Discord RPC]: Throttle =", timeLeft, "ms");
 
 			if (this.timeout) {
 				clearTimeout(this.timeout);

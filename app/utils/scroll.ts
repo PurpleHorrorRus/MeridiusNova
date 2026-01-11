@@ -1,3 +1,5 @@
+import { useEventListener } from "~/composables/useEventListener";
+
 export const useScrollTrigger = (element: HTMLElement, callback: () => void) => {
 	const onScroll = () => {
 		if (!element) {
@@ -14,9 +16,5 @@ export const useScrollTrigger = (element: HTMLElement, callback: () => void) => 
 		}
 	};
 
-	element.addEventListener("scroll", onScroll);
-
-	onUnmounted(() => {
-		element.removeEventListener("scroll", onScroll);
-	});
+	useEventListener(element, "scroll", onScroll);
 };

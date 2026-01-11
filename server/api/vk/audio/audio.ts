@@ -1,14 +1,18 @@
+import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
+
 import { BaseRequest } from "~~/server/utils/base";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import { ERawAudio, EAudioFlags, TGetAudioParams, type TReloadAudiosPayload, type TAudio, type TRawAudio, TParsedPayload } from "./types";
 import { IRequest, TPayload, TRawResponse, TGetCatalogSectionPayload, TGetGeneralSectionPayload } from "~~/server/utils/types";
+
+import { ERawAudio, EAudioFlags, type TGetAudioParams, type TParsedPayload } from "./types";
+import type { TReloadAudiosPayload, TAudio, TRawAudio } from "./types";
 
 const n = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN0PQRSTUVWXYZO123456789+/=";
 const unavailableRegex = /audio_api_unavailable/;
 const oldRegex = /data-audio=\"(.*?)\" on/;
 
-class AudioRequests extends BaseRequest implements IRequest {
+export class AudioRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
 		super(event);
 	}
@@ -48,9 +52,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 	protected async normalize(rawAudios: TRawAudio[], params: TGetAudioParams = {}): Promise<TAudio[]> {
 		if (params.raw) {
-			return await Promise.all(rawAudios.map(audio => {
-				return this.formatAudio(audio);
-			}));
+			return await Bluebird.map(rawAudios, audioItem => this.formatAudio(audioItem), { concurrency: 50 });
 		}
 
 		if (rawAudios.length === 0) {
@@ -59,15 +61,33 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 		let restrictedIndexes: number[] = [];
 
-		const ids = rawAudios.map((audio, index) => {
-			const splittedHash = (audio[ERawAudio.HASHES] || "").split("/");
+		// Если не требуется получать URL, сразу форматируем все аудио
+		if (params.withUrls === false) {
+			// Увеличиваем concurrency для лучшей производительности при больших списках
+			const formattedAudios = await Bluebird.map(rawAudios, async (audioItem, index) => {
+				if (!audioItem[ERawAudio.HASHES] || !audioItem[ERawAudio.HASHES].split("/")[5]) {
+					restrictedIndexes.push(index);
+				}
+				// Создаем копию audio без URL, чтобы formatAudio не обрабатывал его
+				const audioWithoutUrl = [...audioItem] as TRawAudio;
+				audioWithoutUrl[ERawAudio.URL] = "";
+				return await this.formatAudio(audioWithoutUrl);
+			}, { concurrency: 100 });
+
+			// Получаем названия альбомов для треков, где album - это массив
+			await this.enrichAlbums(formattedAudios);
+			return formattedAudios;
+		}
+
+		const ids = rawAudios.map((audioItem, index) => {
+			const splittedHash = (audioItem[ERawAudio.HASHES] || "").split("/");
 
 			if (!splittedHash[5]) {
 				restrictedIndexes.push(index);
 				return null;
 			}
 
-			return `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}_${splittedHash[2]}_${splittedHash[5]}`;
+			return `${audioItem[ERawAudio.OWNER_ID]}_${audioItem[ERawAudio.ID]}_${splittedHash[2]}_${splittedHash[5]}`;
 		}).filter(Boolean) as unknown as string[];
 
 		// Если нет ID для загрузки, возвращаем пустой массив
@@ -76,20 +96,20 @@ class AudioRequests extends BaseRequest implements IRequest {
 		}
 
 		const fetchedAudios = await this.reloadAudios(ids);
-		
+
 		// Проверяем, что fetchedAudios является массивом
 		if (!Array.isArray(fetchedAudios)) {
 			return [];
 		}
 
-		const formattedAudios = await Promise.all(rawAudios.map(async (audio, index) => {
+		const formattedAudios = (await Bluebird.map(rawAudios, async (audioItem, index) => {
 			if (!restrictedIndexes.includes(index)) {
-				const fetchedAudio = fetchedAudios.find(fetched => {
-					return `${fetched[ERawAudio.OWNER_ID]}_${fetched[ERawAudio.ID]}` === `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}`;
+				const fetchedAudio = fetchedAudios.find(fetchedAudioItem => {
+					return `${fetchedAudioItem[ERawAudio.OWNER_ID]}_${fetchedAudioItem[ERawAudio.ID]}` === `${audioItem[ERawAudio.OWNER_ID]}_${audioItem[ERawAudio.ID]}`;
 				});
 
 				if (fetchedAudio) {
-					const merged: TRawAudio = audio.map((property, propIndex) => {
+					const merged: TRawAudio = audioItem.map((propertyItem, propIndex) => {
 						// Для ALBUM приоритет отдаем fetchedAudio (данные после reload_audios)
 						if (propIndex === ERawAudio.ALBUM) {
 							const fetchedAlbum = fetchedAudio[ERawAudio.ALBUM];
@@ -101,18 +121,18 @@ class AudioRequests extends BaseRequest implements IRequest {
 								return fetchedAlbum;
 							}
 							// Иначе используем исходное значение
-							return property || fetchedAlbum;
+							return propertyItem || fetchedAlbum;
 						}
 						// Для остальных полей используем стандартную логику мерджа
-						return property || fetchedAudio[propIndex];
+						return propertyItem || fetchedAudio[propIndex];
 					}) as TRawAudio;
 
 					return await this.formatAudio(merged);
 				}
 			}
 
-			return await this.formatAudio(audio);
-		}));
+			return await this.formatAudio(audioItem);
+		}, { concurrency: 100 })).filter((audio): audio is TAudio => audio !== undefined);
 
 		// Получаем названия альбомов для треков, где album - это массив
 		await this.enrichAlbums(formattedAudios);
@@ -120,6 +140,10 @@ class AudioRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async enrichAlbums(audios: TAudio[]): Promise<void> {
+		const { CacheManager } = await import("~~/server/utils/cache-manager");
+		const cacheManager = CacheManager.getInstance();
+		const cacheEnabled = await cacheManager.isEnabled();
+
 		// Собираем уникальные album IDs (массивы [owner_id, playlist_id, access_hash] или объекты без title)
 		const albumMap = new Map<string, { owner_id: number; playlist_id: number; access_hash: string; audios: TAudio[] }>();
 
@@ -133,7 +157,10 @@ class AudioRequests extends BaseRequest implements IRequest {
 			let access_hash: string | undefined;
 
 			if (Array.isArray(audio.album) && audio.album.length >= 3) {
-				[owner_id, playlist_id, access_hash] = audio.album;
+				const albumArray = audio.album as any[];
+				owner_id = albumArray[0] !== null && albumArray[0] !== undefined ? Number(albumArray[0]) : undefined;
+				playlist_id = albumArray[1] !== null && albumArray[1] !== undefined ? Number(albumArray[1]) : undefined;
+				access_hash = albumArray[2] !== null && albumArray[2] !== undefined ? String(albumArray[2]) : undefined;
 			} else if (typeof audio.album === "object" && audio.album !== null && !Array.isArray(audio.album)) {
 				// Объект альбома - проверяем, есть ли title
 				const albumObj = audio.album as { owner_id?: number; ownerId?: number; id?: number; access_hash?: string; accessHash?: string; access_key?: string; accessKey?: string; title?: string };
@@ -152,7 +179,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 				return;
 			}
 
-			if (owner_id === undefined || playlist_id === undefined || access_hash === undefined) {
+			if (owner_id === undefined || owner_id === null || playlist_id === undefined || playlist_id === null) {
 				return;
 			}
 
@@ -162,7 +189,7 @@ class AudioRequests extends BaseRequest implements IRequest {
 				albumMap.set(key, {
 					owner_id: owner_id as number,
 					playlist_id: playlist_id as number,
-					access_hash: access_hash as string,
+					access_hash: access_hash || "",
 					audios: []
 				});
 			}
@@ -177,14 +204,90 @@ class AudioRequests extends BaseRequest implements IRequest {
 		// Для каждого уникального альбома получаем информацию
 		const { getPlaylistsRequestsInstance } = await import("~~/server/api/vk/playlists/playlists");
 
-		// Обрабатываем альбомы батчами по 5, чтобы не перегружать API
-		const albumEntries = Array.from(albumMap.values());
-		const batchSize = 5;
+		// Обрабатываем альбомы батчами по 10, чтобы не перегружать API, но быстрее обрабатывать
+		const albumEntries = Array.from(albumMap.values()).filter(album => {
+			return album.owner_id !== null && album.owner_id !== undefined
+				&& album.playlist_id !== null && album.playlist_id !== undefined;
+		});
 
-		for (let i = 0; i < albumEntries.length; i += batchSize) {
-			const batch = albumEntries.slice(i, i + batchSize);
+		if (albumEntries.length === 0) {
+			return;
+		}
 
-			await Promise.all(batch.map(async (albumInfo) => {
+		// Сначала проверяем все альбомы в кэше параллельно
+		const cacheResults = cacheEnabled
+			? await Bluebird.map(albumEntries, async (albumInfo) => {
+				const cachedAlbum = await cacheManager.getAlbumCache(albumInfo.owner_id, albumInfo.playlist_id);
+				if (cachedAlbum) {
+					return { albumInfo, cachedAlbum, cachedPlaylist: null as any };
+				}
+				const cachedPlaylist = await cacheManager.getPlaylistCache(albumInfo.owner_id, albumInfo.playlist_id);
+				if (cachedPlaylist && cachedPlaylist.title) {
+					return { albumInfo, cachedAlbum: null, cachedPlaylist };
+				}
+				return { albumInfo, cachedAlbum: null, cachedPlaylist: null };
+			}, { concurrency: 20 })
+			: albumEntries.map(albumInfo => ({ albumInfo, cachedAlbum: null, cachedPlaylist: null }));
+
+		// Обрабатываем кэшированные альбомы
+		for (const cacheResult of cacheResults) {
+			if (cacheResult.cachedAlbum) {
+				cacheResult.albumInfo.audios.forEach(audio => {
+					if (!audio.album) {
+						return;
+					}
+
+					audio.album = {
+						owner_id: cacheResult.albumInfo.owner_id,
+						id: cacheResult.albumInfo.playlist_id,
+						access_key: cacheResult.albumInfo.access_hash,
+						access_hash: cacheResult.albumInfo.access_hash,
+						title: cacheResult.cachedAlbum.title
+					};
+				});
+			} else if (cacheResult.cachedPlaylist) {
+				const playlist = cacheResult.cachedPlaylist as any;
+				const albumData = {
+					owner_id: cacheResult.albumInfo.owner_id,
+					id: cacheResult.albumInfo.playlist_id,
+					title: playlist.title,
+					thumb: playlist.cover_url ? {
+						photo_300: playlist.cover_url,
+						photo_600: playlist.cover_url,
+						photo_1200: playlist.cover_url
+					} : undefined
+				};
+
+				cacheResult.albumInfo.audios.forEach(audio => {
+					if (!audio.album) {
+						return;
+					}
+
+					audio.album = {
+						owner_id: albumData.owner_id,
+						id: albumData.id,
+						access_key: cacheResult.albumInfo.access_hash,
+						access_hash: cacheResult.albumInfo.access_hash,
+						title: albumData.title,
+						thumb: albumData.thumb
+					};
+				});
+			}
+		}
+
+		// Запрашиваем только те альбомы, которых нет в кэше
+		const albumsToFetch = cacheResults.filter(result => !result.cachedAlbum && !result.cachedPlaylist).map(result => result.albumInfo);
+
+		if (albumsToFetch.length === 0) {
+			return;
+		}
+
+		// Используем Bluebird.map для контроля параллелизма вместо ручного батчинга
+		await Bluebird.map(albumsToFetch, async (albumInfo) => {
+				if (!albumInfo.playlist_id || albumInfo.playlist_id === null || albumInfo.playlist_id === undefined) {
+					return;
+				}
+
 				const playlistsRequests = getPlaylistsRequestsInstance(this.event);
 
 				const playlist = await playlistsRequests.getPlaylist({
@@ -194,9 +297,10 @@ class AudioRequests extends BaseRequest implements IRequest {
 					list: false
 				}).catch((e: Error) => {
 					// Если не удалось получить информацию об альбоме, оставляем как есть
-					console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e);
+					console.error(`enrichAlbums: Failed to enrich album ${albumInfo.owner_id}_${albumInfo.playlist_id}:`, e.message || e);
 					return null;
 				});
+
 				if (!playlist) {
 					return;
 				}
@@ -214,6 +318,17 @@ class AudioRequests extends BaseRequest implements IRequest {
 				}
 
 				// Обновляем album для всех треков с этим альбомом
+				const albumData = {
+					owner_id: albumInfo.owner_id,
+					id: albumInfo.playlist_id,
+					title: playlist.title,
+					thumb: playlist.cover_url ? {
+						photo_300: playlist.cover_url,
+						photo_600: playlist.cover_url,
+						photo_1200: playlist.cover_url
+					} : undefined
+				};
+
 				albumInfo.audios.forEach(audio => {
 					if (!audio.album) {
 						return;
@@ -221,20 +336,22 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 					// Обновляем альбом независимо от его текущего формата
 					audio.album = {
-						owner_id: albumInfo.owner_id,
-						id: albumInfo.playlist_id,
+						owner_id: albumData.owner_id,
+						id: albumData.id,
 						access_key: albumInfo.access_hash,
 						access_hash: albumInfo.access_hash,
-						title: playlist.title,
-						thumb: playlist.cover_url ? {
-							photo_300: playlist.cover_url,
-							photo_600: playlist.cover_url,
-							photo_1200: playlist.cover_url
-						} : undefined
+						title: albumData.title,
+						thumb: albumData.thumb
 					};
 				});
-			}));
-		}
+
+				// Сохраняем альбом в централизованный кэш (только title)
+				if (cacheEnabled) {
+					await cacheManager.saveAlbumCache(albumData.owner_id, albumData.id, { title: albumData.title }).catch(() => {
+						// Ignore background caching errors
+					});
+				}
+			}, { concurrency: 10 });
 	}
 
 	public async reloadAudios(ids: string[]): Promise<TRawAudio[]> {
@@ -280,19 +397,39 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 		let extra: Record<string, unknown> = {};
 		if (audio[ERawAudio.EXTRA_JSON]) {
-			const parsed = (() => {
+			const parseResult = (() => {
 				try {
 					return JSON.parse(audio[ERawAudio.EXTRA_JSON]);
 				} catch {
 					return null;
 				}
 			})();
-			if (parsed && typeof parsed === "object") {
-				extra = parsed as Record<string, unknown>;
+			
+			if (parseResult && typeof parseResult === "object") {
+				extra = parseResult as Record<string, unknown>;
 			}
 		}
 
 		const additional = this.getAdditionalInfo(audio);
+
+		// Формируем performer и artist из MAIN_ARTISTS и FEAT_ARTISTS
+		let performer = this.unescape(audio[ERawAudio.PERFORMER] || "");
+		let artist = this.unescape(audio[ERawAudio.PERFORMER] || "");
+
+		if (additional.artists && additional.artists.length > 0) {
+			const mainArtistsNames = additional.artists.map(artistItem => artistItem.name).filter(Boolean);
+			if (mainArtistsNames.length > 0) {
+				performer = mainArtistsNames.join(", ");
+				artist = mainArtistsNames[0];
+			}
+		}
+
+		if (additional.feat && additional.feat.length > 0) {
+			const featArtistsNames = additional.feat.map(artistItem => artistItem.name).filter(Boolean);
+			if (featArtistsNames.length > 0) {
+				performer = performer ? `${performer} feat. ${featArtistsNames.join(", ")}` : `feat. ${featArtistsNames.join(", ")}`;
+			}
+		}
 
 		const rawAlbum = audio[ERawAudio.ALBUM];
 		let album: string | [number, number, string] | {
@@ -367,21 +504,24 @@ class AudioRequests extends BaseRequest implements IRequest {
 			}
 		}
 
+		const isRestricted = !!audio[ERawAudio.RESTRICTION];
+		const isMySong = audio[ERawAudio.OWNER_ID] === (this.event.context.user?.id || 0);
+
 		return {
 			id: audio[ERawAudio.ID],
 			owner_id: audio[ERawAudio.OWNER_ID],
 			full_id: `${audio[ERawAudio.OWNER_ID]}_${audio[ERawAudio.ID]}`,
 			title: this.unescape(audio[ERawAudio.TITLE] || ""),
-			performer: this.unescape(audio[ERawAudio.PERFORMER] || ""),
-			artist: this.unescape(audio[ERawAudio.PERFORMER] || ""),
+			performer,
+			artist,
 			duration: audio[ERawAudio.DURATION] || 0,
 			url: source,
 			covers: (audio[ERawAudio.COVER_URL] || "").replaceAll("&amp;", "&"),
 			coverUrl_s: covers[0]?.replaceAll("&amp;", "&") || "",
 			coverUrl_p: covers[1]?.replaceAll("&amp;", "&") || "",
 			cover: covers[0]?.replaceAll("&amp;", "&") || "",
-			is_restriction: Boolean(audio[ERawAudio.RESTRICTION]),
-			lyrics: Boolean(audio[ERawAudio.LYRICS]),
+			is_restriction: isRestricted,
+			lyrics: !!audio[ERawAudio.LYRICS],
 			hq: !!(flags & EAudioFlags.HQ_BIT),
 			claimed: !!(flags & EAudioFlags.CLAIMED_BIT),
 			uma: !!(flags & EAudioFlags.UMA_BIT),
@@ -401,6 +541,12 @@ class AudioRequests extends BaseRequest implements IRequest {
 			album,
 			replaceable: !!(flags & EAudioFlags.REPLACEABLE),
 			context: audio[ERawAudio.CONTEXT] || "",
+			canAdd: !isMySong && !isRestricted && !!(flags & EAudioFlags.CAN_ADD_BIT),
+			canDelete: isMySong && !!hashes[3],
+			canAddPlaylist: !isRestricted,
+			canEdit: !!hashes[1],
+			canShare: !isRestricted,
+			hasLyrics: !!audio[ERawAudio.LYRICS],
 			...additional
 		};
 	}
@@ -434,10 +580,10 @@ class AudioRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getRawAudios(rawAudios: TRawAudio[]): Promise<TAudio[]> {
-		return await Promise.all(rawAudios.map(async audio => ({
-			raw: audio,
-			...(await this.formatAudio(audio))
-		})));
+		return await Bluebird.map(rawAudios, async audioItem => ({
+			raw: audioItem,
+			...(await this.formatAudio(audioItem))
+		}), { concurrency: 100 });
 	}
 
 	protected async exposeSource(e: string): Promise<string> {
@@ -574,8 +720,8 @@ class AudioRequests extends BaseRequest implements IRequest {
 
 	public async getReorderHash(): Promise<string> {
 		const response = await this.request<string>({});
-
 		const reorderHashMatch = response.match(/"audiosReorderHash":"(.*?)"/);
+
 		if (!reorderHashMatch) {
 			return "";
 		}
@@ -618,6 +764,47 @@ class AudioRequests extends BaseRequest implements IRequest {
 			owner_id: audio.owner_id,
 			uuid
 		});
+	}
+
+	public async getFromWall(params: { owner_id: number; post_id: number; raw?: boolean }): Promise<TAudio[]> {
+		if (!params.owner_id || !params.post_id) {
+			throw createError({
+				statusCode: 400,
+				message: "You must to specify owner id and post id"
+			});
+		}
+
+		const response = await this.request<TRawResponse<TGetCatalogSectionPayload | TGetGeneralSectionPayload>>({}, `wall${params.owner_id}_${params.post_id}`);
+
+		if (!response || !response.payload) {
+			return [];
+		}
+
+		const payload = response.payload[1];
+		
+		if (!payload) {
+			return [];
+		}
+
+		let rawAudios: TRawAudio[] = [];
+
+		if (Array.isArray(payload)) {
+			if (payload[1] && typeof payload[1] === "object" && "playlist" in payload[1]) {
+				rawAudios = (payload[1] as any).playlist?.list || [];
+			}
+		} else if (typeof payload === "object" && payload !== null) {
+			if ("playlist" in payload) {
+				rawAudios = (payload as any).playlist?.list || [];
+			} else if ("list" in payload) {
+				rawAudios = (payload as any).list || [];
+			}
+		}
+
+		const parsed = await this.parseAudios(rawAudios, {
+			raw: params.raw || false
+		});
+
+		return parsed;
 	}
 };
 

@@ -16,15 +16,15 @@ export default defineEventHandler(async (event) => {
 
 	const reorderHash = await audioRequests.getReorderHash();
 
-	await audioRequests.request({
+	const requestParams = {
 		act: "reorder_audios",
 		al: 1,
 		audio_id: body.audio_id !== undefined ? Number(body.audio_id) : -1,
 		hash: reorderHash || "",
 		next_audio_id: body.next_audio_id !== undefined ? Number(body.next_audio_id) : 0,
 		owner_id
-	});
+	};
 
+	await audioRequests.request(requestParams);
 	return { success: true };
 });
-

@@ -1,13 +1,15 @@
+# Приватный ключ для подписи Tauri приложения
+# tauri signer generate -w ./src-tauri/keys
+TAURI_SIGNING_PRIVATE_KEY=
+TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
+
 # Пароль для шифрования сессий (используется в nuxt-auth-utils)
 # Должен быть строкой длиной минимум 32 символа
 NUXT_SESSION_PASSWORD=
 
 # Приватный ключ для шифрования cookies
-# Формат: приватный ключ в формате PEM (-----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----)
-NUXT_COOKIE_KEY="-----BEGIN PRIVATE KEY-----
-..............
------END PRIVATE KEY-----
-"
+# Формат: приватный ключ в формате PEM
+NUXT_COOKIE_KEY="-----BEGIN PRIVATE KEY-----\n..............\n-----END PRIVATE KEY-----"
 
 # ID клиента Discord приложения для Rich Presence
 # Получить можно в Discord Developer Portal: https://discord.com/developers/applications
@@ -20,3 +22,8 @@ DISCORD_CLIENT_SECRET=
 # Путь к бинарному файлу FFmpeg
 # Установите путь к вашему FFmpeg, если он не находится в PATH
 FFMPEG_BINARY=
+
+# GitHub репозиторий для проверки обновлений
+# Формат: owner/repo (например: username/meridius-nova)
+# Необходимо для работы функции проверки обновлений
+REPOSITORY=

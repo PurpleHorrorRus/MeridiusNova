@@ -18,6 +18,18 @@
 	gap: 24px;
 	align-items: center;
 	padding: 0 32px;
+
+	@media (max-width: 768px) {
+		gap: 16px;
+		padding: 0 16px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 12px;
+		padding: 0 12px;
+		flex-direction: column;
+		align-items: flex-start;
+	}
 }
 
 .skeleton-cover {
@@ -33,6 +45,18 @@
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
 	flex-shrink: 0;
+
+	@media (max-width: 768px) {
+		width: 160px;
+		height: 160px;
+		border-radius: 6px;
+	}
+
+	@media (max-width: 480px) {
+		width: 120px;
+		height: 120px;
+		border-radius: 4px;
+	}
 }
 
 .skeleton-info {
@@ -40,6 +64,11 @@
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+
+	@media (max-width: 480px) {
+		width: 100%;
+		gap: 8px;
+	}
 }
 
 .skeleton-title {
@@ -54,6 +83,16 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 28px;
+	}
+
+	@media (max-width: 480px) {
+		height: 24px;
+		width: 80%;
+		border-radius: 3px;
+	}
 }
 
 .skeleton-subtitle {
@@ -68,6 +107,16 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 18px;
+	}
+
+	@media (max-width: 480px) {
+		height: 16px;
+		width: 60%;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

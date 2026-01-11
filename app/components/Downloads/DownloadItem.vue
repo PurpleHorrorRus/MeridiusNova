@@ -16,7 +16,7 @@
 						<div class="download-item-icons">
 							<Icon :name="statusIcon" :size="14" :class="['download-item-status-icon', `status-${status}`]" />
 							<button
-								v-if="status === 'completed' && isTauri"
+								v-if="status === 'completed' && isTauri()"
 								class="download-item-explorer-button"
 								@click.stop="openInExplorer"
 								:title="getString('downloads.openInExplorer')"
@@ -52,7 +52,6 @@
 </template>
 
 <script setup lang="ts">
-import type { TDownload } from "~~/server/utils/download-manager";
 import DownloadProgress from "./DownloadProgress.vue";
 import Cover from "../Cover.vue";
 
@@ -60,8 +59,13 @@ const props = defineProps<{
 	download: TDownload;
 }>();
 
+import { isTauri } from "~/utils/tauri";
+
+import type { TDownload } from "~~/server/utils/download-manager";
+
 const { getString } = useStrings();
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+const config = useRuntimeConfig();
+const isExternalServer = computed(() => config.public.externalServer === true);
 
 const status = computed(() => props.download.status);
 const percent = computed(() => props.download.percent);
@@ -124,13 +128,64 @@ const statusIcon = computed(() => {
 });
 
 const openInExplorer = async () => {
-	if (!isTauri || status.value !== "completed") {
+	if (!isTauri() || status.value !== "completed") {
 		return;
 	}
 
-	const response = await $fetch<{ path: string; type: "file" | "folder" }>(`/api/downloads/path?downloadId=${props.download.downloadId}`).catch(() => null);
+	const response = await $fetch<{ path: string; type: "file" | "folder"; requiresDownload?: boolean }>(`/api/downloads/path?downloadId=${props.download.downloadId}`).catch(() => null);
 
 	if (!response) {
+		return;
+	}
+
+	if (response.requiresDownload && props.download.type === "audio") {
+		const fileResponse = await fetch(`/api/downloads/file?downloadId=${props.download.downloadId}`).catch(() => null);
+
+		if (!fileResponse || !fileResponse.ok) {
+			return;
+		}
+
+		const blob = await fileResponse.blob().catch(() => null);
+
+		if (!blob) {
+			return;
+		}
+
+		const contentDisposition = fileResponse.headers.get("Content-Disposition");
+		let filename = props.download.audio.title || "audio";
+
+		if (contentDisposition) {
+			const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+			if (filenameMatch && filenameMatch[1]) {
+				filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ""));
+			}
+		}
+
+		if (!filename.endsWith(".mp3")) {
+			filename = `${filename}.mp3`;
+		}
+
+		const { downloadDir } = await import("@tauri-apps/api/path");
+		const { writeFile } = await import("@tauri-apps/plugin-fs");
+		const { join } = await import("@tauri-apps/api/path");
+
+		const downloadPath = await downloadDir();
+		const filePath = await join(downloadPath, filename);
+		const arrayBuffer = await blob.arrayBuffer();
+		const uint8Array = new Uint8Array(arrayBuffer);
+
+		await writeFile(filePath, uint8Array);
+
+		const { Command } = await import("@tauri-apps/plugin-shell");
+		const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+		const isWindows = process.platform === "win32";
+
+		if (isWindows) {
+			await Command.create("explorer", ["/select,", filePath]).execute();
+		} else {
+			await revealItemInDir(filePath);
+		}
+
 		return;
 	}
 

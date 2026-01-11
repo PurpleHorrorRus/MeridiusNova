@@ -1,18 +1,11 @@
 <template>
 	<NuxtLink
-		class="navigation-item"
+		class="nav-chip"
 		:class="{ active: isActive }"
 		:to="item.link"
 	>
-		<Icon
-			v-if="item.icon"
-			:name="item.icon"
-			size="16"
-			class="icon"
-		/>
-
 		<span
-			class="navigation-item__label"
+			class="nav-chip__label"
 			v-text="item.title"
 		/>
 	</NuxtLink>
@@ -36,7 +29,7 @@ const isActive = computed(() => {
 	const itemPath = props.item.link.split("?")[0];
 	
 	if (props.item.id === "music") {
-		return currentPath === itemPath || (currentPath === "/collection" && !route.path.includes("/playlists"));
+		return currentPath === itemPath || (currentPath.endsWith("/-1") && !currentPath.includes("/playlists") && !currentPath.includes("/wall"));
 	}
 	
 	return currentPath === itemPath || currentPath.startsWith(itemPath);
@@ -44,43 +37,43 @@ const isActive = computed(() => {
 </script>
 
 <style scoped lang="scss">
-.navigation-item {
-	display: flex;
-	justify-content: center;
+.nav-chip {
+	display: inline-flex;
 	align-items: center;
-	column-gap: 5px;
+	padding: 8px 16px;
+	border-radius: 20px;
+	text-decoration: none;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+	font-size: 14px;
+	font-weight: 500;
+	white-space: nowrap;
+	background: transparent;
+	border: 1px solid transparent;
+	color: var(--text-secondary, #b3b3b3);
 
-	width: max-content;
-	height: 30px;
+	&:link,
+	&:visited,
+	&:hover,
+	&:active {
+		text-decoration: none;
+		color: inherit;
+	}
 
-	padding: 15px 10px;
-
-	border-bottom: 2px solid transparent;
-
-	transition: border-bottom 0.2s ease-in;
+	&:hover {
+		color: var(--text, #fff);
+		background: var(--bg-hover, #2a2a2a);
+		border-color: var(--border, #282828);
+	}
 
 	&.nuxt-link-exact-active,
 	&.active {
-		border-bottom: 2px solid var(--secondary, #e9003f);
-	}
-
-	&:not(.nuxt-link-exact-active):not(.active) {
-		&:hover {
-			cursor: pointer;
-			border-bottom: 2px solid var(--secondary-hover-opacity, rgba(233, 0, 63, 0.5));
-		}
-	}
-
-	.icon {
-		width: 16px;
-		height: 16px;
+		background: var(--secondary, #e9003f);
 		color: var(--text, #fff);
+		border-color: var(--secondary, #e9003f);
 	}
 
 	&__label {
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--text, #fff);
+		line-height: 1;
 	}
 }
 </style>

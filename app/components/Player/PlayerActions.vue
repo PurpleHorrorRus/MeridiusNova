@@ -3,7 +3,7 @@
 		<button
 			class="player-action-button"
 			:class="{ active: repeat }"
-			@click="toggleRepeat"
+			@click="playlistStore.toggleRepeat"
 			:title="repeat ? getString('player.repeatOn') : getString('player.repeat')"
 		>
 			<Icon name="mdi:repeat" size="20" />
@@ -12,7 +12,7 @@
 		<button
 			class="player-action-button"
 			:class="{ active: shuffle }"
-			@click="toggleShuffle"
+			@click="playlistStore.toggleShuffle"
 			:title="getString('player.shuffle')"
 		>
 			<Icon name="mdi:shuffle" size="20" />
@@ -29,14 +29,6 @@ const { getString } = useStrings();
 // Используем напрямую из store для правильной реактивности
 const repeat = computed(() => playlistStore.repeat);
 const shuffle = computed(() => playlistStore.shuffle);
-
-const toggleRepeat = () => {
-	playlistStore.toggleRepeat();
-};
-
-const toggleShuffle = () => {
-	playlistStore.toggleShuffle();
-};
 </script>
 
 <style scoped lang="scss">
@@ -63,7 +55,7 @@ const toggleShuffle = () => {
 	align-items: center;
 	justify-content: center;
 	color: rgba(255, 255, 255, 0.6);
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 	border-radius: 50%;
 
 	@media (max-width: 1200px) {

@@ -1,9 +1,10 @@
+import type { EventHandlerRequest, H3Event } from "h3";
+
 import { BaseRequest } from "~~/server/utils/base";
 import { getArtistsRequestsInstance } from "../artists/artists";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TRecommendationsOnboarding, TMore } from "~~/server/utils/types";
 import { IRequest, TRawResponse } from "~~/server/utils/types";
+import type { TRecommendationsOnboarding, TMore } from "~~/server/utils/types";
 
 class RecommendationsRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {

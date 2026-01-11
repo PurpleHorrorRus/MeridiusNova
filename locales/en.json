@@ -57,7 +57,11 @@
 	"playlist": {
 		"tracks": "tracks",
 		"duration": "Duration",
-		"updated": "Updated"
+		"updated": "Updated",
+		"tracksHeader": {
+			"title": "Title",
+			"album": "Album"
+		}
 	},
 	"search": {
 		"placeholder": "Search music...",
@@ -65,9 +69,29 @@
 		"noResults": "No results found"
 	},
 	"collection": {
+		"type": "Collection",
+		"user": "User {{ id }}",
 		"tabs": {
 			"music": "Music",
-			"playlists": "Playlists"
+			"playlists": "Playlists",
+			"wall": "Wall"
+		}
+	},
+	"library": {
+		"hidden": "User library is hidden"
+	},
+	"queue": {
+		"source": {
+			"playlist": "Playlist",
+			"myMusic": "My Music",
+			"wall": "Wall",
+			"feed": "Feed",
+			"updates": "Updates",
+			"general": "General",
+			"artist": "Artist",
+			"popular": "Popular",
+			"search": "Search",
+			"vkMix": "VK Mix"
 		}
 	}
 }

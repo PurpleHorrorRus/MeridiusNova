@@ -1,9 +1,9 @@
 <template>
-	<div v-if="show" class="playlist-select-overlay" @click.self="close">
+	<div v-if="show" class="playlist-select-overlay" @click.self="$emit('close')">
 		<div class="playlist-select" @click.stop>
 			<div class="playlist-select-header">
 				<h3>Выберите плейлист</h3>
-				<button class="close-button" @click="close">
+				<button class="close-button" @click="$emit('close')">
 					<Icon name="mdi:close" size="20" />
 				</button>
 			</div>
@@ -41,13 +41,9 @@ const playlists = ref<TPlaylist[]>([]);
 const isLoading = ref(false);
 const hasLoaded = ref(false);
 
-const close = () => {
-	emit("close");
-};
-
 const selectPlaylist = (playlist: TPlaylist) => {
 	emit("select", playlist);
-	close();
+	emit("close");
 };
 
 const loadPlaylists = async () => {
@@ -117,7 +113,7 @@ watch(() => props.show, (newShow) => {
 	cursor: pointer;
 	padding: 4px;
 	border-radius: 4px;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 
 	&:hover {
 		background: var(--bg-hover, #2a2a2a);
@@ -135,7 +131,7 @@ watch(() => props.show, (newShow) => {
 	padding: 12px 16px;
 	border-radius: 8px;
 	cursor: pointer;
-	transition: all 0.2s;
+	transition: background-color 0.2s;
 	color: var(--text, #fff);
 	font-size: 14px;
 

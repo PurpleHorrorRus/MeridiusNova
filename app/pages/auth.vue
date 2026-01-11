@@ -1,31 +1,49 @@
 <template>
 	<div class="auth-page">
-		<div v-if="isTauri" class="auth-titlebar-wrapper">
+		<div v-if="isTauri()" class="auth-titlebar-wrapper">
 			<Titlebar />
 		</div>
 		<div class="auth-content">
 			<div class="auth-container">
 				<div class="auth-header">
 					<h1 class="auth-title">Авторизация</h1>
-					<p class="auth-subtitle">Отсканируйте QR-код в приложении VK</p>
+					<p class="auth-subtitle">
+						{{ isMobile ? "Нажмите кнопку для авторизации через VK" : "Отсканируйте QR-код в приложении VK" }}
+					</p>
 				</div>
 
 				<div class="auth-qr-wrapper">
 					<div v-if="pending" class="auth-loading">
 						<div class="spinner"></div>
-						<p>Загрузка QR-кода...</p>
+						<p>{{ isMobile ? "Загрузка..." : "Загрузка QR-кода..." }}</p>
 					</div>
-					<div v-else-if="data?.url" class="auth-qr">
-						<Qrcode :value="data.url" :size="280" />
-						<div v-if="isExpired" class="auth-expired">
-							<p>QR-код истек</p>
-							<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+					<div v-else-if="errorMessage" class="auth-error">
+						<div class="auth-error-icon">⚠️</div>
+						<p class="auth-error-message">{{ errorMessage }}</p>
+						<button @click="clearErrorAndRefresh" class="auth-refresh-btn">Попробовать снова</button>
+					</div>
+					<div v-else-if="data?.url">
+						<div v-if="isMobile" class="auth-button-wrapper">
+							<button 
+								v-if="!isExpired"
+								@click="handleVkAuth"
+								class="auth-vk-button"
+							>
+								Авторизоваться через VK
+							</button>
+							<div v-else class="auth-expired">
+								<p>Ссылка истекла</p>
+								<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+							</div>
+						</div>
+						<div v-else class="auth-qr">
+							<Qrcode :value="data.url" :size="280" />
+							<div v-if="isExpired" class="auth-expired">
+								<p>QR-код истек</p>
+								<button @click="refreshQr" class="auth-refresh-btn">Обновить</button>
+							</div>
 						</div>
 					</div>
-				</div>
-
-				<div class="auth-footer">
-					<p class="auth-hint">Откройте приложение VK на телефоне и отсканируйте код</p>
 				</div>
 			</div>
 		</div>
@@ -37,39 +55,103 @@ import Qrcode from "qrcode.vue";
 
 import { useVkStore } from "~/stores/vk";
 
-import type { TQrResponse, TCheckResponse } from "~~/server/utils/types";
+import { useIsMobile } from "~/composables/useIsMobile";
+
+import { isTauri } from "~/utils/tauri";
+
+import type { TQrResponse } from "~~/server/utils/types";
+import type { TWebTokenResponse } from "~~/server/types/auth";
 
 definePageMeta({
 	layout: false
 });
-
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 const vkStore = useVkStore();
 const authInit = useAuthInit();
+const { isMobile } = useIsMobile();
 
-// Если пользователь уже авторизован, редиректим на главную
+// Если пользователь уже авторизован, редиректим на сохраненный путь или главную
 if (vkStore.authenticated && vkStore.user) {
-	await navigateTo("/general");
+	const savedRedirect = typeof window !== "undefined" ? sessionStorage.getItem("authRedirect") : null;
+	if (savedRedirect) {
+		sessionStorage.removeItem("authRedirect");
+		await navigateTo(savedRedirect);
+	} else {
+		await navigateTo("/general");
+	}
 }
 
 const intervalId = ref<ReturnType<typeof setInterval> | null>(null);
 const expiresAt = ref<number | null>(null);
+const data = ref<TQrResponse | null>(null);
+const pending = ref(true);
+const errorMessage = ref<string | null>(null);
+
 const isExpired = computed(() => {
 	if (!expiresAt.value) return false;
 	return Date.now() / 1000 >= expiresAt.value;
 });
 
-const { data, refresh, pending } = await useAsyncData<TQrResponse>("qr", async () => {
-	const response = await $fetch<TQrResponse>("/api/vk/qr");
+const loadQr = async () => {
+	pending.value = true;
+
+	const [error, response] = await $fetch<TQrResponse>(`/api/vk/qr?_t=${Date.now()}`, {
+		credentials: "include",
+		headers: {
+			"Cache-Control": "no-cache"
+		}
+	}).then(data => [null, data]).catch(err => [err, null]);
+	
+	if (error) {
+		console.error("Failed to load QR code:", error);
+		pending.value = false;
+		return;
+	}
+	
+	data.value = response;
+
 	if (response?.expires_in) {
 		expiresAt.value = Math.floor(Date.now() / 1000) + response.expires_in;
 	}
-	return response;
-});
+
+	pending.value = false;
+};
 
 const refreshQr = async () => {
-	await refresh();
+	errorMessage.value = null;
+	await loadQr();
 };
+
+const clearErrorAndRefresh = async () => {
+	errorMessage.value = null;
+	stopInterval();
+	await refreshQr();
+};
+
+const handleVkAuth = () => {
+	if (data.value?.url) {
+		window.open(data.value.url, "_blank");
+		
+		if (isMobile.value) {
+			setTimeout(() => {
+				check();
+			}, 2000);
+		}
+	}
+};
+
+const handleVisibilityChange = () => {
+	if (document.visibilityState === "visible" && !pending.value && data.value?.url && !isExpired.value && !errorMessage.value) {
+		check();
+	}
+};
+
+const handleFocus = () => {
+	if (!pending.value && data.value?.url && !isExpired.value && !errorMessage.value) {
+		check();
+	}
+};
+
+await loadQr();
 
 const stopInterval = () => {
 	if (intervalId.value) {
@@ -78,44 +160,90 @@ const stopInterval = () => {
 	}
 };
 
+const getRedirectPath = (): string => {
+	if (typeof window === "undefined") {
+		return "/general";
+	}
+
+	const savedRedirect = sessionStorage.getItem("authRedirect");
+
+	if (savedRedirect) {
+		sessionStorage.removeItem("authRedirect");
+		return savedRedirect;
+	}
+
+	return "/general";
+};
+
 const check = async () => {
-	const checked = await $fetch<TCheckResponse["data"] | false>("/api/vk/qr-check").catch(() => {
-		return false;
+	const [error, checked] = await $fetch<TWebTokenResponse["data"] | false>("/api/vk/qr-check", {
+		credentials: "include"
+	}).then(data => [null, data]).catch((err: any) => {
+		const errorData = err?.data || err?.response?._data || {};
+		const errorInfo = errorData.error_info || errorData.error_msg || err?.statusMessage || err?.message || "Произошла ошибка при авторизации";
+		
+		return [errorInfo, null];
 	});
 
-	if (checked && typeof checked === "object" && "auth_info" in checked) {
-		const authData = checked as TCheckResponse["data"];
+	if (error) {
+		errorMessage.value = error;
+		stopInterval();
+		return;
+	}
 
-		if (authData.auth_info && authData.auth_info.user) {
-			stopInterval();
-			const initialized = await authInit.initialize();
-			
-			if (initialized) {
-				await navigateTo("/general");
-			}
-		}
+	if (!checked) {
+		return;
+	}
+
+	stopInterval();
+	
+	if (await authInit.initialize()) {
+		await navigateTo(getRedirectPath());
 	}
 };
 
-onBeforeMount(() => {
-	watch(pending, (pending: boolean) => {
-		if (!pending && data.value?.url) {
-			intervalId.value = setInterval(check, 3000);
-		} else {
-			stopInterval();
-		}
-	}, { immediate: true });
+const stopPendingWatcher = watch(pending, (pending: boolean) => {
+	if (!pending && data.value?.url && !errorMessage.value) {
+		const checkInterval = isMobile.value ? 1500 : 3000;
+		intervalId.value = setInterval(check, checkInterval);
+	} else {
+		stopInterval();
+	}
+}, { immediate: true });
 
-	watch(isExpired, (expired) => {
-		if (expired) {
-			stopInterval();
-		} else if (!pending.value && data.value?.url && !intervalId.value) {
-			intervalId.value = setInterval(check, 3000);
-		}
-	});
+const stopIsExpiredWatcher = watch(isExpired, (expired) => {
+	if (expired) {
+		stopInterval();
+	} else if (!pending.value && data.value?.url && !intervalId.value && !errorMessage.value) {
+		const checkInterval = isMobile.value ? 1500 : 3000;
+		intervalId.value = setInterval(check, checkInterval);
+	}
 });
 
-onBeforeUnmount(stopInterval);
+const stopErrorMessageWatcher = watch(errorMessage, (error) => {
+	if (error) {
+		stopInterval();
+	}
+});
+
+onMounted(() => {
+	if (typeof window !== "undefined") {
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+		window.addEventListener("focus", handleFocus);
+	}
+});
+
+onBeforeUnmount(() => {
+	stopInterval();
+	stopPendingWatcher();
+	stopIsExpiredWatcher();
+	stopErrorMessageWatcher();
+	
+	if (typeof window !== "undefined") {
+		document.removeEventListener("visibilitychange", handleVisibilityChange);
+		window.removeEventListener("focus", handleFocus);
+	}
+});
 </script>
 
 <style scoped lang="scss">
@@ -229,6 +357,7 @@ onBeforeUnmount(stopInterval);
 	gap: 16px;
 	background: rgba(18, 18, 18, 0.95);
 	border-radius: 16px;
+
 	backdrop-filter: blur(8px);
 
 	p {
@@ -247,7 +376,36 @@ onBeforeUnmount(stopInterval);
 	font-size: 14px;
 	font-weight: 600;
 	cursor: pointer;
+	transition: background 0.2s ease, opacity 0.1s ease;
+
+	&:hover {
+		background: var(--primary-hover, #ff1a5c);
+	}
+
+	&:active {
+		opacity: 0.9;
+	}
+}
+
+.auth-button-wrapper {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 320px;
+}
+
+.auth-vk-button {
+	padding: 16px 32px;
+	background: var(--primary, #e9003f);
+	color: #ffffff;
+	border: none;
+	border-radius: 12px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
 	transition: background 0.2s ease, transform 0.1s ease;
+	box-shadow: 0 4px 16px rgba(233, 0, 63, 0.3);
 
 	&:hover {
 		background: var(--primary-hover, #ff1a5c);
@@ -259,14 +417,31 @@ onBeforeUnmount(stopInterval);
 	}
 }
 
-.auth-footer {
+.auth-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	padding: 24px;
+	background: var(--bg-secondary, #181818);
+	border-radius: 16px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+	min-height: 320px;
 	text-align: center;
 }
 
-.auth-hint {
+.auth-error-icon {
+	font-size: 48px;
+	line-height: 1;
+}
+
+.auth-error-message {
 	margin: 0;
-	font-size: 14px;
-	color: var(--text-tertiary, #6b6b6b);
+	color: var(--text, #ffffff);
+	font-size: 16px;
+	font-weight: 500;
+	max-width: 300px;
 	line-height: 1.5;
 }
 </style>

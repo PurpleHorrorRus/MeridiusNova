@@ -1,6 +1,7 @@
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { existsSync, createWriteStream } from "fs";
 import AdmZip from "adm-zip";
+
 import { downloadManager, type IFFmpegDownload } from "~~/server/utils/download-manager";
 
 const getFFmpegUrl = (): string => {
@@ -27,8 +28,28 @@ export default defineEventHandler(async (event) => {
 	const os = await import("os");
 	const path = await import("path");
 
-	const homeDir = os.homedir();
-	const ffmpegDir = path.join(homeDir, ".ffmpeg");
+	const isExternalServer = (): boolean => {
+		return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+	};
+
+	const getFFmpegDir = (): string => {
+		if (isExternalServer()) {
+			return path.join(os.homedir(), ".meridius", "ffmpeg");
+		}
+
+		const platform = process.platform;
+		const homeDir = os.homedir();
+
+		if (platform === "win32") {
+			const appData = process.env.APPDATA || path.join(homeDir, "AppData", "Roaming");
+			return path.join(appData, "com.infinite.meridius", "ffmpeg");
+		} else {
+			const appData = process.env.XDG_DATA_HOME || path.join(homeDir, ".local", "share");
+			return path.join(appData, "com.infinite.meridius", "ffmpeg");
+		}
+	};
+
+	const ffmpegDir = getFFmpegDir();
 
 	if (!existsSync(ffmpegDir)) {
 		await mkdir(ffmpegDir, { recursive: true });
@@ -130,7 +151,9 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const ffmpegBuffer = ffmpegEntry.getData();
-	const ffmpegPath = path.join(ffmpegDir, "ffmpeg.exe");
+	const platform = process.platform;
+	const ffmpegExe = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+	const ffmpegPath = path.join(ffmpegDir, ffmpegExe);
 	await writeFile(ffmpegPath, ffmpegBuffer);
 
 	await unlink(zipPath);

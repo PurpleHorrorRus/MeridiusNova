@@ -1,15 +1,15 @@
 <template>
 	<div class="album-card" @click="handleClick">
 		<div class="album-card-cover">
-		<div
-			:style="{
-				backgroundImage: `url('${album.image || album.cover_url}')`,
-				width: '100%',
-				height: '100%',
-				backgroundSize: 'cover',
-				backgroundPosition: 'center'
-			}"
-		/>
+			<div
+				:style="{
+					backgroundImage: `url('${album.image || ''}')`,
+					width: '100%',
+					height: '100%',
+					backgroundSize: 'cover',
+					backgroundPosition: 'center'
+				}"
+			/>
 			<div v-if="showPlayButton" class="album-card-overlay">
 				<button class="album-card-play-button" @click.stop="handlePlayPause" :disabled="isLoading">
 					<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="32" :class="{ 'loading-icon': isLoading }" />
@@ -18,17 +18,11 @@
 		</div>
 
 		<div class="album-card-info">
-			<div class="album-card-title" :title="album.title">
-				{{ album.title }}
-			</div>
+			<div class="album-card-title" :title="album.title" v-once v-text="album.title" />
 
-			<div v-if="album.text" class="album-card-text">
-				{{ album.text }}
-			</div>
+			<div v-if="album.text" class="album-card-text" v-once v-text="album.text" />
 
-			<div v-if="album.subtext" class="album-card-subtext">
-				{{ album.subtext }}
-			</div>
+			<div v-if="album.subtext" class="album-card-subtext" v-once v-text="album.subtext" />
 		</div>
 	</div>
 </template>
@@ -91,16 +85,18 @@ const handlePlayPause = async () => {
 <style scoped lang="scss">
 .album-card {
 	cursor: pointer;
-	transition: transform 0.2s;
-	display: grid;
-	grid-template-rows: 175px max-content;
-	grid-template-columns: 350px;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	padding: 0;
 
 	&:hover {
-		transform: translateY(-4px);
-
 		.album-card-overlay {
 			opacity: 1;
+		}
+
+		.album-card-cover::after {
+			opacity: 0.4;
 		}
 	}
 
@@ -108,10 +104,25 @@ const handlePlayPause = async () => {
 		position: relative;
 		border-radius: 4px;
 		overflow: hidden;
-		width: 350px;
-		height: 175px;
+		width: 100%;
+		aspect-ratio: 2 / 1;
 		background-size: cover;
 		background-position: center;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 4px;
+			opacity: 0.2;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: 1;
+			background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+		}
 	}
 
 	&-overlay {
@@ -129,6 +140,7 @@ const handlePlayPause = async () => {
 	}
 
 	&-play-button {
+		position: relative;
 		background: var(--secondary, #e9003f);
 		border: none;
 		border-radius: 50%;
@@ -139,10 +151,30 @@ const handlePlayPause = async () => {
 		justify-content: center;
 		color: white;
 		cursor: pointer;
-		transition: transform 0.2s;
+		transition: background-color 0.2s ease;
+		overflow: visible;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 50%;
+			background: rgba(233, 0, 63, 0.4);
+			opacity: 1;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: -1;
+		}
 
 		&:hover:not(:disabled) {
-			transform: scale(1.1);
+			background: var(--primary-hover, #ff1a5c);
+
+			&::before {
+				opacity: 1.25;
+			}
 		}
 
 		&:disabled {
@@ -152,6 +184,7 @@ const handlePlayPause = async () => {
 
 		.loading-icon {
 			animation: spin 1s linear infinite;
+			will-change: transform;
 		}
 	}
 
@@ -168,7 +201,7 @@ const handlePlayPause = async () => {
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		padding: 10px 10px 0px 10px;
+		padding: 10px 0 0 0;
 	}
 
 	&-title {

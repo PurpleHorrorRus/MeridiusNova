@@ -1,12 +1,13 @@
 import HTMLParser, { HTMLElement } from "node-html-parser";
+import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getSearchRequestsInstance } from "../search/search";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TPlaylistCollection, TMore } from "~~/server/utils/types";
 import { IRequest, TRawResponse, TGetSectionPayload } from "~~/server/utils/types";
+import type { TPlaylistCollection, TMore, TPlaylist } from "~~/server/utils/types";
 
 class GeneralRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
@@ -131,7 +132,7 @@ class GeneralRequests extends BaseRequest implements IRequest {
 		const playlistsRequests = getPlaylistsRequestsInstance(this.event);
 		const audioRequests = await import("../audio/audio").then(m => m.getAudioRequestsInstance(this.event));
 
-		const playlists = await Promise.all(items.map(async (item: HTMLElement, index: number) => {
+		const playlists = await Bluebird.map(items, async (item: HTMLElement, index: number) => {
 			const top = item.querySelector(".RecommendedPlaylist__top");
 			const matchValue = item.querySelector(".RecommendedPlaylist__matchValue")?.textContent || "0";
 			const audiosBlock = item.querySelector(".RecommendedPlaylist__audios");
@@ -207,9 +208,9 @@ class GeneralRequests extends BaseRequest implements IRequest {
 				} : null,
 				audios
 			};
-		}));
+		});
 
-		const filteredPlaylists = playlists.filter(Boolean);
+		const filteredPlaylists = playlists.filter((playlist) => playlist !== null) as TPlaylist[];
 
 		return {
 			...reference,
@@ -235,7 +236,7 @@ class GeneralRequests extends BaseRequest implements IRequest {
 			return block.querySelector(".CatalogBlock__content[data-type]");
 		});
 
-		return blocks.map(block => this.buildCollection(block));
+		return blocks.map(blockItem => this.buildCollection(blockItem));
 	}
 
 	public buildCollection(block: any): TPlaylistCollection {

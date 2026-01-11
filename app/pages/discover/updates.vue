@@ -1,31 +1,52 @@
 <template>
 	<div class="page" id="updates-page">
-		<div v-if="loading" class="loading">
-			<LoadingSpinner />
+		<DiscoverNav />
+		
+		<div v-if="pending || !data" class="content">
+			<div class="updates-list">
+				<SkeletonUpdate v-for="i in 5" :key="i" />
+			</div>
 		</div>
 
-		<div v-else-if="error" class="error">
+		<div v-else-if="error && !data" class="error">
 			{{ error }}
 		</div>
 
 		<div v-else class="content">
-			<h1>Обновления</h1>
-			<div class="updates-list">
-				<div v-for="update in updates" :key="update.id" class="update-item">
-					<div class="update-content">
-						{{ update.text || "Обновление" }}
-					</div>
-				</div>
+			<div v-if="updates.length === 0" class="empty-state">
+				<p>Нет обновлений</p>
+			</div>
+			
+			<div v-else class="updates-list">
+				<DiscoverUpdate
+					v-for="update in updates"
+					:key="update.item.id"
+					:update="update"
+				/>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-// TODO: Implement updates API endpoint
-const updates = ref<any[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
+type TUpdate = {
+	item: {
+		id: number;
+		name: string;
+		photo_max?: string;
+		first_name?: string;
+		last_name?: string;
+	};
+	audios: any[];
+};
+
+const { data, pending, error } = useLazyFetch<TUpdate[]>("/api/vk/discover/updates", {
+	server: false
+});
+
+const updates = computed(() => {
+	return data.value || [];
+});
 </script>
 
 <style scoped lang="scss">
@@ -33,7 +54,6 @@ const error = ref<string | null>(null);
 	padding: 20px;
 }
 
-.loading,
 .error {
 	text-align: center;
 	padding: 40px;

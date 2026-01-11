@@ -69,7 +69,7 @@ export const useSearchStore = defineStore("search", {
 				return;
 			}
 
-			const category = this.results.categories.find(c => c.id === categoryId);
+			const category = this.results.categories.find(categoryItem => categoryItem.id === categoryId);
 			if (!category) {
 				return;
 			}
@@ -78,18 +78,17 @@ export const useSearchStore = defineStore("search", {
 			if (category.next) {
 				this.loading = true;
 
-				try {
-					const updatedCategory = await category.next();
+				const updatedCategory = await category.next().catch((error: Error) => {
+					this.error = error.message || "Failed to load more";
+					return null;
+				});
 
-					if (updatedCategory) {
-						// Обновляем категорию в массиве
-						const categoryIndex = this.results.categories.findIndex(c => c.id === categoryId);
-						if (categoryIndex >= 0) {
-							this.results.categories[categoryIndex] = updatedCategory;
-						}
+				if (updatedCategory) {
+					// Обновляем категорию в массиве
+					const categoryIndex = this.results.categories.findIndex(categoryItem => categoryItem.id === categoryId);
+					if (categoryIndex >= 0) {
+						this.results.categories[categoryIndex] = updatedCategory;
 					}
-				} catch (error) {
-					this.error = error instanceof Error ? error.message : "Failed to load more";
 				}
 
 				this.loading = false;
@@ -100,25 +99,21 @@ export const useSearchStore = defineStore("search", {
 			if (category.more && category.more.section_id && category.more.next_from) {
 				this.loading = true;
 
-				try {
-					const more = await $fetch<{ audios: any[]; more: TMore | null }>("/api/vk/search", {
-						params: {
-							category_id: category.more.section_id,
-							next_from: category.more.next_from
-						}
-					}).catch((error: Error) => {
-						this.error = error.message || "Failed to load more";
-						return null;
-					});
-
-					if (more && category.audios) {
-						// Добавляем новые треки
-						category.audios = [...category.audios, ...more.audios];
-						// Обновляем more
-						category.more = more.more;
+				const more = await $fetch<{ audios: any[]; more: TMore | null }>("/api/vk/search", {
+					params: {
+						category_id: category.more.section_id,
+						next_from: category.more.next_from
 					}
-				} catch (error) {
-					this.error = error instanceof Error ? error.message : "Failed to load more";
+				}).catch((error: Error) => {
+					this.error = error.message || "Failed to load more";
+					return null;
+				});
+
+				if (more && category.audios) {
+					// Добавляем новые треки
+					category.audios = [...category.audios, ...more.audios];
+					// Обновляем more
+					category.more = more.more;
 				}
 
 				this.loading = false;

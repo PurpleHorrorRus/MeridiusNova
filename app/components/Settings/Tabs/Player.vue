@@ -1,6 +1,6 @@
 <template>
 	<div class="settings-tab-player">
-		<div v-if="isTauri" class="settings-section">
+		<div v-if="isTauri()" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.audioOutput") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -49,9 +49,7 @@
 					/>
 				</div>
 
-				<div v-if="volumeDividerHint" class="settings-tip">
-					{{ volumeDividerHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.player.volumeDivider')" />
 			</div>
 		</div>
 
@@ -111,9 +109,7 @@
 					</label>
 				</div>
 
-				<div v-if="rewindHint" class="settings-tip">
-					{{ rewindHint }}
-				</div>
+				<div class="settings-tip" v-text="i18n(getString('settings.hints.player.rewind'), { rewind: 5 })" />
 			</div>
 		</div>
 
@@ -132,9 +128,7 @@
 					</label>
 				</div>
 
-				<div v-if="normalizerTipHint" class="settings-tip">
-					{{ normalizerTipHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.player.normalizer.tip')" />
 
 				<div v-if="settings.player.normalizer.enable" class="settings-item">
 					<label class="settings-label">
@@ -152,9 +146,7 @@
 					/>
 				</div>
 
-				<div v-if="normalizerMaxHint" class="settings-tip">
-					{{ normalizerMaxHint }}
-				</div>
+				<div v-if="settings.player.normalizer.enable" class="settings-tip" v-text="getString('settings.hints.player.normalizer.max')" />
 			</div>
 		</div>
 
@@ -203,7 +195,7 @@
 			</div>
 		</div>
 
-		<div class="settings-section">
+		<div v-if="isTauri()" class="settings-section">
 			<h2 class="section-title">{{ getString("settings.player.step.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
@@ -296,15 +288,17 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
+import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
+import { useSettingsStore } from "~/stores/settings";
+
+import { isTauri } from "~/utils/tauri";
 
 const { getString, i18n } = useStrings();
 const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const playerStore = usePlayerStore();
-
-const settings = computed(() => settingsStore.settings);
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
 interface AudioDevice {
 	deviceId: string;
@@ -314,42 +308,51 @@ interface AudioDevice {
 const outputDevices = ref<AudioDevice[]>([]);
 const outputDeviceIndex = ref(0);
 
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const volumeDividerHint = computed(() => settings.value.settingHints[lang.value]?.player?.volumeDivider);
-const rewindHint = computed(() => {
-	const hint = settings.value.settingHints[lang.value]?.player?.rewind;
-	if (hint) {
-		const rewindValue = 5;
-		return i18n(hint, { rewind: rewindValue });
-	}
-	return hint;
-});
-const normalizerTipHint = computed(() => settings.value.settingHints[lang.value]?.player?.normalizer?.tip);
-const normalizerMaxHint = computed(() => settings.value.settingHints[lang.value]?.player?.normalizer?.max);
 
 const loadDevices = async () => {
-	if (!isTauri || !import.meta.client) {
+	if (!import.meta.client) {
 		return;
 	}
 
-	const { invoke } = await import("@tauri-apps/api/core");
-	
-	const devices = await invoke<AudioDevice[]>("get_audio_output_devices").catch((error) => {
+	if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+		console.error("MediaDevices API is not supported");
+		return;
+	}
+
+	const devices = await navigator.mediaDevices.enumerateDevices().catch((error: Error) => {
 		console.error("Failed to get audio devices:", error);
-		return [] as AudioDevice[];
+		return null;
 	});
 
-	outputDevices.value = devices;
+	if (!devices) {
+		outputDevices.value = [{
+			deviceId: "default",
+			label: "Устройство по умолчанию"
+		}];
+		return;
+	}
+
+	const audioOutputDevices: AudioDevice[] = devices
+		.filter(deviceItem => deviceItem.kind === "audiooutput")
+		.map(deviceItem => ({
+			deviceId: deviceItem.deviceId,
+			label: deviceItem.label || `Устройство ${deviceItem.deviceId.slice(0, 8)}`
+		}));
+
+	audioOutputDevices.unshift({
+		deviceId: "default",
+		label: "Устройство по умолчанию"
+	});
+
+	outputDevices.value = audioOutputDevices;
 	
 	const currentDevice = settings.value.player.output;
-	const index = outputDevices.value.findIndex(device => device.deviceId === currentDevice);
+	const index = outputDevices.value.findIndex(deviceItem => deviceItem.deviceId === currentDevice);
 	outputDeviceIndex.value = index >= 0 ? index : 0;
 };
 
 onMounted(() => {
-	if (isTauri) {
-		loadDevices();
-	}
+	loadDevices();
 });
 
 const changeOutputDevice = async (event: Event) => {
@@ -456,6 +459,18 @@ const updateCrossfadeDuration = (event: Event) => {
 			duration: value
 		}
 	});
+
+	// Обновляем длительность в активных экземплярах crossfade
+	const currentController = playerStore.currentController;
+	const opposedController = playerStore.opposedController;
+
+	if (currentController?.crossfadeInstance) {
+		currentController.crossfadeInstance.setDuration(value);
+	}
+
+	if (opposedController?.crossfadeInstance) {
+		opposedController.crossfadeInstance.setDuration(value);
+	}
 };
 
 const updateCrossfadeFade = (event: Event) => {
@@ -604,12 +619,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 		padding: 14px;
 		gap: 10px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-label {
@@ -628,11 +637,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	height: 20px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
-	transition: transform 0.15s ease;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .settings-range {
@@ -644,10 +648,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 
-	&:hover {
-		height: 8px;
-	}
-
 	&::-webkit-slider-thumb {
 		appearance: none;
 		width: 16px;
@@ -657,11 +657,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 		cursor: pointer;
 		transition: all 0.2s ease;
 		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
-	}
-
-	&::-webkit-slider-thumb:hover {
-		transform: scale(1.2);
-		box-shadow: 0 4px 8px rgba(233, 0, 63, 0.4);
 	}
 }
 
@@ -696,11 +691,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	@media (max-width: 480px) {
 		min-width: 0;
 		width: 100%;
-	}
-
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
 	}
 
 	&:focus {

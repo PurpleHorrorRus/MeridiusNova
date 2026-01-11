@@ -1,12 +1,12 @@
+import HTMLParser from "node-html-parser";
+import Bluebird from "bluebird";
+import type { EventHandlerRequest, H3Event } from "h3";
+
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
 
-import HTMLParser from "node-html-parser";
-
-import { getHeader } from "h3";
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TPlaylist, TMore, TPlaylistCollection } from "~~/server/utils/types";
-import { IRequest, TPayload, TRawResponse, TGetCatalogSectionPayload } from "~~/server/utils/types";
+import { IRequest, type TRawResponse, type TGetCatalogSectionPayload } from "~~/server/utils/types";
+import type { TPlaylist, TPlaylistCollection } from "~~/server/utils/types";
 
 class PlaylistsRequests extends BaseRequest implements IRequest {
 	constructor(event: H3Event<EventHandlerRequest>) {
@@ -17,7 +17,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		const catalogResponse = response as TRawResponse<TGetCatalogSectionPayload>;
 		const playlists = catalogResponse.payload[1][1]?.playlists || [];
 
-		return playlists.map(playlist => this.getPlaylistInfo(playlist)) as K[];
+		return playlists.map(playlistItem => this.getPlaylistInfo(playlistItem)) as K[];
 	}
 
 	public getPlaylistInfo(playlist: any): TPlaylist {
@@ -75,7 +75,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	public async get(params: { owner_id?: number; offset?: number; access_hash?: string } = {}): Promise<{ count: number; playlists: TPlaylist[] }> {
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
 
 		const startTime = Date.now();
 		const requestForm = {
@@ -149,7 +156,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					playlists: []
 				};
 			}
-			
+
 			if (payload.length === 1) {
 				const firstElement = payload[0];
 				if (Array.isArray(firstElement)) {
@@ -199,8 +206,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				throw createError({
 					statusCode: 500,
 					message: `Unexpected payload structure. Expected array or object with playlists, got ${typeof payload}`,
-					data: { 
-						payloadType: typeof payload, 
+					data: {
+						payloadType: typeof payload,
 						payloadKeys: payload && typeof payload === "object" ? Object.keys(payload) : null,
 						payloadPreview: JSON.stringify(payload).substring(0, 500)
 					}
@@ -217,8 +224,8 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		if (typeof pl_objects === "string") {
 			const errorMessage = pl_objects;
 			if (/Access denied/i.test(errorMessage)) {
-			throw createError({
-				statusCode: 403,
+				throw createError({
+					statusCode: 403,
 					message: "Access Denied",
 					data: { errorMessage }
 				});
@@ -304,7 +311,29 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		offset?: number;
 		_triedFromList?: boolean;
 	}): Promise<TPlaylist> {
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
+		// Проверяем кэш, если не требуется список треков (используется в enrichAlbums)
+		if (params.list === false) {
+			const { CacheManager } = await import("~~/server/utils/cache-manager");
+			const cacheManager = CacheManager.getInstance();
+			const cacheEnabled = await cacheManager.isEnabled();
+
+			if (cacheEnabled) {
+				const cachedPlaylist = await cacheManager.getPlaylistCache(owner_id, params.playlist_id);
+
+				if (cachedPlaylist && cachedPlaylist.title) {
+					return cachedPlaylist as TPlaylist;
+				}
+			}
+		}
 
 		// Пробуем использовать новый API
 		const access_key = params.access_hash || "";
@@ -344,45 +373,114 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 					id: playlistResponse.profiles[0].id,
 					name: `${playlistResponse.profiles[0].first_name || ""} ${playlistResponse.profiles[0].last_name || ""}`.trim()
 				} : undefined,
-				list: []
+				list: [],
+				original: vkPlaylist.original ? {
+					playlist_id: vkPlaylist.original.playlist_id,
+					owner_id: vkPlaylist.original.owner_id,
+					access_key: vkPlaylist.original.access_key || ""
+				} : undefined
 			};
 
 			// Если нужен список треков
 			if (params.list !== false && playlist.size > 0) {
+				const startTime = Date.now();
 				const playlistAccessKey = vkPlaylist.access_key || params.access_hash || "";
 				const entity_id = `${vkPlaylist.owner_id}_${vkPlaylist.id}_${playlistAccessKey}`;
 
+				const getIdsStartTime = Date.now();
 				const audioIds = await this.getIdsBySource({
 					source: "playlist",
 					entity_id
 				}).catch(() => []);
+				const getIdsTime = Date.now() - getIdsStartTime;
 
 				if (audioIds.length > 0) {
 					// Получаем полную информацию о треках через reloadAudios
 					const { getAudioRequestsInstance } = await import("~~/server/api/vk/audio/audio");
 					const audioRequests = getAudioRequestsInstance(this.event);
 
-					// Применяем offset и count если указаны
-					let processedIds = audioIds;
-					if (params.offset) {
-						processedIds = processedIds.slice(params.offset);
-					}
-					if (params.count) {
-						processedIds = processedIds.slice(0, params.count);
-					}
-
 					// Получаем полную информацию о треках
 					// audio_id из getIdsBySource уже в правильном формате для reloadAudios
-					const audioIdsList = processedIds.map(item => item.audio_id);
-					
-					if (audioIdsList.length > 0) {
-						const rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
+					const audioIdsList = audioIds.map(item => item.audio_id);
 
-						// Парсим треки
-						playlist.list = await audioRequests.parseAudios(rawAudios, {
-							count: params.count
-						});
+					if (audioIdsList.length > 0) {
+						// Для больших списков разбиваем getById на батчи и выполняем параллельно
+						// Увеличиваем размер батча и параллелизм для лучшей производительности
+						const batchSize = 300;
+						let rawAudios: any[] = [];
+
+						if (audioIdsList.length > batchSize) {
+							const getByIdStartTime = Date.now();
+							const batches: string[][] = [];
+							for (let i = 0; i < audioIdsList.length; i += batchSize) {
+								batches.push(audioIdsList.slice(i, i + batchSize));
+							}
+
+							// Увеличиваем concurrency для параллельного выполнения большего количества батчей
+							const batchResults = await Bluebird.map(batches, batch => 
+								audioRequests.getById({ ids: batch.join(",") })
+							, { concurrency: 10 });
+							rawAudios = batchResults.flat();
+							const getByIdTime = Date.now() - getByIdStartTime;
+
+							// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
+							const parseStartTime = Date.now();
+							playlist.list = await audioRequests.parseAudios(rawAudios, {
+								withUrls: false
+							});
+							const parseTime = Date.now() - parseStartTime;
+							const totalTime = Date.now() - startTime;
+						} else {
+							const getByIdStartTime = Date.now();
+							rawAudios = await audioRequests.getById({ ids: audioIdsList.join(",") });
+							const getByIdTime = Date.now() - getByIdStartTime;
+
+							// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
+							const parseStartTime = Date.now();
+							playlist.list = await audioRequests.parseAudios(rawAudios, {
+								withUrls: false
+							});
+							const parseTime = Date.now() - parseStartTime;
+							const totalTime = Date.now() - startTime;
+						}
+
+						// Все треки загружены, more не нужен
+						playlist.more = null;
+					} else {
+						// Нет треков
+						playlist.list = [];
+						playlist.more = null;
 					}
+				}
+			}
+
+			// Если follow_hash отсутствует, пытаемся получить его через старый метод
+			// Проверяем, является ли плейлист чужим: либо owner_id не совпадает с user_id, либо плейлист в избранном
+			const isOwnPlaylist = playlist.owner_id === this.event.context.user?.id && !playlist.followed;
+			if (!playlist.follow_hash && !isOwnPlaylist) {
+				const oldPlaylist = await this.getById({
+					owner_id,
+					playlist_id: params.playlist_id,
+					access_hash: params.access_hash,
+					list: false
+				}).catch(() => null);
+
+				if (oldPlaylist && oldPlaylist.follow_hash) {
+					playlist.follow_hash = oldPlaylist.follow_hash;
+					playlist.followed = oldPlaylist.followed;
+				}
+			}
+
+			// Сохраняем в кэш, если не требуется список треков
+			if (params.list === false) {
+				const { CacheManager } = await import("~~/server/utils/cache-manager");
+				const cacheManager = CacheManager.getInstance();
+				const cacheEnabled = await cacheManager.isEnabled();
+
+				if (cacheEnabled) {
+					await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch(() => {
+						// Ignore background caching errors
+					});
 				}
 			}
 
@@ -390,7 +488,22 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		}
 
 		// Fallback на старый метод если новый API не сработал
-		return await this.getById(params);
+		const playlist = await this.getById(params);
+
+		// Сохраняем в кэш, если не требуется список треков
+		if (params.list === false) {
+			const { CacheManager } = await import("~~/server/utils/cache-manager");
+			const cacheManager = CacheManager.getInstance();
+			const cacheEnabled = await cacheManager.isEnabled();
+
+			if (cacheEnabled) {
+				await cacheManager.savePlaylistCache(owner_id, params.playlist_id, playlist as unknown as Record<string, unknown>).catch(() => {
+					// Ignore background caching errors
+				});
+			}
+		}
+
+		return playlist;
 	}
 
 	public async getById(params: {
@@ -408,7 +521,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const owner_id = params.owner_id || this.event.context.user.id;
+		const owner_id = params.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
 
 		const requestForm = {
 			access_hash: params.access_hash || "",
@@ -416,7 +536,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			al: 1,
 			claim: 0,
 			context: "",
-			from_id: this.event.context.user.id,
+			from_id: owner_id,
 			is_loading_all: 1,
 			is_preload: 0,
 			offset: 0,
@@ -554,15 +674,15 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		if (params.list) {
 			if (!payload.list) {
 				playlist.list = [];
+				playlist.more = null;
 			} else {
-				const count = params.count || 50;
-				const offset = params.offset || 0;
-				const needSplice = offset > 0 || payload.list.length > count;
-				const list = needSplice ? payload.list.slice(offset, offset + count) : payload.list;
-
-				playlist.list = await getAudioRequestsInstance(this.event).parseAudios(list, {
-					count: params.count
+				// Парсим треки без URL (URL будет загружаться лениво при воспроизведении)
+				playlist.list = await getAudioRequestsInstance(this.event).parseAudios(payload.list, {
+					withUrls: false
 				});
+
+				// Все треки загружены, more не нужен
+				playlist.more = null;
 			}
 		}
 
@@ -625,6 +745,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getNewHash();
 
 		const response = await this.request({
@@ -669,7 +796,16 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const Audios = playlist.list?.map(audio => audio.full_id).join(",") || "";
+		const owner_id = playlist.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
+		const Audios = playlist.list?.map(audioItem => audioItem.full_id).join(",") || "";
 
 		return await this.request({
 			act: "save_playlist",
@@ -679,7 +815,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			description: params.description ?? playlist.description,
 			hash: playlist.edit_hash,
 			no_discover: params.no_discover ? 1 : 0,
-			owner_id: playlist.owner_id || this.event.context.user.id,
+			owner_id,
 			playlist_id: params.playlist_id
 		} as any);
 	}
@@ -692,39 +828,54 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		const owner_id = playlist.owner_id || this.event.context.user?.id;
+
+		if (!owner_id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		await this.request({
 			act: "delete_playlist",
 			al: 1,
 			hash: playlist.edit_hash,
-			page_owner_id: playlist.owner_id || this.event.context.user.id,
+			page_owner_id: owner_id,
 			playlist_id: playlist.playlist_id,
-			playlist_owner_id: playlist.owner_id || this.event.context.user.id
+			playlist_owner_id: owner_id
 		} as any);
 
 		return true;
 	}
 
-	public async follow(playlist: TPlaylist): Promise<any> {
-		if (!playlist.follow_hash) {
-			throw createError({
-				statusCode: 403,
-				message: "Access Denied"
-			});
-		}
+	public async follow(params: { playlist_id: number; owner_id: number; access_hash?: string }): Promise<any> {
+		return await this.callVKAPI("audio.followPlaylist", {
+			playlist_id: params.playlist_id,
+			owner_id: params.owner_id,
+			access_key: params.access_hash || "",
+			ref: ""
+		});
+	}
 
-		return await this.request({
-			act: "follow_playlist",
-			al: 1,
-			hash: playlist.follow_hash,
-			playlist_id: playlist.playlist_id,
-			playlist_owner_id: playlist.owner_id
-		} as any);
+	public async unfollow(params: { playlist_id: number; owner_id: number }): Promise<any> {
+		return await this.callVKAPI("audio.deletePlaylist", {
+			playlist_id: params.playlist_id,
+			owner_id: params.owner_id
+		});
 	}
 
 	public async reorder(params: {
 		playlist_id: number;
 		prev_playlist_id: number;
 	}): Promise<boolean> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getReorderHash();
 
 		await this.request({
@@ -747,6 +898,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const hash = await this.getSaveHash(audio);
 
 		return await this.request({
@@ -766,6 +924,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			throw createError({
 				statusCode: 400,
 				message: "You must to specify audio and playlist"
+			});
+		}
+
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
 			});
 		}
 
@@ -795,6 +960,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			});
 		}
 
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const playlist = await this.getPlaylist({ playlist_id: params.playlist_id });
 
 		if (!params.Audios && playlist.size > 0 && !params.force) {
@@ -820,7 +992,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	protected async getNewHash(): Promise<string> {
 		const response = await this.mainPage();
 		const newPlaylistHashMatch = response.match(/"newPlaylistHash":"(.*?)"/);
-		
+
 		if (!newPlaylistHashMatch) {
 			return "";
 		}
@@ -829,6 +1001,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getSaveHash(audio: any): Promise<string> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const response = await this.request({
 			act: "more_playlists_add",
 			al: 1,
@@ -863,9 +1042,16 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}
 
 	protected async getUploadCoverURL(): Promise<string> {
+		if (!this.event.context.user?.id) {
+			throw createError({
+				statusCode: 401,
+				message: "Authentication required"
+			});
+		}
+
 		const response = await this.mainPage();
 		const urlMatch = response.match(/\"url\":\"(.*?)\"/);
-		
+
 		if (!urlMatch) {
 			throw createError({
 				statusCode: 500,

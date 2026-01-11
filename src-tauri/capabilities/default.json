@@ -5,6 +5,12 @@
 	"windows": [
 		"main"
 	],
+	"webviews": [
+		"main"
+	],
+	"remote": {
+		"urls": ["http://*:*", "https://*.*"]
+	},
 	"permissions": [
 		"core:default",
 		"core:window:allow-start-dragging",
@@ -15,9 +21,15 @@
 		"core:window:allow-close",
 		"core:window:allow-is-minimized",
 		"core:window:allow-is-maximized",
-		"cors-fetch:default",
+		"core:window:allow-hide",
+		"core:window:allow-show",
+		"core:window:allow-set-focus",
+		"core:window:allow-is-visible",
+		"core:webview:allow-internal-toggle-devtools",
 		"store:default",
 		"store:allow-load",
+		"store:allow-reload",
+		"store:allow-get-store",
 		"store:allow-save",
 		"store:allow-get",
 		"store:allow-set",
@@ -40,15 +52,86 @@
 					"args": true,
 					"name": "binaries/server",
 					"sidecar": true
-				},
-				{
-					"name": "explorer",
-					"args": true
 				}
 			]
 		},
 		"opener:default",
 		"opener:allow-open-path",
-		"opener:allow-reveal-item-in-dir"
+		"opener:allow-reveal-item-in-dir",
+		"dialog:default",
+		"os:allow-platform",
+		"fs:default",
+		{
+			"identifier": "fs:allow-exists",
+			"allow": [
+				{ "path": "$HOME" },
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-dir",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-write-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-create",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-remove",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-rename",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-copy-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-text-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-write-text-file",
+			"allow": [
+				{ "path": "$HOME/.meridius/**" }
+			]
+		},
+		{
+			"identifier": "fs:scope",
+			"allow": [
+				{ "path": "$APPDATA/**" },
+				{ "path": "$APPCACHE/**" },
+				{ "path": "$APPLOCALDATA/**" },
+				{ "path": "$HOME/.ffmpeg/**" },
+				{ "path": "$HOME/.meridius" },
+				{ "path": "$HOME/.meridius/**" }
+			]
+		}
 	]
 }

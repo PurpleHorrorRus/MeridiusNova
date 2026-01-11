@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
-
+import { createError, getCookie } from "h3";
+import { useRuntimeConfig } from "#imports";
 import type { EventHandlerRequest, H3Event } from "h3";
 import type { UserSession } from "#auth-utils";
-import { getCookie } from "h3";
-import { useRuntimeConfig } from "#imports";
+import type { HTMLElement } from "node-html-parser";
+
+import type { Http, TRequestOptions } from "./http";
+import type { IRequest, TGetCatalogSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "./types";
+import type { TAudio, TRawAudio } from "~~/server/api/vk/audio/types";
+import { TDecodedToken } from "../types/auth";
 
 // Используем динамический импорт с кэшированием для jsdom
 let jsdomCache: typeof import("jsdom").JSDOM | null = null;
@@ -16,6 +21,7 @@ async function loadJSDOM() {
 			return module.JSDOM;
 		});
 	}
+
 	return jsdomPromise;
 }
 
@@ -27,12 +33,6 @@ if (typeof window === "undefined") {
 function getJSDOM() {
 	return jsdomCache;
 }
-
-import type { HTMLElement } from "node-html-parser";
-import type { Http, TRequestOptions } from "./http";
-import type { IRequest, TGetCatalogSectionPayload, TGetSectionPayload, TMore, TRawResponse } from "./types";
-import type { TAudio } from "~~/server/api/vk/audio/types";
-import type { TRawAudio } from "~~/server/api/vk/audio/types";
 
 export type TGetSectionParams = {
 	owner_id: number;
@@ -49,7 +49,16 @@ export class BaseRequest implements IRequest {
 	public http: Http;
 
 	constructor(protected readonly event: H3Event<EventHandlerRequest>) {
-		this.http = getHttpInstance();
+		const userId = event.context.user?.id;
+
+		if (!userId) {
+			throw createError({
+				statusCode: 401,
+				statusMessage: "User ID is required"
+			});
+		}
+
+		this.http = getHttpInstance(userId);
 	}
 
 	public async request<T extends string | Record<string, any> | any[]>(
@@ -60,7 +69,10 @@ export class BaseRequest implements IRequest {
 		return await this.http.request<T>(`https://vk.ru/${file}`, form, options);
 	}
 
-	public async callVKAPI(endpoint: string, params: Record<string, any> = {}, form: Record<string, any> = {}, method: "GET" | "POST" = "GET"): Promise<any> {
+	public async callVKAPI(endpoint: string, params: Record<string, any> = {}, form: Record<string, any> = {}, method: "GET" | "POST" = "GET", retryCount: number = 0): Promise<any> {
+		const maxRetries = 3;
+		const retryDelay = 2000;
+
 		const token = getCookie(this.event, "token");
 
 		if (!token) {
@@ -69,23 +81,26 @@ export class BaseRequest implements IRequest {
 
 		const { cookieKey } = useRuntimeConfig();
 		const { cookieSignOptions } = await import("~~/server/api/vk/web-token.post");
+		const { isValidSession, updateSessionAccess } = await import("./session-storage");
 
-		const decodedToken = jwt.verify(token, cookieKey, cookieSignOptions as object) as Record<string, any>;
+		const decodedToken = await Promise.resolve(jwt.verify(token, cookieKey, cookieSignOptions as object) as TDecodedToken).catch(() => {
+			throw new Error("Invalid token");
+		});
 
-		if (
-			!decodedToken ||
-			typeof decodedToken !== "object" ||
-			!("access_token" in decodedToken) ||
-			!("user_id" in decodedToken)
-		) {
-			throw new Error("Malformed token payload");
+		if (!decodedToken.sessionId || !decodedToken.deviceFingerprint) {
+			throw new Error("Old token format - re-authentication required");
 		}
-		const decoded = decodedToken as { access_token: string; user_id: number };
+
+		if (!isValidSession(decodedToken.sessionId, decodedToken.user_id)) {
+			throw new Error("Invalid session - unauthorized access attempt");
+		}
+
+		updateSessionAccess(decodedToken.sessionId);
 
 		const query = new URLSearchParams({
 			...params,
 			v: "5.269",
-			access_token: decoded.access_token
+			access_token: decodedToken.access_token
 		}).toString();
 
 		const response = await fetch(`https://api.vk.ru/method/${endpoint}?${query}`, {
@@ -96,19 +111,54 @@ export class BaseRequest implements IRequest {
 				"User-Agent": "VKAndroidApp/9.2.0-24200 (Android 11; SDK 30; arm64-v8a; Xiaomi M2003J15SC; ru; 2340x1080)",
 				...(method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {})
 			} as HeadersInit
+		}).catch(async (error: Error) => {
+			const errorMsg = error.message || "";
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control");
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests");
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw error;
 		});
 
-		const json = await response.json();
+		const json = await response.json().catch(async (error: Error) => {
+			const errorMsg = error.message || "";
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control");
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests");
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw error;
+		});
 
 		if (json.error) {
-			throw new Error(`VK API Error: ${json.error.error_msg || JSON.stringify(json.error)}`);
+			const errorMsg = json.error.error_msg || "";
+			const errorCode = json.error.error_code;
+			const isFloodControl = errorMsg.toLowerCase().includes("flood control") || errorCode === 9;
+			const isTooManyRequests = errorMsg.toLowerCase().includes("too many requests") || errorCode === 6;
+
+			if ((isFloodControl || isTooManyRequests) && retryCount < maxRetries) {
+				const delay = retryDelay * (retryCount + 1);
+				await new Promise(resolve => setTimeout(resolve, delay));
+				return await this.callVKAPI(endpoint, params, form, method, retryCount + 1);
+			}
+
+			throw new Error(`VK API Error: ${errorMsg || JSON.stringify(json.error)}`);
 		}
 
 		return json.response;
 	}
 
 	public async loadCatalogSection<T>(more: TMore): Promise<TRawResponse<T>> {
-		return await this.request<any>({
+		return this.request<any>({
 			act: "load_catalog_section",
 			al: 1,
 			section_id: more.section_id,
@@ -314,10 +364,9 @@ export class BaseRequest implements IRequest {
 		if (!sectionId) {
 			const jsonMatch = page.match(/<script[^>]*>[\s\S]*?({[\s\S]*?sectionId[\s\S]*?})[\s\S]*?<\/script>/);
 			if (jsonMatch) {
-				const jsonStr = jsonMatch[1];
 				const parsed = (() => {
 					try {
-						return JSON.parse(jsonStr);
+						return JSON.parse(jsonMatch[1]);
 					} catch {
 						return null;
 					}
@@ -334,15 +383,13 @@ export class BaseRequest implements IRequest {
 			// Fallback 1: попробуем использовать getSection вместо loadCatalogSection
 			// если это страница general или похожая
 			if (link.includes("general") || link.includes("catalog")) {
-				const section = link.includes("general") ? "general" : "all";
-
 				const sectionResponse = await this.getSection<TGetSectionPayload>({
 					owner_id: this.event.context.user.id,
-					section: section
+					section: link.includes("general") ? "general" : "all"
 				});
 
 				// Преобразуем TGetSectionPayload в TGetCatalogSectionPayload
-				const catalogResponse: TRawResponse<TGetCatalogSectionPayload> = {
+				return {
 					...sectionResponse,
 					payload: {
 						0: 0,
@@ -362,8 +409,6 @@ export class BaseRequest implements IRequest {
 						}]
 					}
 				};
-
-				return catalogResponse;
 			}
 
 			// Fallback 2: для explore страниц используем прямой запрос через getSection
@@ -387,7 +432,7 @@ export class BaseRequest implements IRequest {
 
 						if (exploreResponse) {
 							// Преобразуем TGetSectionPayload в TGetCatalogSectionPayload
-							const catalogResponse: TRawResponse<TGetCatalogSectionPayload> = {
+							return {
 								...exploreResponse,
 								payload: {
 									0: 0,
@@ -407,7 +452,6 @@ export class BaseRequest implements IRequest {
 									}]
 								}
 							};
-							return catalogResponse;
 						}
 					}
 				}
@@ -419,7 +463,7 @@ export class BaseRequest implements IRequest {
 			console.error("Page preview (first 1000 chars):", page.substring(0, 1000));
 
 			// Возвращаем пустой ответ вместо ошибки
-			const emptyResponse: TRawResponse<TGetCatalogSectionPayload> = {
+			return {
 				langKeys: { global: [], local: {} },
 				langVersion: "",
 				loaderVersion: "",
@@ -429,15 +473,14 @@ export class BaseRequest implements IRequest {
 				statsMeta: { hash: "", id: 0, platform: "", reloadVersion: 0, st: true, time: 0 },
 				templates: { audio_bits_to_cls: "", _: "" }
 			};
-			return emptyResponse;
 		}
 
-		return await this.loadCatalogSection({
+		return await this.loadCatalogSection<TGetCatalogSectionPayload>({
 			section_id: sectionId
 		}).catch((error: Error) => {
 			console.error("Failed to load catalog section, sectionId:", sectionId, "link:", link, error);
 			
-			const emptyResponse: TRawResponse<TGetCatalogSectionPayload> = {
+			return {
 				langKeys: { global: [], local: {} },
 				langVersion: "",
 				loaderVersion: "",
@@ -447,7 +490,6 @@ export class BaseRequest implements IRequest {
 				statsMeta: { hash: "", id: 0, platform: "", reloadVersion: 0, st: true, time: 0 },
 				templates: { audio_bits_to_cls: "", _: "" }
 			};
-			return emptyResponse;
 		});
 	}
 
@@ -525,8 +567,7 @@ export class BaseRequest implements IRequest {
 			});
 		}
 
-		const builderResult = await context.builder<TGetCatalogSectionPayload, TAudio>(response);
-		let list: TAudio[] = builderResult as TAudio[];
+		let list: TAudio[] = await context.builder<TGetCatalogSectionPayload, TAudio>(response) as TAudio[];
 		let more = this.parseMore(response);
 
 		if (params.count) {
@@ -572,27 +613,24 @@ export class BaseRequest implements IRequest {
 		}
 
 		const catalogResponse = response as TRawResponse<TGetCatalogSectionPayload>;
-		const payloadValue = catalogResponse.payload[1];
 
 		// Проверяем, что payload[1] - это кортеж [string, {...}]
-		if (Array.isArray(payloadValue) && payloadValue.length > 0 && typeof payloadValue[0] === "string" && payloadValue[1] && typeof payloadValue[1] === "object") {
-			const playlistData = payloadValue[1] as { playlist?: { list?: TRawAudio[] } };
+		if (Array.isArray(catalogResponse.payload[1]) && catalogResponse.payload[1].length > 0 && typeof catalogResponse.payload[1][0] === "string" && catalogResponse.payload[1][1] && typeof catalogResponse.payload[1][1] === "object") {
+			const playlistData = catalogResponse.payload[1][1] as { playlist?: { list?: TRawAudio[] } };
 			if (playlistData.playlist && Array.isArray(playlistData.playlist.list) && playlistData.playlist.list.length === 0) {
 				await new Promise(resolve => setTimeout(resolve, 500));
 				return await this.getDataWithMore(context, more, params);
 			}
 		}
 
-		const builderResult = await context.builder<TGetCatalogSectionPayload, TAudio>(catalogResponse);
-		let list: TAudio[] = builderResult as TAudio[];
+		let list: TAudio[] = await context.builder<TGetCatalogSectionPayload, TAudio>(catalogResponse) as TAudio[];
 
 		if (params.count) {
 			list = list.slice(0, params.count);
 		}
 
-		const payloadData = catalogResponse.payload[1];
-		const moreData = Array.isArray(payloadData) && payloadData.length > 1 && payloadData[1] && typeof payloadData[1] === "object"
-			? payloadData[1]
+		const moreData = Array.isArray(catalogResponse.payload[1]) && catalogResponse.payload[1].length > 1 && catalogResponse.payload[1][1] && typeof catalogResponse.payload[1][1] === "object"
+			? catalogResponse.payload[1][1]
 			: null;
 
 		return {

@@ -228,6 +228,12 @@ export type TPlaylist = {
 	subtitle?: string;
 	list?: TAudio[];
 	more?: TMore | null;
+	link?: string;
+	original?: {
+		playlist_id: number;
+		owner_id: number;
+		access_key: string;
+	};
 };
 
 import type { TAudio as TAudioFromAudio } from "../api/vk/audio/types";
@@ -364,30 +370,6 @@ export type TAccount = {
 	[key: string]: unknown;
 };
 
-export type TFavUser = {
-	id: number;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TFavGroup = {
-	id: number;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TFavArtist = {
-	id: string;
-	name: string;
-	[key: string]: unknown;
-};
-
-export type TTabHistoryItem = {
-	path: string;
-	title: string;
-	[key: string]: unknown;
-};
-
 export type TLyrics = {
 	credits?: string;
 	lyrics?: {
@@ -430,6 +412,7 @@ export type TSettings = {
 		lang: string;
 		logging: boolean;
 		beta: boolean;
+		updateChannel: "production" | "beta" | "development";
 		discord: {
 			enable: boolean;
 			timeline: boolean;
@@ -442,6 +425,11 @@ export type TSettings = {
 		proxy: {
 			enable: boolean;
 			url: string;
+		};
+		server: {
+			enable: boolean;
+			url: string;
+			port: number;
 		};
 	};
 	player: {
@@ -500,7 +488,6 @@ export type TSettings = {
 		roundedBottom: boolean;
 		hideTitlebarButtons: boolean;
 		fullFrame: boolean;
-		tabs: boolean;
 		customTheme: boolean;
 		theme: string;
 		acryl: {
@@ -508,6 +495,8 @@ export type TSettings = {
 			material: string;
 			opacity: number;
 		};
+		sidebarPlaylistsExpanded: boolean;
+		sidebarLibraryExpanded: boolean;
 	};
 	optimization: {
 		fetchRestriction: number;
@@ -520,124 +509,16 @@ export type TSettings = {
 	equalizer: {
 		enable: boolean;
 		levels: number[];
+		spectrumVisualization: boolean;
+	};
+	cache: {
+		enable: boolean;
+		path: string;
+		maxSize: number;
 	};
 	vk: {
 		active: number;
 		accounts: TAccount[];
 	};
-	favs: {
-		users: TFavUser[];
-		groups: TFavGroup[];
-		artists: TFavArtist[];
-	};
 	hotkeys: Record<string, string>;
-	latest: {
-		song: TAudio | null;
-		playlist: TPlaylist | null;
-	};
-	tabs: {
-		active: number;
-		list: Array<{
-			page: number;
-			title: string;
-			icon: string;
-			history: TTabHistoryItem[];
-		}>;
-	};
-	settingHints: {
-		ru: {
-			general: {
-				hardwareAcceleration?: string;
-				beta?: string;
-				streamer?: string;
-				proxy?: {
-					url?: string;
-				};
-			};
-			appearance: {
-				windowControlButtons?: string;
-				fullFrame?: string;
-				acrylic?: string;
-				zoom?: string | string[];
-				themes?: {
-					download?: string;
-				};
-			};
-			player: {
-				volumeDivider?: string;
-				miniwindow?: {
-					minimode?: string;
-				};
-				rewind?: string;
-				normalizer?: {
-					tip?: string;
-					max?: string;
-				};
-			};
-			optimization: {
-				multithreading?: string;
-				hardwareAcceleration?: string;
-				stashSize?: string;
-				loadingRestriction?: string;
-				download?: {
-					auto?: string;
-					fixed?: string;
-				};
-			};
-			downloads: {
-				ffmpeg?: string;
-				template?: string;
-			};
-			server: {
-				password?: string;
-			};
-		};
-		en: {
-			general: {
-				hardwareAcceleration?: string;
-				beta?: string;
-				streamer?: string;
-				proxy?: {
-					url?: string;
-				};
-			};
-			appearance: {
-				windowControlButtons?: string;
-				fullFrame?: string;
-				acrylic?: string;
-				zoom?: string | string[];
-				themes?: {
-					download?: string;
-				};
-			};
-			player: {
-				volumeDivider?: string;
-				miniwindow?: {
-					minimode?: string;
-				};
-				rewind?: string;
-				normalizer?: {
-					tip?: string;
-					max?: string;
-				};
-			};
-			optimization: {
-				multithreading?: string;
-				hardwareAcceleration?: string;
-				stashSize?: string;
-				loadingRestriction?: string;
-				download?: {
-					auto?: string;
-					fixed?: string;
-				};
-			};
-			downloads: {
-				ffmpeg?: string;
-				template?: string;
-			};
-			server: {
-				password?: string;
-			};
-		};
-	};
 };

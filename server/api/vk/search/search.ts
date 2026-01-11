@@ -1,13 +1,14 @@
 import HTMLParser from "node-html-parser";
+import type { EventHandlerRequest, H3Event } from "h3";
 
 import { BaseRequest } from "~~/server/utils/base";
 import { getAudioRequestsInstance } from "~~/server/api/vk/audio/audio";
 import { getPlaylistsRequestsInstance } from "../playlists/playlists";
 
-import type { EventHandlerRequest, H3Event } from "h3";
-import type { TSearchResult, TMore, THintsPayload, TPlaylist, TSearchCategory } from "~~/server/utils/types";
 import { IRequest, TPayload, TRawResponse, TGetSectionPayload, TGetCatalogSectionPayload } from "~~/server/utils/types";
+
 import type { TGetSectionParams } from "~~/server/utils/base";
+import type { TSearchResult, TMore, THintsPayload, TPlaylist, TSearchCategory } from "~~/server/utils/types";
 import type { TRawAudio, TAudio } from "~~/server/api/vk/audio/types";
 
 class SearchRequests extends BaseRequest implements IRequest {
@@ -27,13 +28,11 @@ class SearchRequests extends BaseRequest implements IRequest {
 			});
 		}
 
-		const requestParams = {
+		const res = await this.getSection<TGetSectionPayload>({
 			owner_id: this.event.context.user.id,
 			section: "search",
 			q: String(params.q)
-		} as TGetSectionParams & { q: string };
-
-		const res = await this.getSection<TGetSectionPayload>(requestParams);
+		} as TGetSectionParams & { q: string });
 
 		const htmlRaw = res.payload?.[1]?.[0];
 		const html = Array.isArray(htmlRaw) ? htmlRaw.join("") : (htmlRaw || "");
@@ -258,15 +257,23 @@ class SearchRequests extends BaseRequest implements IRequest {
 			return undefined;
 		}
 
-		try {
-			const url = new URL(link, "https://vk.com");
-			const typeParam = url.searchParams.get("type");
+		// Синхронная обработка, так как new URL может выбросить исключение синхронно
+		const parsedUrl = (() => {
+			try {
+				return new URL(link, "https://vk.com");
+			} catch {
+				return null;
+			}
+		})();
+
+		if (parsedUrl) {
+			const typeParam = parsedUrl.searchParams.get("type");
 			return typeParam || undefined;
-		} catch {
-			// Если link не полный URL, попробуем извлечь параметр напрямую
-			const match = link.match(/[?&]type=([^&]+)/);
-			return match ? match[1] : undefined;
 		}
+
+		// Если link не полный URL, попробуем извлечь параметр напрямую
+		const match = link.match(/[?&]type=([^&]+)/);
+		return match ? match[1] : undefined;
 	}
 
 	protected async builderPlaylists(html: string | string[]): Promise<TPlaylist[]> {
@@ -330,15 +337,19 @@ class SearchRequests extends BaseRequest implements IRequest {
 		for (const category of categories) {
 			if (category.type === "global_audios" && category.sectionId) {
 				// Для "Все треки" загружаем через load_catalog_section
-				try {
-					const categoryData = await this.loadCategoryBySectionId(category.sectionId);
-					category.audios = categoryData.audios.filter(audio => audio.owner_id !== userId);
+				const categoryData = await this.loadCategoryBySectionId(category.sectionId).catch(() => null);
+
+				if (categoryData) {
+					category.audios = categoryData.audios.filter(audioItem => audioItem.owner_id !== userId);
 					category.more = categoryData.more;
 
 					if (category.more && this.validateMore(category.more)) {
 						category.next = async () => {
-							const nextData = await this.loadCategoryBySectionId(category.sectionId!, category.more!.next_from);
-							const filteredNextAudios = nextData.audios.filter(audio => audio.owner_id !== userId);
+							const nextData = await this.loadCategoryBySectionId(category.sectionId!, category.more!.next_from).catch(() => null);
+							if (!nextData) {
+								return category;
+							}
+							const filteredNextAudios = nextData.audios.filter(audioItem => audioItem.owner_id !== userId);
 							return {
 								...category,
 								audios: [...(category.audios || []), ...filteredNextAudios],
@@ -349,7 +360,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 							};
 						};
 					}
-				} catch (error) {
+				} else {
 					// Если не удалось загрузить, оставляем пустым
 					category.audios = [];
 				}
@@ -521,7 +532,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 		// Для обратной совместимости оставляем старые поля
 		const list = data?.playlists?.[0]?.list || data?.playlist?.list || [];
 		const allAudios = await audioRequests.parseAudios(list, params);
-		const audios = allAudios.filter(audio => audio.owner_id !== userId);
+		const audios = allAudios.filter(audioItem => audioItem.owner_id !== userId);
 		const artists = this.builderArtists(html);
 		const playlists = await this.builderPlaylists(html);
 		const collections = playlistsRequests.buildCollections(html);
@@ -678,7 +689,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 		const response = await this.getDataWithMore(audioRequests, more, params);
 
 		const userId = this.event.context.user.id;
-		const filteredAudios = response.list.filter(audio => audio.owner_id !== userId);
+		const filteredAudios = response.list.filter(audioItem => audioItem.owner_id !== userId);
 
 		return {
 			audios: filteredAudios,

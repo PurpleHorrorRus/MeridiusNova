@@ -19,6 +19,17 @@
 	);
 	background-size: 200% 100%;
 	animation: shimmer 1.5s infinite;
+
+	@media (max-width: 768px) {
+		height: 24px;
+		width: 160px;
+	}
+
+	@media (max-width: 480px) {
+		height: 20px;
+		width: 140px;
+		border-radius: 3px;
+	}
 }
 
 @keyframes shimmer {

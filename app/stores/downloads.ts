@@ -1,3 +1,5 @@
+import { isTauri } from "~/utils/tauri";
+
 import type { IDownloadProgress, TDownload } from "~~/server/utils/download-manager";
 
 export const useDownloadsStore = defineStore("downloads", {
@@ -73,9 +75,10 @@ export const useDownloadsStore = defineStore("downloads", {
 				this.startPolling(1000);
 			} else if (!hasActiveDownloads && this.pollingInterval) {
 				this.stopPolling();
+				this.handleBrowserDownloads();
+			} else {
+				this.handleBrowserDownloads();
 			}
-
-			this.handleBrowserDownloads();
 		},
 
 		handleBrowserDownloads(): void {
@@ -83,9 +86,7 @@ export const useDownloadsStore = defineStore("downloads", {
 				return;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-			if (isTauri) {
+			if (isTauri()) {
 				return;
 			}
 
@@ -99,6 +100,18 @@ export const useDownloadsStore = defineStore("downloads", {
 					this.browserDownloaded.add(download.downloadId);
 				}
 			});
+
+			const completedPlaylistDownloads = Array.from(this.downloads.values()).filter(d =>
+				d.status === "completed" && d.type === "playlist"
+			) as Array<Extract<TDownload, { type: "playlist" }>>;
+
+			completedPlaylistDownloads.forEach(download => {
+				if (download.zipPath && !this.browserDownloaded.has(download.downloadId)) {
+					const playlistTitle = download.playlist.title || "playlist";
+					this.downloadFileInBrowser(download.downloadId, `${playlistTitle}.zip`);
+					this.browserDownloaded.add(download.downloadId);
+				}
+			});
 		},
 
 		async downloadFileInBrowser(downloadId: string, fallbackFilename: string): Promise<void> {
@@ -106,35 +119,45 @@ export const useDownloadsStore = defineStore("downloads", {
 				return;
 			}
 
-			try {
-				const response = await fetch(`/api/downloads/file?downloadId=${downloadId}`);
-				
-				if (!response.ok) {
-					return;
-				}
-
-				const contentDisposition = response.headers.get("Content-Disposition");
-				let filename = fallbackFilename;
-
-				if (contentDisposition) {
-					const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-					if (filenameMatch && filenameMatch[1]) {
-						filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ""));
-					}
-				}
-
-				const blob = await response.blob();
-				const url = window.URL.createObjectURL(blob);
-				const link = document.createElement("a");
-				link.href = url;
-				link.download = filename.endsWith(".mp3") ? filename : `${filename}.mp3`;
-				document.body.appendChild(link);
-				link.click();
-				document.body.removeChild(link);
-				window.URL.revokeObjectURL(url);
-			} catch (error) {
+			const response = await fetch(`/api/downloads/file?downloadId=${downloadId}`).catch((error: Error) => {
 				console.error("Failed to download file in browser:", error);
+				return null;
+			});
+
+			if (!response || !response.ok) {
+				return;
 			}
+
+			const contentDisposition = response.headers.get("Content-Disposition");
+			let filename = fallbackFilename;
+
+			if (contentDisposition) {
+				const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+				if (filenameMatch && filenameMatch[1]) {
+					filename = decodeURIComponent(filenameMatch[1].replace(/['"]/g, ""));
+				}
+			}
+
+			const blob = await response.blob().catch((error: Error) => {
+				console.error("Failed to get blob:", error);
+				return null;
+			});
+
+			if (!blob) {
+				return;
+			}
+
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			const downloadFilename = filename.endsWith(".mp3") || filename.endsWith(".zip")
+				? filename
+				: `${filename}.mp3`;
+			link.download = downloadFilename;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			window.URL.revokeObjectURL(url);
 		},
 
 		startPolling(interval: number = 1000): void {
@@ -163,7 +186,7 @@ export const useDownloadsStore = defineStore("downloads", {
 		},
 
 		getQueuedDownloads(): TDownload[] {
-			return Array.from(this.downloads.values()).filter(d => d.status === "queued");
+			return Array.from(this.downloads.values()).filter(downloadItem => downloadItem.status === "queued");
 		},
 
 		getActiveDownloads(): TDownload[] {

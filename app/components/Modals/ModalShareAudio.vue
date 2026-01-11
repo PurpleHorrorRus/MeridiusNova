@@ -77,16 +77,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+
+import { useModalStore } from "~/stores/modal";
+import { useAudioStore } from "~/stores/audio";
+
 import type { TAudio } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useModal } from "~/composables/useModal";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { shareAudio } = useAudioActions();
-const { closeModal } = useModal();
+const modalStore = useModalStore();
+const audioStore = useAudioStore();
 
 const toWall = ref(true);
 const friendSearch = ref("");
@@ -133,9 +135,9 @@ const handleShare = async () => {
 
 	const attachment = `audio${props.audio.full_id}`;
 
-	const result = await shareAudio({
+	const result = await audioStore.shareAudio({
 		attachment,
-		peer_id: toWall.value ? undefined : selectedFriend.value,
+		peer_id: toWall.value ? undefined : (selectedFriend.value ?? undefined),
 		message: message.value.trim() || undefined,
 		toWall: toWall.value
 	}).catch((error) => {
@@ -146,12 +148,12 @@ const handleShare = async () => {
 	loading.value = false;
 
 	if (result) {
-		closeModal();
+		modalStore.close();
 	}
 };
 
 const handleCancel = () => {
-	closeModal();
+	modalStore.close();
 };
 
 onMounted(async () => {

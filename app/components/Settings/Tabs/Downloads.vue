@@ -18,9 +18,7 @@
 					</div>
 				</div>
 
-				<div v-if="ffmpegHint" class="settings-tip">
-					{{ ffmpegHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.ffmpeg')" />
 			</div>
 		</div>
 
@@ -39,15 +37,15 @@
 					</label>
 				</div>
 
-				<div class="settings-item">
+				<div v-if="isTauri()" class="settings-item">
 					<label class="settings-label">{{ getString("settings.downloads.folder") }}</label>
 					<div class="settings-input-group">
 						<input
 							:value="settings.download.path"
-							@input="updateDownloadPath"
 							type="text"
 							class="settings-input"
 							:placeholder="getString('settings.downloads.folderPlaceholder')"
+							readonly
 						/>
 						<button
 							@click="chooseDownloadPath"
@@ -69,9 +67,7 @@
 					/>
 				</div>
 
-				<div v-if="templateHint" class="settings-tip">
-					{{ templateHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.template')" />
 
 				<div class="settings-tip">
 					{{ getString("settings.downloads.template.headers") }}: {{ headers }}
@@ -82,21 +78,17 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-
-const { getString } = useStrings();
 import { useFFmpegStore } from "~/stores/ffmpeg";
 
-const settingsStore = useSettingsStore();
-const ffmpegStore = useFFmpegStore();
+import { isTauri } from "~/utils/tauri";
 
-const settings = computed(() => settingsStore.settings);
+const { getString } = useStrings();
+const ffmpegStore = useFFmpegStore();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const ffmpegExist = computed(() => ffmpegStore.exist);
 const ffmpegInstalling = computed(() => ffmpegStore.downloading);
 
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const ffmpegHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.ffmpeg);
-const templateHint = computed(() => settings.value.settingHints[lang.value]?.downloads?.template);
 
 const headers = "{{ index }}, {{ performer }}, {{ title }}, {{ id }}, {{ owner }}";
 const templatePlaceholder = "{{ performer }} - {{ title }}";
@@ -114,15 +106,8 @@ const updateDownloadEnable = (event: Event) => {
 	settingsStore.updateSection("download", { enable: target.checked });
 };
 
-const updateDownloadPath = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { path: target.value });
-};
-
 const chooseDownloadPath = async () => {
-	const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
-
-	if (isTauri && import.meta.client) {
+	if (isTauri() && import.meta.client) {
 		const { open } = await import("@tauri-apps/plugin-dialog");
 		const selected = await open({
 			directory: true,
@@ -132,11 +117,6 @@ const chooseDownloadPath = async () => {
 		if (selected && typeof selected === "string") {
 			settingsStore.updateSection("download", { path: selected });
 		}
-	} else if (import.meta.client) {
-		const os = await import("os");
-		const path = await import("path");
-		const defaultPath = path.join(os.homedir(), "Music");
-		settingsStore.updateSection("download", { path: defaultPath });
 	}
 };
 
@@ -195,12 +175,6 @@ const updateTemplate = (event: Event) => {
 		padding: 14px;
 		gap: 12px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-label {
@@ -219,11 +193,6 @@ const updateTemplate = (event: Event) => {
 	height: 20px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
-	transition: transform 0.15s ease;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .settings-input-group {
@@ -257,11 +226,6 @@ const updateTemplate = (event: Event) => {
 	outline: none;
 	transition: all 0.2s ease;
 
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
-	}
-
 	&:focus {
 		border-color: var(--secondary, #e9003f);
 		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.1);
@@ -283,12 +247,6 @@ const updateTemplate = (event: Event) => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	white-space: nowrap;
-
-	&:hover:not(:disabled) {
-		background: var(--primary-hover, #ff1a5c);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-	}
 
 	&:active:not(:disabled) {
 		transform: translateY(0);

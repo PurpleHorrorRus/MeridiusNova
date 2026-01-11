@@ -1,10 +1,11 @@
 <template>
-	<div class="modal-settings">
+	<div class="modal-settings" :class="{ 'modal-settings-page': isPage }">
 		<div class="modal-settings-header">
 			<h1 class="modal-settings-title">{{ getString("settings.title") }}</h1>
 			<button
+				v-if="!isPage"
 				class="modal-settings-close"
-				@click="handleClose"
+				@click="modalStore.close"
 			>
 				<Icon name="mdi:close" size="24" />
 			</button>
@@ -31,24 +32,34 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-import { useModalStore } from "~/stores/modal";
-import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
+import { storeToRefs } from "pinia";
+
+import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
 import SettingsAppearance from "~/components/Settings/Tabs/Appearance.vue";
-import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
-import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
 import SettingsDownloads from "~/components/Settings/Tabs/Downloads.vue";
 import SettingsEqualizer from "~/components/Settings/Tabs/Equalizer.vue";
+import SettingsGeneral from "~/components/Settings/Tabs/General.vue";
 import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
-import SettingsAccounts from "~/components/Settings/Tabs/Accounts.vue";
+import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
+import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
+import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
+
+import { useModalStore } from "~/stores/modal";
+import { useSettingsStore } from "~/stores/settings";
+
+import { isTauri } from "~/utils/tauri";
+
+const props = defineProps<{
+	isPage?: boolean;
+}>();
 
 const { getString, loadLanguage } = useStrings();
 const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const modalStore = useModalStore();
-
 const activeTab = ref("general");
 
-const tabs = [
+const allTabs = [
 	{ id: "general", label: "settings.tabs.general", icon: "mdi:cog" },
 	{ id: "appearance", label: "settings.tabs.appearance", icon: "mdi:palette" },
 	{ id: "player", label: "settings.tabs.player", icon: "mdi:music" },
@@ -56,8 +67,13 @@ const tabs = [
 	{ id: "downloads", label: "settings.tabs.downloads", icon: "mdi:download" },
 	{ id: "equalizer", label: "settings.tabs.equalizer", icon: "mdi:equalizer" },
 	{ id: "hotkeys", label: "settings.tabs.hotkeys", icon: "mdi:keyboard" },
+	{ id: "cache", label: "settings.tabs.cache", icon: "mdi:database" },
 	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" }
 ];
+
+const tabs = computed(() => {
+	return isTauri() ? allTabs : allTabs.filter(tabItem => tabItem.id !== "hotkeys");
+});
 
 const components: Record<string, any> = {
 	general: SettingsGeneral,
@@ -67,6 +83,7 @@ const components: Record<string, any> = {
 	downloads: SettingsDownloads,
 	equalizer: SettingsEqualizer,
 	hotkeys: SettingsHotkeys,
+	cache: SettingsCache,
 	accounts: SettingsAccounts
 };
 
@@ -74,15 +91,21 @@ const currentComponent = computed(() => {
 	return components[activeTab.value] || SettingsGeneral;
 });
 
-const handleClose = () => {
-	modalStore.close();
-};
+watch(() => tabs.value, (newTabs) => {
+	if (!isTauri() && activeTab.value === "hotkeys") {
+		activeTab.value = "general";
+	}
+}, { immediate: true });
 
 onMounted(async () => {
 	await settingsStore.load();
-	const lang = settingsStore.settings.general.lang;
+	const lang = settings.value.general.lang;
 	if (lang) {
 		await loadLanguage(lang);
+	}
+
+	if (!isTauri() && activeTab.value === "hotkeys") {
+		activeTab.value = "general";
 	}
 });
 </script>
@@ -93,6 +116,11 @@ onMounted(async () => {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
+
+	&.modal-settings-page {
+		height: auto;
+		min-height: 100%;
+	}
 }
 
 .modal-settings-header {
@@ -126,7 +154,7 @@ onMounted(async () => {
 	cursor: pointer;
 	padding: 8px;
 	border-radius: 6px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -216,7 +244,7 @@ onMounted(async () => {
 	border-left: 3px solid transparent;
 	color: var(--text-secondary, #b3b3b3);
 	cursor: pointer;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 	font-size: 14px;
 	text-align: left;
 	width: 100%;

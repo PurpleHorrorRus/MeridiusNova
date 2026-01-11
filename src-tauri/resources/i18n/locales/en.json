@@ -1,0 +1,268 @@
+{
+	"navigation": {
+		"main": "Home",
+		"myMusic": "My Music",
+		"playlists": "Playlists",
+		"discover": "Discover",
+		"radio": "Radio",
+		"settings": "Settings"
+	},
+	"general": {
+		"loading": "Loading...",
+		"error": "Error",
+		"recommendations": "Recommendations",
+		"newAlbums": "New Albums",
+		"newArtists": "New Artists",
+		"newReleases": "New Releases",
+		"chart": "Chart",
+		"collections": "Collections",
+		"radio": "Radio",
+		"vkmix": {
+			"title": "Listen to VK Mix",
+			"description": "A playlist that adapts to your tastes"
+		}
+	},
+	"player": {
+		"play": "Play",
+		"pause": "Pause",
+		"next": "Next",
+		"previous": "Previous",
+		"volume": "Volume",
+		"repeat": "Repeat",
+		"repeatOn": "Repeat on",
+		"shuffle": "Shuffle",
+		"mute": "Mute",
+		"speed": "Speed",
+		"addToLibrary": "Add to library",
+		"removeFromLibrary": "Remove from library",
+		"removeFromPlaylist": "Remove from playlist"
+	},
+	"settings": {
+		"title": "Settings",
+		"tabs": {
+			"general": "General",
+			"appearance": "Appearance",
+			"player": "Player",
+			"optimization": "Optimization",
+			"downloads": "Downloads",
+			"equalizer": "Equalizer",
+			"hotkeys": "Hotkeys",
+			"accounts": "Accounts"
+		},
+		"general": {
+			"language": {
+				"title": "Language",
+				"russian": "Русский",
+				"english": "English"
+			},
+			"window": {
+				"title": "Window",
+				"startup": "Open on system startup",
+				"hideOnClose": "Hide to system tray on close"
+			},
+			"discord": {
+				"title": "Discord",
+				"enable": "Enable Discord Rich Presence",
+				"timeline": "Show timeline",
+				"reverse": "Reverse countdown"
+			},
+			"streamer": {
+				"title": "Streamer Mode",
+				"enable": "Enable streamer mode",
+				"path": "Path",
+				"pathPlaceholder": "Select folder for saving",
+				"choose": "Choose"
+			}
+		},
+		"appearance": {
+			"themes": {
+				"title": "Themes"
+			}
+		},
+		"player": {
+			"audioOutput": "Audio Output Device",
+			"volume": {
+				"title": "Volume",
+				"divider": "Volume divider"
+			},
+			"latest": {
+				"title": "Track Saving",
+				"save": "Save current track",
+				"exit": "Play on exit",
+				"play": "Play on application startup"
+			},
+			"rewind": {
+				"title": "Rewind",
+				"enable": "Rewind to start of track"
+			},
+			"normalizer": {
+				"title": "Volume Normalization",
+				"enable": "Enable normalizer",
+				"max": "Maximum volume increase (dB)"
+			},
+			"crossfade": {
+				"title": "Crossfade",
+				"enable": "Enable crossfade",
+				"duration": "Crossfade duration (sec)",
+				"fade": "Fade effect on transition"
+			},
+			"step": {
+				"title": "Volume Step",
+				"wheel": "Mouse wheel (%)",
+				"hotkey": "Hotkey (%)"
+			},
+			"playbackRateStep": {
+				"title": "Playback Rate Step",
+				"click": "Click",
+				"wheel": "Mouse wheel",
+				"hotkey": "Hotkey"
+			}
+		},
+		"optimization": {
+			"title": "Optimization",
+			"hardwareAcceleration": "Tauri Hardware Acceleration",
+			"download": {
+				"auto": "Automatically determine number of simultaneous downloads",
+				"fixed": "Fixed number of downloads"
+			}
+		},
+		"downloads": {
+			"title": "Downloads",
+			"enable": "Download music",
+			"folder": "Download folder",
+			"folderPlaceholder": "Default - user music folder",
+			"choose": "Choose",
+			"ffmpeg": {
+				"title": "FFmpeg",
+				"notInstalled": "FFmpeg is not installed",
+				"installed": "FFmpeg is installed",
+				"install": "Install",
+				"installing": "Installing..."
+			},
+			"template": {
+				"title": "Filename Template",
+				"headers": "Available headers"
+			}
+		},
+		"equalizer": {
+			"title": "Equalizer",
+			"enable": "Enable equalizer",
+			"presets": "Presets",
+			"levels": "Equalizer Levels",
+			"graph": "Graph",
+			"export": "Export",
+			"import": "Import"
+		},
+		"hotkeys": {
+			"title": "Hotkeys",
+			"playpause": "Play / Pause",
+			"playnext": "Next Track",
+			"playprev": "Previous Track",
+			"volup": "Increase Volume",
+			"voldown": "Decrease Volume",
+			"volmute": "Toggle Mute",
+			"rateup": "Increase Playback Rate",
+			"ratedown": "Decrease Playback Rate",
+			"nextplaylist": "Next Playlist",
+			"prevplaylist": "Previous Playlist"
+		},
+		"accounts": {
+			"title": "Accounts",
+			"add": "Add Account",
+			"switch": "Switch",
+			"remove": "Remove"
+		},
+		"hints": {
+			"general": {
+				"hardwareAcceleration": "Requires application restart",
+				"beta": "Test builds may be unstable, but you get the opportunity to test new features before others. Requires application restart",
+				"streamer": "Writes information about the current track to files located in the specified folder for display via OBS and other applications for live broadcasts",
+				"proxy": {
+					"url": "Requires application restart"
+				}
+			},
+			"appearance": {
+				"windowControlButtons": "It will be useful if you use a tiling window manager",
+				"fullFrame": "Using the entire space disables the transparent window, which will make outer shadows at the window borders and rounding at the edges inaccessible, but guarantees full functionality of the native window. Requires application restart",
+				"acrylic": "Not recommended. You need to enable acrylic effects in Windows settings. Requires application restart",
+				"zoom": [
+					"Use keyboard shortcuts to change the scale of the interface:",
+					"Ctrl + to zoom in",
+					"Ctrl - to zoom out",
+					"Ctrl 0 to reset"
+				],
+				"themes": {
+					"download": "Fill in all the fields. Only data from GitHub is accepted"
+				}
+			},
+			"player": {
+				"volumeDivider": "If it seems to you that the volume of the tracks does not correspond to the specified percentage of the volume in the player, then change the volume divider",
+				"miniwindow": {
+					"minimode": "Disables mini window controls and styles keeping only current track information"
+				},
+				"rewind": "By enabling this option, when you press the \"previous track\" button, the player will start playing the track again instead of playing the previous track if the listening progress has reached {{ rewind }} seconds or more ",
+				"normalizer": {
+					"tip": "Averages the volume level of the music. Do not enable this option if you are listening to music at a medium or high volume level (from 20% and above)",
+					"max": "The volume of music is a subjective concept. Choose for yourself the maximum percentage of music volume increase"
+				}
+			},
+			"optimization": {
+				"multithreading": "Requires application restart",
+				"hardwareAcceleration": "Requires application restart",
+				"stashSize": "To optimize work with system resources, Meridius uses its own music storage system when downloading. This setting determines how many audios will be displayed when redirecting to the playlist. You can set number in the range from 20 to 100",
+				"loadingRestriction": "Here you can set the desired maximum number of tracks that will be loaded when playing playlists. By default, the number of downloaded tracks is 1000, the minimum is 100, the maximum is 10000. It is not recommended to set a value higher than 2000, this cause long downloads, freezes, crashes and high consumption of system resources with a large amount of audio",
+				"download": {
+					"auto": "Recommended for use. The number of downloads is determined depending on the performance of your processor in order to avoid application or system freezes",
+					"fixed": "You can set a fixed value for simultaneous downloads. The value cannot be greater than 10. Increase the value at your own risk if you have a low performance CPU"
+				}
+			},
+			"downloads": {
+				"ffmpeg": "FFmpeg - it's free open-source tool to processing media files. Requires for combining streaming files into one",
+				"template": "Set a template for the file name when downloading using headers"
+			},
+			"server": {
+				"password": "Your password is encrypted once and is not stored anywhere, so it should be written down. The server verifies the authenticity of the password upon request. Open the manual for more detailed information about server and connection"
+			}
+		}
+	},
+	"playlist": {
+		"tracks": "tracks",
+		"duration": "Duration",
+		"updated": "Updated"
+	},
+	"collection": {
+		"tabs": {
+			"music": "Music",
+			"playlists": "Playlists",
+			"albums": "Albums"
+		}
+	},
+	"search": {
+		"placeholder": "Search music...",
+		"results": "Search results",
+		"noResults": "No results found"
+	},
+	"modal": {
+		"confirm": {
+			"cancel": "Cancel",
+			"confirm": "Confirm"
+		},
+		"close": "Close"
+	},
+	"downloads": {
+		"title": "Downloads",
+		"clearQueue": "Clear queue",
+		"clearCompleted": "Clear completed",
+		"clearAll": "Clear all",
+		"openInExplorer": "Open in explorer",
+		"status": {
+			"queued": "Queued",
+			"preparing": "Preparing",
+			"downloading": "Downloading",
+			"processing": "Processing",
+			"completed": "Completed",
+			"failed": "Failed"
+		}
+	}
+}
+

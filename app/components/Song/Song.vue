@@ -3,7 +3,13 @@
 		class="song"
 		:class="{ 'playing': isPlaying, 'table-mode': isTableMode, 'restricted': isRestricted }"
 		@click="handleClick"
+		@mousedown="(e: MouseEvent) => { $emit('mousedown', e); }"
+		@dragstart.prevent="(e: DragEvent) => e.preventDefault()"
 		@contextmenu.prevent="handleContextMenu"
+		@touchstart="handleTouchStart"
+		@touchmove="handleTouchMove"
+		@touchend="handleTouchEnd"
+		@touchcancel="handleTouchCancel"
 	>
 		<div v-if="isTableMode && isPlaying" class="song-index">
 			<Icon name="mdi:volume-high" size="16" />
@@ -15,34 +21,67 @@
 				:width="isTableMode ? 40 : 50"
 				:height="isTableMode ? 40 : 50"
 			/>
+
 			<div v-if="isTableMode" class="song-cover-overlay">
-				<Icon name="mdi:play" size="16" />
+				<Icon :name="isPlaying && playerIsPlaying ? 'mdi:pause' : 'mdi:play'" size="16" />
+			</div>
+
+			<div v-if="isPlaying" class="song-cover-playing-indicator">
+				<Icon name="mdi:volume-high" size="10" />
 			</div>
 		</div>
 
 		<div class="song-info">
-			<div class="song-info-title">
+			<div class="song-info-title" v-once>
 				<span v-html="audio.title" />
 			</div>
 
-			<div class="song-info-artist">
+		<div class="song-info-artist" v-once>
+			<template v-if="audio.artists && audio.artists.length > 0">
+				<template v-for="(artistItem, index) in audio.artists" :key="artistItem.id || index">
+					<span
+						class="artist-link"
+						:class="{ 'clickable': canNavigateToArtist(artistItem) }"
+						@click.stop="handleArtistClick(artistItem)"
+						v-html="artistItem.name"
+					/>
+					<span v-if="index < audio.artists.length - 1" class="artist-separator">, </span>
+				</template>
+			</template>
+
+			<template v-if="audio.feat && audio.feat.length > 0">
+				<span class="feat-label"> feat. </span>
+
+				<template v-for="(featItem, index) in audio.feat" :key="featItem.id || index">
+					<span
+						class="artist-link feat-artist"
+						:class="{ 'clickable': canNavigateToArtist(featItem) }"
+						@click.stop="handleArtistClick(featItem)"
+						v-html="featItem.name"
+					/>
+					<span v-if="index < audio.feat.length - 1" class="artist-separator">, </span>
+				</template>
+			</template>
+			<template v-if="(!audio.artists || audio.artists.length === 0) && (!audio.feat || audio.feat.length === 0)">
 				<span v-html="audio.performer || audio.artist" />
-			</div>
+			</template>
 		</div>
 
-		<div v-if="isTableMode" class="song-album">
-			{{ albumName }}
-		</div>
+		<div v-if="!isTableMode && albumName" class="song-info-album" v-once @click.stop="handleAlbumClick" v-text="albumName" />
+	</div>
+
+	<div v-if="isTableMode && albumName" class="song-album" v-once @click.stop="handleAlbumClick" v-text="albumName" />
 
 		<div class="song-actions">
-			<SongActions :audio="audio" />
+			<SongActions :audio="audio" @action="handleAction" />
 		</div>
 
-		<div class="song-duration">
+		<div class="song-duration" v-once>
 			<span v-if="isRestricted" class="restricted-badge" title="Трек недоступен">
 				<Icon name="mdi:lock" size="14" />
 			</span>
-			<span v-else>{{ duration }}</span>
+
+			<span v-else v-text="duration" />
 		</div>
 
 		<SongContextMenu
@@ -50,162 +89,144 @@
 			:audio="audio"
 			:position="contextMenuPosition"
 			@close="handleContextMenuClose"
+			@action="handleAction"
 		/>
 	</div>
 </template>
 
 <script setup lang="ts">
 import moment from "moment";
-import { storeToRefs } from "pinia";
 
-// useAudio is auto-imported from app/composables
-
-import type { TAudio } from "~~/server/api/vk/audio/types";
 import SongActions from "~/components/SongActions.vue";
 import SongContextMenu from "~/components/SongContextMenu.vue";
+
+import type { TAudio } from "~~/server/api/vk/audio/types";
 
 const props = defineProps<{
 	audio: TAudio;
 	index?: number;
+	duration?: string;
+	albumName?: string;
+	albumInfo?: {
+		owner_id: number;
+		playlist_id: number;
+		access_hash: string;
+	} | null;
+	isPlaying?: boolean;
+	playerIsPlaying?: boolean;
 }>();
 
-const { play, pause, resume, currentSong, isPlaying: playerIsPlaying } = useAudio();
-const { playFromPlaylist, current, playing } = usePlaylist();
-const { playFromQueue } = useQueue();
-const playlistStore = usePlaylistStore();
-const songsContext = useSongsContext();
+const emit = defineEmits<{
+	click: [];
+	"mousedown": [event: MouseEvent];
+	"album-click": [albumInfo: { owner_id: number; playlist_id: number; access_hash: string }];
+	"artist-click": [artist: { id?: string; link?: string; name?: string }];
+	"context-menu": [event: MouseEvent];
+	"long-press": [];
+	action: [action: string, data?: any];
+}>();
+
 const playerStore = usePlayerStore();
-const { song: playerSong } = storeToRefs(playerStore);
+const { isMobile } = useIsMobile();
 
-const isTableMode = computed(() => props.index !== undefined);
-
-const isRestricted = computed(() => Boolean(props.audio.is_restriction));
+const isTableMode = props.index !== undefined;
+const isRestricted = Boolean(props.audio.is_restriction);
 
 const showContextMenu = ref(false);
 const contextMenuPosition = ref<{ x: number; y: number } | undefined>(undefined);
 const contextMenuJustClosed = ref(false);
 
-// Используем реактивную ссылку из storeToRefs для гарантии реактивности
 const isPlaying = computed(() => {
-	return playerSong.value?.full_id === props.audio.full_id;
+	return (playerStore.song !== null && props.audio !== null)
+		&& (playerStore.song.full_id || `${playerStore.song.owner_id}_${playerStore.song.id}`)
+			=== (props.audio.full_id || `${props.audio.owner_id}_${props.audio.id}`);
 });
 
-const duration = computed(() => {
-	return moment(props.audio.duration * 1000).format("mm:ss");
+const playerIsPlaying = computed(() => {
+	return !playerStore.paused && playerStore.song !== null;
 });
 
-const albumName = computed(() => {
+const duration = props.duration || moment(props.audio.duration * 1000).format("mm:ss");
+
+const albumName = props.albumName !== undefined ? props.albumName : (() => {
 	const album = props.audio.album;
-
-	if (!album) {
-		return "-";
+	if (!album) return "";
+	if (typeof album === "string") return album;
+	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
+		const albumObject = album as any;
+		if (albumObject.title) return String(albumObject.title);
 	}
+	return "";
+})();
 
-	if (typeof album === "string") {
-		return album;
-	}
-
-	if (Array.isArray(album)) {
-		// Массив [owner_id, playlist_id, access_hash] - не можем показать название без дополнительного запроса
-		return "-";
-	}
-
-	if (typeof album === "object" && album !== null) {
-		// Объект с информацией об альбоме
-		if ("title" in album && album.title) {
-			return album.title;
+const albumInfo = props.albumInfo !== undefined ? props.albumInfo : (() => {
+	const album = props.audio.album;
+	if (!album) return null;
+	if (typeof album === "object" && album !== null && !Array.isArray(album)) {
+		const albumObject = album as any;
+		const ownerId = albumObject.owner_id || albumObject.ownerId;
+		const playlistId = albumObject.id || albumObject.playlist_id;
+		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
+			return {
+				owner_id: Number(ownerId),
+				playlist_id: Number(playlistId),
+				access_hash: albumObject.access_hash || albumObject.access_key || ""
+			};
 		}
 	}
+	if (Array.isArray(album) && album.length >= 2) {
+		const ownerId = album[0];
+		const playlistId = album[1];
+		const accessHash = album[2] || "";
+		if (ownerId !== undefined && ownerId !== null && playlistId !== undefined && playlistId !== null) {
+			return {
+				owner_id: Number(ownerId),
+				playlist_id: Number(playlistId),
+				access_hash: String(accessHash)
+			};
+		}
+	}
+	return null;
+})();
 
-	return "-";
-});
+const canNavigateToArtist = (artist: { id?: string; link?: string }): boolean => {
+	return Boolean(artist.id || artist.link);
+};
 
-const handleClick = async () => {
-	if (isRestricted.value) {
+const handleAlbumClick = () => {
+	if (!albumInfo) {
 		return;
 	}
 
-	// Если клик произошел сразу после закрытия контекстного меню, игнорируем его
-	// Это предотвращает случайное воспроизведение трека при закрытии меню
+	emit("album-click", albumInfo);
+};
+
+const handleArtistClick = (artist: { id?: string; link?: string; name?: string }) => {
+	if (!canNavigateToArtist(artist)) {
+		return;
+	}
+
+	emit("artist-click", artist);
+};
+
+const handleClick = () => {
+	if (isRestricted) {
+		return;
+	}
+
 	if (contextMenuJustClosed.value) {
 		contextMenuJustClosed.value = false;
 		return;
 	}
 
-	// Проверяем, является ли это тот же трек, что и текущий (даже на паузе)
-	const isCurrentSong = currentSong.value?.full_id === props.audio.full_id;
-
-	if (isCurrentSong && playerIsPlaying.value) {
-		pause();
-	} else if (isCurrentSong && !playerIsPlaying.value) {
-		resume();
-	} else {
-		// Используем current плейлист (со страницы), а не playing (который может быть VK Mix)
-		// Если есть current плейлист и он не VK Mix, используем playFromPlaylist
-		const currentPlaylist = current.value;
-		const isCurrentVkMix = currentPlaylist && (currentPlaylist.playlist_id === -9 || String(currentPlaylist.owner_id) === "vkmix");
-		
-		if (currentPlaylist && !isCurrentVkMix && songsContext?.value && songsContext.value.length > 0) {
-			// Создаем плейлист из контекста страницы
-			await playFromPlaylist(props.audio, { ...currentPlaylist, list: songsContext.value });
-		} else if (playing.value && playing.value.list && playing.value.list.length > 0) {
-			// Fallback: используем playing плейлист, если current нет
-			const isPlayingVkMix = playing.value.playlist_id === -9 || String(playing.value.owner_id) === "vkmix";
-			if (!isPlayingVkMix) {
-				await playFromPlaylist(props.audio, playing.value);
-			} else {
-				// Если playing - VK Mix, используем контекст страницы
-				await handlePlayFromContext();
-			}
-		} else {
-			// Ищем треки из контекста страницы
-			await handlePlayFromContext();
-		}
-	}
-};
-
-const handlePlayFromContext = async () => {
-	// ПЕРВЫМ ДЕЛОМ проверяем, не находится ли трек уже в очереди воспроизведения
-	// Это предотвращает очистку очереди при клике на трек из очереди
-	const currentSongs = playlistStore.playingSongs;
-	const existingIndex = currentSongs.findIndex((s: TAudio) => s.full_id === props.audio.full_id);
-	
-	if (existingIndex >= 0) {
-		// Трек уже в очереди, просто обновляем индекс и воспроизводим
-		console.log("[SONG] Song already in queue, updating index only", {
-			songId: props.audio.full_id,
-			existingIndex,
-			currentIndex: playlistStore.currentIndex
-		});
-		
-		playlistStore.setCurrentIndex(existingIndex);
-		
-		// Используем трек из очереди, который уже имеет все данные (включая URL)
-		const songFromQueue = currentSongs[existingIndex];
-		if (songFromQueue) {
-			await play({ ...songFromQueue, from: "queue", manual: true } as TAudio & { from?: string; manual?: boolean });
-		}
-		return;
-	}
-	
-	// Ищем треки из контекста страницы
-	let contextSongs: TAudio[] = [];
-	
-	if (songsContext?.value && songsContext.value.length > 0) {
-		contextSongs = songsContext.value;
-	} else {
-		// Если контекста нет, используем только текущий трек
-		contextSongs = [props.audio];
-	}
-	
-	// Если есть current плейлист (например, поиск), используем его
-	const currentPlaylist = current.value;
-	
-	// Используем универсальный метод для воспроизведения из очереди
-	await playFromQueue(props.audio, contextSongs, currentPlaylist || undefined);
+	emit("click");
 };
 
 const handleContextMenu = (event: MouseEvent) => {
+	if (isMobile.value) {
+		return;
+	}
+
 	event.preventDefault();
 	event.stopPropagation();
 
@@ -216,6 +237,7 @@ const handleContextMenu = (event: MouseEvent) => {
 
 	showContextMenu.value = true;
 	contextMenuJustClosed.value = false;
+	emit("context-menu", event);
 };
 
 const handleContextMenuClose = () => {
@@ -224,6 +246,73 @@ const handleContextMenuClose = () => {
 	setTimeout(() => {
 		contextMenuJustClosed.value = false;
 	}, 100);
+};
+
+const handleAction = (action: string, data?: any) => {
+	emit("action", action, data);
+};
+
+let touchStartX = 0;
+let touchStartY = 0;
+let longPressTimer: NodeJS.Timeout | null = null;
+const LONG_PRESS_DURATION = 500;
+const MOVE_THRESHOLD = 10;
+let isLongPress = false;
+
+const handleTouchStart = (event: TouchEvent) => {
+	if (!isMobile.value || isRestricted) {
+		return;
+	}
+
+	const touch = event.touches[0];
+	if (touch) {
+		touchStartX = touch.clientX;
+		touchStartY = touch.clientY;
+		isLongPress = false;
+
+		longPressTimer = setTimeout(() => {
+			isLongPress = true;
+			emit("long-press");
+		}, LONG_PRESS_DURATION);
+	}
+};
+
+const handleTouchMove = (event: TouchEvent) => {
+	if (!isMobile.value || !longPressTimer) {
+		return;
+	}
+
+	const touch = event.touches[0];
+	if (touch) {
+		const deltaX = Math.abs(touch.clientX - touchStartX);
+		const deltaY = Math.abs(touch.clientY - touchStartY);
+
+		if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) {
+			if (longPressTimer) {
+				clearTimeout(longPressTimer);
+				longPressTimer = null;
+			}
+		}
+	}
+};
+
+const handleTouchEnd = (event: TouchEvent) => {
+	if (longPressTimer) {
+		clearTimeout(longPressTimer);
+		longPressTimer = null;
+	}
+
+	if (isLongPress) {
+		event.preventDefault();
+		isLongPress = false;
+	}
+};
+
+const handleTouchCancel = () => {
+	if (longPressTimer) {
+		clearTimeout(longPressTimer);
+		longPressTimer = null;
+	}
 };
 </script>
 
@@ -234,21 +323,22 @@ const handleContextMenuClose = () => {
 	gap: 12px;
 	padding: 10px 12px;
 	border-radius: 8px;
-	transition: all 0.3s ease;
+	// Анимируем только свойства, которые меняются при hover
+	transition: background-color 0.3s ease;
 	min-height: 56px;
 	position: relative;
+	overflow: hidden;
+	width: 100%;
 
 	&.playing {
-		background-color: var(--hover, rgba(42, 42, 42, 0.6));
-		color: var(--secondary, #e9003f);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		background-color: rgba(233, 0, 63, 0.08);
 
 		.song-index {
-			color: var(--secondary, #e9003f);
+			color: rgba(233, 0, 63, 0.6);
 		}
 
 		.song-info-title {
-			color: var(--text, #fff);
+			color: var(--secondary, #e9003f);
 			font-weight: 500;
 		}
 	}
@@ -263,13 +353,8 @@ const handleContextMenuClose = () => {
 		cursor: pointer;
 	}
 
-	&:hover:not(.restricted) {
-		background-color: var(--hover, rgba(42, 42, 42, 0.8));
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-
-		.song-cover {
-			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-		}
+	&:hover:not(.restricted):not(.playing) {
+		background-color: rgba(255, 255, 255, 0.05);
 
 		.song-cover-overlay {
 			opacity: 1;
@@ -279,26 +364,48 @@ const handleContextMenuClose = () => {
 			opacity: 0;
 		}
 
+		.song-info-title {
+			color: var(--text, #fff);
+		}
+	}
+
+	&:hover:not(.restricted).playing {
+		background-color: rgba(233, 0, 63, 0.12);
+
+		.song-cover-overlay {
+			opacity: 1;
+		}
+
+		.song-index {
+			opacity: 0;
+		}
+
+		.song-info-title {
+			color: var(--secondary, #e9003f);
+		}
+	}
+
+	// Общие стили для .song-actions при hover (объединены для избежания дублирования)
+	&:hover:not(.restricted) {
 		.song-actions {
 			opacity: 1;
 			pointer-events: auto;
 			max-width: 200px;
-		}
 
-		.song-info-title {
-			color: var(--text, #fff);
+			.table-mode & {
+				max-width: none;
+			}
 		}
 	}
 
 	// Table layout mode
 	&.table-mode {
 		display: grid;
-		grid-template-columns: 1fr 1fr auto 80px;
+		grid-template-columns: 1fr 1fr 80px;
 		gap: 16px;
 		padding: 10px 16px;
 		align-items: center;
 		min-height: 56px;
-
 
 		.song-cover {
 			grid-column: 1;
@@ -317,15 +424,28 @@ const handleContextMenuClose = () => {
 		}
 
 		.song-actions {
-			grid-column: 3;
-			grid-row: 1;
+			position: absolute;
+			right: 96px;
+			top: 50%;
+			transform: translateY(-50%);
 			min-width: 0;
+			max-width: none !important;
+			overflow: visible !important;
+			opacity: 0;
+			pointer-events: none;
 		}
 
 		.song-duration {
-			grid-column: 4;
+			grid-column: 3;
 			grid-row: 1;
 			text-align: right;
+		}
+	}
+
+	&.table-mode:hover:not(.restricted) {
+		.song-actions {
+			opacity: 1;
+			pointer-events: auto;
 		}
 
 		.song-index {
@@ -342,7 +462,7 @@ const handleContextMenuClose = () => {
 		justify-content: center;
 		font-size: 14px;
 		color: var(--text-secondary, #b3b3b3);
-		transition: all 0.3s ease;
+		transition: opacity 0.3s ease, color 0.3s ease;
 		width: 40px;
 		flex-shrink: 0;
 
@@ -359,8 +479,7 @@ const handleContextMenuClose = () => {
 		flex-shrink: 0;
 		width: 50px;
 		height: 50px;
-		transition: all 0.3s ease;
-		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+		// Анимация не нужна - размеры не меняются
 
 		.table-mode & {
 			width: 40px;
@@ -393,12 +512,28 @@ const handleContextMenuClose = () => {
 		transform: scale(1.1);
 	}
 
+	&-cover-playing-indicator {
+		position: absolute;
+		bottom: 4px;
+		right: 4px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1;
+		pointer-events: none;
+		
+		:deep(svg) {
+			color: rgba(233, 0, 63, 0.6);
+		}
+	}
+
 	&-info {
-		flex: 1;
+		flex: 1 1 0;
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
 		min-width: 0;
+		overflow: hidden;
 	}
 
 	&-info-title {
@@ -410,6 +545,7 @@ const handleContextMenuClose = () => {
 		text-overflow: ellipsis;
 		transition: color 0.3s ease, font-weight 0.3s ease;
 		line-height: 1.4;
+		min-width: 0;
 	}
 
 	&-info-artist {
@@ -420,6 +556,55 @@ const handleContextMenuClose = () => {
 		text-overflow: ellipsis;
 		transition: color 0.3s ease;
 		line-height: 1.3;
+		min-width: 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0;
+
+		.artist-link {
+			&.clickable {
+				cursor: pointer;
+				transition: color 0.2s ease;
+
+				&:hover {
+					color: var(--text, #fff);
+					text-decoration: underline;
+				}
+			}
+		}
+
+		.artist-separator {
+			margin: 0 2px;
+		}
+
+		.feat-label {
+			margin: 0 4px;
+			opacity: 0.7;
+		}
+
+		.feat-artist {
+			opacity: 0.9;
+		}
+	}
+
+	&-info-album {
+		font-size: 12px;
+		color: var(--text-secondary, #b3b3b3);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition: color 0.3s ease;
+		line-height: 1.2;
+		opacity: 0.8;
+		cursor: pointer;
+		min-width: 0;
+		flex-shrink: 1;
+
+		&:hover {
+			color: var(--text, #fff);
+			text-decoration: underline;
+		}
 	}
 
 	&-album {
@@ -431,9 +616,18 @@ const handleContextMenuClose = () => {
 		display: none;
 		transition: color 0.3s ease;
 		line-height: 1.3;
+		cursor: pointer;
+		min-width: 0;
+		max-width: 100%;
 
 		.table-mode & {
 			display: block;
+			max-width: 200px;
+		}
+
+		&:hover {
+			color: var(--text, #fff);
+			text-decoration: underline;
 		}
 	}
 
@@ -446,7 +640,7 @@ const handleContextMenuClose = () => {
 		flex-shrink: 0;
 		max-width: 0;
 		overflow: hidden;
-		transition: opacity 0.3s ease, max-width 0.3s ease;
+		transition: opacity 0.3s ease;
 
 		&:hover {
 			opacity: 1;
@@ -477,6 +671,12 @@ const handleContextMenuClose = () => {
 	}
 }
 
+@media (max-width: 768px) {
+	.song-actions {
+		display: none !important;
+	}
+}
+
 @media (max-width: 1200px) {
 	.song {
 		gap: 10px;
@@ -494,6 +694,10 @@ const handleContextMenuClose = () => {
 
 	.song-info-artist {
 		font-size: 12px;
+	}
+
+	.song-info-album {
+		font-size: 11px;
 	}
 
 	.song-album {
@@ -537,6 +741,10 @@ const handleContextMenuClose = () => {
 		font-size: 12px;
 	}
 
+	.song-info-album {
+		font-size: 11px;
+	}
+
 	.song-album {
 		font-size: 12px;
 	}
@@ -559,10 +767,6 @@ const handleContextMenuClose = () => {
 			padding: 8px 10px;
 			min-height: 48px;
 
-			.song-album {
-				display: none;
-			}
-
 			.song-info {
 				margin-left: 48px;
 			}
@@ -573,6 +777,18 @@ const handleContextMenuClose = () => {
 
 			.song-duration {
 				grid-column: 3;
+			}
+
+			.song-album {
+				max-width: 150px;
+			}
+		}
+
+		.song-info {
+			flex: 1 1 0;
+
+			.song-info-album {
+				max-width: 60%;
 			}
 		}
 	}
@@ -640,6 +856,18 @@ const handleContextMenuClose = () => {
 			.song-duration {
 				grid-column: 3;
 			}
+
+			.song-album {
+				max-width: 120px;
+			}
+		}
+
+		.song-info {
+			flex: 1 1 0;
+
+			.song-info-album {
+				max-width: 50%;
+			}
 		}
 	}
 
@@ -659,6 +887,10 @@ const handleContextMenuClose = () => {
 
 	.song-info-artist {
 		font-size: 10px;
+	}
+
+	.song-info-album {
+		font-size: 9px;
 	}
 
 	.song-duration {

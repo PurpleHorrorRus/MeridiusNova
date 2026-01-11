@@ -38,15 +38,14 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
-import { useHotkeys } from "~/composables/useHotkeys";
 import HotkeyInput from "~/components/Settings/HotkeyInput.vue";
+
+import { useHotkeys } from "~/composables/useHotkeys";
 
 const { getString } = useStrings();
 const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const { registerHotkey, unregisterHotkey, registerHotkeys, unregisterHotkeys } = useHotkeys();
-
-const settings = computed(() => settingsStore.settings);
 
 onMounted(async () => {
 	await unregisterHotkeys();
@@ -79,22 +78,22 @@ const hotkeyCategories = computed(() => {
 		{
 			name: "Воспроизведение",
 			icon: "mdi:play-circle",
-			items: hotkeysWithAccelerators.filter(h => ["playpause", "playnext", "playprev"].includes(h.action))
+			items: hotkeysWithAccelerators.filter(hotkey => ["playpause", "playnext", "playprev"].includes(hotkey.action))
 		},
 		{
 			name: "Громкость",
 			icon: "mdi:volume-high",
-			items: hotkeysWithAccelerators.filter(h => ["volup", "voldown", "volmute"].includes(h.action))
+			items: hotkeysWithAccelerators.filter(hotkey => ["volup", "voldown", "volmute"].includes(hotkey.action))
 		},
 		{
 			name: "Скорость воспроизведения",
 			icon: "mdi:speedometer",
-			items: hotkeysWithAccelerators.filter(h => ["rateup", "ratedown"].includes(h.action))
+			items: hotkeysWithAccelerators.filter(hotkey => ["rateup", "ratedown"].includes(hotkey.action))
 		},
 		{
 			name: "Плейлисты",
 			icon: "mdi:playlist-music",
-			items: hotkeysWithAccelerators.filter(h => ["nextplaylist", "prevplaylist"].includes(h.action))
+			items: hotkeysWithAccelerators.filter(hotkey => ["nextplaylist", "prevplaylist"].includes(hotkey.action))
 		}
 	];
 });

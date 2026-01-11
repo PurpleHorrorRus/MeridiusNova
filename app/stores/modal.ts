@@ -11,7 +11,7 @@ export interface ModalCustomProps {
 	title?: string;
 }
 
-type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | null;
+type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | "songActions" | null;
 
 interface ModalState {
 	isOpen: boolean;
@@ -62,6 +62,60 @@ export const useModalStore = defineStore("modal", {
 				await this.onCancel();
 			}
 			this.close();
+		},
+
+		openModal(
+			type: ModalType,
+			props: ModalConfirmProps | ModalCustomProps | Record<string, any> = {},
+			callbacks?: {
+				onConfirm?: () => void | Promise<void>;
+				onCancel?: () => void | Promise<void>;
+			}
+		) {
+			this.open(type, props || {}, callbacks);
+		},
+
+		async openConfirm(
+			props: ModalConfirmProps,
+			callbacks?: {
+				onConfirm?: () => void | Promise<void>;
+				onCancel?: () => void | Promise<void>;
+			}
+		): Promise<boolean> {
+			return new Promise((resolve) => {
+				this.open("confirm", props, {
+					onConfirm: async () => {
+						if (callbacks?.onConfirm) {
+							await callbacks.onConfirm();
+						}
+						resolve(true);
+					},
+					onCancel: async () => {
+						if (callbacks?.onCancel) {
+							await callbacks.onCancel();
+						}
+						resolve(false);
+					}
+				});
+			});
+		},
+
+		openSettings() {
+			this.open("settings", {});
+		},
+
+		openCustom(
+			component: any,
+			props?: Record<string, any>,
+			callbacks?: {
+				onConfirm?: () => void | Promise<void>;
+				onCancel?: () => void | Promise<void>;
+			}
+		) {
+			this.open("custom", {
+				component,
+				props: props || {}
+			}, callbacks);
 		}
 	}
 });

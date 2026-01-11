@@ -7,22 +7,18 @@
 				:height="coverSize"
 			/>
 			<div v-if="showPlayButton" class="playlist-card-overlay">
-				<button class="playlist-card-play-button" @click.stop="handlePlayPause" :disabled="isLoading">
+				<button class="playlist-card-play-button" @click.stop="(event) => handlePlayPause(event)" :disabled="isLoading">
 					<Icon :name="isLoading ? 'mdi:loading' : (isPlaying ? 'mdi:pause' : 'mdi:play')" size="32" :class="{ 'loading-icon': isLoading }" />
 				</button>
 			</div>
 		</div>
 
 		<div class="playlist-card-info">
-			<div class="playlist-card-title" :title="playlist.title">
-				{{ playlist.title }}
-			</div>
+			<div class="playlist-card-title" v-once :title="playlist.title" v-text="playlist.title" />
 
-			<div v-if="playlist.description" class="playlist-card-description">
-				{{ playlist.description }}
-			</div>
+			<div v-if="playlist.description" class="playlist-card-description" v-once v-text="playlist.description" />
 
-			<div v-if="playlist.size !== undefined && playlist.size > 0" class="playlist-card-meta">
+			<div v-if="playlist.size !== undefined && playlist.size > 0" class="playlist-card-meta" v-once>
 				{{ playlist.size }} треков
 			</div>
 		</div>
@@ -44,58 +40,42 @@ const emit = defineEmits<{
 
 const { isPlaying, isLoading, handlePlayPause: handlePlayPauseBase } = usePlaylistButton(props.playlist);
 
-const coverSize = computed(() => {
-	if (typeof window === "undefined") {
-		return 160;
-	}
+const coverSize = typeof window === "undefined" ? 160 : (() => {
 	const width = window.innerWidth;
-	if (width <= 480) {
-		return 120;
-	}
-	if (width <= 768) {
-		return 140;
-	}
+	if (width <= 480) return 120;
+	if (width <= 768) return 140;
 	return 160;
-});
+})();
 
 const handleClick = () => {
 	emit("click", props.playlist);
 	navigateTo(`/playlist/${props.playlist.owner_id}/${props.playlist.playlist_id}`);
 };
 
-const handlePlayPause = async () => {
+const handlePlayPause = async (event?: MouseEvent) => {
 	emit("play", props.playlist);
-	await handlePlayPauseBase();
+	await handlePlayPauseBase(event);
 };
 </script>
 
 <style scoped lang="scss">
 .playlist-card {
 	cursor: pointer;
-	transition: all 0.3s ease;
+	transition: background-color 0.2s ease;
 	padding: 8px;
-	border-radius: 12px;
+	border-radius: 8px;
 	background: transparent;
 
 	&:hover {
-		transform: translateY(-6px);
 		background: var(--bg-secondary, #181818);
 
-		.playlist-card-cover {
-			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		.playlist-card-cover::after {
+			opacity: 1;
 		}
 
 		.playlist-card-overlay {
 			opacity: 1;
 		}
-
-		.playlist-card-play-button {
-			transform: scale(1.05);
-		}
-	}
-
-	&:active {
-		transform: translateY(-2px);
 	}
 
 	&-cover {
@@ -106,20 +86,29 @@ const handlePlayPause = async () => {
 		aspect-ratio: 1;
 		width: 100%;
 		background: var(--bg-secondary, #181818);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-		transition: box-shadow 0.3s ease, transform 0.3s ease;
 
-		:deep(img) {
-			transition: transform 0.3s ease;
+		&::after {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 8px;
+			opacity: 0.2;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: 1;
+			background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+		}
+
+		&:hover::after {
+			opacity: 0.4;
 		}
 
 		@media (max-width: 480px) {
 			margin-bottom: 10px;
 		}
-	}
-
-	&:hover &-cover :deep(img) {
-		transform: scale(1.05);
 	}
 
 	&-overlay {
@@ -128,17 +117,17 @@ const handlePlayPause = async () => {
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6));
+		background: rgba(0, 0, 0, 0.5);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		opacity: 0;
-		transition: opacity 0.3s ease;
+		transition: opacity 0.2s ease;
 		z-index: 1;
-		backdrop-filter: blur(2px);
 	}
 
 	&-play-button {
+		position: relative;
 		background: var(--secondary, #e9003f);
 		border: none;
 		border-radius: 50%;
@@ -149,9 +138,23 @@ const handlePlayPause = async () => {
 		justify-content: center;
 		color: white;
 		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.4);
-		transform: scale(0.95);
+		transition: background-color 0.2s ease;
+		overflow: visible;
+
+		&::before {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 50%;
+			background: rgba(233, 0, 63, 0.4);
+			opacity: 1;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: -1;
+		}
 
 		@media (max-width: 480px) {
 			width: 52px;
@@ -168,13 +171,15 @@ const handlePlayPause = async () => {
 		}
 
 		&:hover:not(:disabled) {
-			transform: scale(1.1);
-			box-shadow: 0 6px 16px rgba(233, 0, 63, 0.5);
 			background: var(--primary-hover, #ff1a5c);
+
+			&::before {
+				opacity: 1.25;
+			}
 		}
 
 		&:active:not(:disabled) {
-			transform: scale(1.05);
+			opacity: 0.9;
 		}
 
 		&:disabled {
@@ -184,6 +189,7 @@ const handlePlayPause = async () => {
 
 		.loading-icon {
 			animation: spin 1s linear infinite;
+			will-change: transform;
 		}
 	}
 

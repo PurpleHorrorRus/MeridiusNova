@@ -1,4 +1,5 @@
 import Hls from "hls.js";
+
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
 interface NormalizerConfig {
@@ -15,8 +16,8 @@ interface SegmentData {
 	normalized: boolean;
 	gainData?: {
 		gain: number;
-		averageDb: number;
-		boost: number;
+		rms: number;
+		rmsDb: number;
 	};
 }
 
@@ -28,12 +29,17 @@ export class Normalizer {
 	private hls: Hls;
 	private config: NormalizerConfig;
 	private crossfade: any;
-	private song: TAudio;
+	private song: TAudio & { crossfade?: boolean };
 	private gained: SegmentData[] = [];
 	private connected: boolean = false;
 	private normalized: boolean = false;
-	private lastGain: number = 0;
+	private lastGain: number = 1;
 	private audioContext: AudioContext;
+	private targetRmsDb: number = -16;
+	private transitionDuration: number = 0.1;
+	private bufferEosHandler: (() => void) | null = null;
+	private bufferAppendingHandler: ((_: any, data: any) => void) | null = null;
+	private processingSegments: Set<string> = new Set();
 
 	constructor(
 		soundNode: HTMLAudioElement,
@@ -42,7 +48,7 @@ export class Normalizer {
 		hls: Hls,
 		config: NormalizerConfig,
 		crossfade: any,
-		song: TAudio
+		song: TAudio & { crossfade?: boolean }
 	) {
 		this.soundNode = soundNode;
 		this.audio = soundNode;
@@ -53,32 +59,67 @@ export class Normalizer {
 		this.crossfade = crossfade;
 		this.song = song;
 		this.audioContext = audioContext;
-		this.max = config.max;
-		this.min = 1;
-		this.maxDb = 1 + (config.max / 10);
-		this.lastGain = 0;
+		this.targetRmsDb = -16 - (config.max / 2);
+		this.lastGain = 1;
 	}
-
-	private max: number;
-	private min: number;
-	private maxDb: number;
 
 	connect(): Normalizer {
 		if (this.connected || !this.config.enable) {
 			return this;
 		}
 
-		this.hls.once(Hls.Events.BUFFER_EOS, async () => {
+		this.bufferEosHandler = async () => {
 			this.normalized = true;
-		});
+		};
 
-		this.hls.on(Hls.Events.BUFFER_APPENDING, async (_: any, segment: SegmentData) => {
-			if (segment.data.byteLength > 10000 && this.gainNode !== null) {
-				segment.normalized = false;
-				segment = await this.normalizeSegment(segment);
-				this.gained.push(segment);
+		this.hls.once(Hls.Events.BUFFER_EOS, this.bufferEosHandler);
+
+		this.bufferAppendingHandler = async (_: any, data: any) => {
+			if (!this.connected || !this.gainNode) {
+				return;
 			}
-		});
+
+			const segmentData: SegmentData = {
+				frag: data.frag,
+				data: data.data,
+				normalized: false
+			};
+
+			// Создаем уникальный ключ для сегмента
+			const segmentKey = `${segmentData.frag.start}-${segmentData.frag.end}`;
+
+			// Пропускаем, если сегмент уже обрабатывается
+			if (this.processingSegments.has(segmentKey)) {
+				return;
+			}
+
+			if (segmentData.data.byteLength > 10000 && this.gainNode !== null) {
+				this.processingSegments.add(segmentKey);
+
+				try {
+					const normalizedSegment = await this.normalizeSegment(segmentData);
+					
+					// Очищаем ArrayBuffer данные после нормализации для освобождения памяти
+					normalizedSegment.data = new ArrayBuffer(0);
+					
+					this.gained.push(normalizedSegment);
+					
+					// Ограничиваем размер массива - удаляем старые сегменты, которые уже прошли
+					const currentTime = this.playerTime;
+					const maxSegments = 50;
+					
+					if (this.gained.length > maxSegments) {
+						// Удаляем сегменты, которые уже прошли (end < currentTime - 30 секунд)
+						const cutoffTime = currentTime - 30;
+						this.gained = this.gained.filter(segment => segment.frag.end >= cutoffTime);
+					}
+				} finally {
+					this.processingSegments.delete(segmentKey);
+				}
+			}
+		};
+
+		this.hls.on(Hls.Events.BUFFER_APPENDING, this.bufferAppendingHandler);
 
 		this.connected = true;
 		return this;
@@ -93,9 +134,24 @@ export class Normalizer {
 			this.gainNode.gain.cancelScheduledValues(this.audioContext.currentTime);
 		}
 
+		// Очищаем массив сегментов и освобождаем память
+		this.gained.forEach(segment => {
+			segment.data = new ArrayBuffer(0);
+		});
+
 		this.gained = [];
-		this.hls.off(Hls.Events.BUFFER_EOS);
-		this.hls.off(Hls.Events.BUFFER_APPENDING);
+		this.processingSegments.clear();
+
+		// Удаляем обработчики событий
+		if (this.bufferEosHandler) {
+			this.hls.off(Hls.Events.BUFFER_EOS, this.bufferEosHandler);
+			this.bufferEosHandler = null;
+		}
+
+		if (this.bufferAppendingHandler) {
+			this.hls.off(Hls.Events.BUFFER_APPENDING, this.bufferAppendingHandler);
+			this.bufferAppendingHandler = null;
+		}
 
 		this.normalized = false;
 		this.connected = false;
@@ -103,11 +159,17 @@ export class Normalizer {
 	}
 
 	async onSeek(): Promise<boolean> {
+		const currentTime = this.audio.currentTime;
 		const segments = this.gained.filter(segment => {
-			return segment.frag.end > this.audio.currentTime;
+			return segment.frag.end > currentTime;
 		});
 
-		if (segments.length === 0 || this.checkBlocked(segments[0])) {
+		// Удаляем старые сегменты, которые уже прошли
+		const cutoffTime = currentTime - 10;
+		this.gained = this.gained.filter(segment => segment.frag.end >= cutoffTime);
+
+		const firstSegment = segments[0];
+		if (segments.length === 0 || !firstSegment || this.checkBlocked(firstSegment)) {
 			return false;
 		}
 
@@ -130,85 +192,116 @@ export class Normalizer {
 
 		if (this.checkBlocked(segment)) {
 			segment.normalized = true;
+			// Очищаем данные, если сегмент заблокирован
+			segment.data = new ArrayBuffer(0);
 			return segment;
 		}
 
-		segment.gainData = segment.gainData || await this.calculateGain(segment.data);
-		this.lastGain = segment.gainData.gain;
+		// Сохраняем данные перед расчетом, так как они могут быть очищены
+		const segmentData = segment.data;
+		segment.gainData = segment.gainData || await this.calculateGain(segmentData);
 
 		const calculatedTime = this.playerTime <= segment.frag.start
 			? (segment.frag.start - this.playerTime)
 			: 0;
 
-		const time = this.audioContext.currentTime + calculatedTime;
+		const startTime = this.audioContext.currentTime + calculatedTime;
+		const endTime = startTime + this.transitionDuration;
 
 		if (this.gainNode) {
-			this.gainNode.gain.linearRampToValueAtTime(segment.gainData.gain, time);
+			const currentGain = this.gainNode.gain.value;
+			const targetGain = segment.gainData.gain;
+
+			if (Math.abs(currentGain - targetGain) > 0.001) {
+				this.gainNode.gain.setValueAtTime(currentGain, startTime);
+				this.gainNode.gain.linearRampToValueAtTime(targetGain, endTime);
+			} else {
+				this.gainNode.gain.setValueAtTime(targetGain, startTime);
+			}
 		}
 
+		this.lastGain = segment.gainData.gain;
 		segment.normalized = true;
 		return segment;
 	}
 
-	private async calculatePeaks(data: ArrayBuffer): Promise<number[]> {
+	private async calculateRms(data: ArrayBuffer): Promise<number> {
+		// Используем копию данных, чтобы не изменять оригинал
 		const buffer = data.slice(0);
-		const decodedData = await this.audioContext.decodeAudioData(buffer);
-		const decodedBuffer = decodedData.getChannelData(0);
-		const sliceLen = Math.floor(decodedData.sampleRate * 0.05);
+		let decodedData: AudioBuffer | null = null;
 
-		const peaks: number[] = [];
-		for (let i = 0, sum = 0; i < decodedBuffer.length / 2; i++) {
-			sum += decodedBuffer[i] ** 2;
+		try {
+			decodedData = await this.audioContext.decodeAudioData(buffer);
+			const numberOfChannels = decodedData.numberOfChannels;
+			const length = decodedData.length;
 
-			if (i % sliceLen === 0) {
-				peaks.push(Math.sqrt(sum / sliceLen));
-				sum = 0;
+			if (length === 0) {
+				return 0;
+			}
+
+			let sumOfSquares = 0;
+
+			for (let channelIndex = 0; channelIndex < numberOfChannels; channelIndex++) {
+				const channelData = decodedData.getChannelData(channelIndex);
+
+				for (let sampleIndex = 0; sampleIndex < length; sampleIndex++) {
+					const sample = channelData[sampleIndex];
+					if (sample !== undefined) {
+						sumOfSquares += sample * sample;
+					}
+				}
+			}
+
+			const meanSquare = sumOfSquares / (numberOfChannels * length);
+			const rms = Math.sqrt(meanSquare);
+
+			return rms;
+		} finally {
+			// Пытаемся освободить память - обнуляем ссылку на AudioBuffer
+			// В JavaScript нет явного способа освободить AudioBuffer,
+			// но обнуление ссылки поможет сборщику мусора
+			if (decodedData) {
+				// @ts-ignore - пытаемся очистить внутренние ссылки
+				decodedData = null;
 			}
 		}
+	}
 
-		return peaks.filter(value => value > 0);
+	private rmsToDb(rms: number): number {
+		if (rms <= 0) {
+			return -Infinity;
+		}
+
+		return 20 * Math.log10(rms);
 	}
 
 	private async calculateGain(data: ArrayBuffer): Promise<{
 		gain: number;
-		averageDb: number;
-		boost: number;
+		rms: number;
+		rmsDb: number;
 	}> {
-		const peaks = await this.calculatePeaks(data);
-		if (peaks.length === 0) {
+		const rms = await this.calculateRms(data);
+
+		if (rms <= 0) {
 			return {
 				gain: this.lastGain,
-				averageDb: 0,
-				boost: 0
+				rms: 0,
+				rmsDb: -Infinity
 			};
 		}
 
-		const average = peaks.reduce((acc, value) => acc + value, 0) / peaks.length;
-		const averageDb = Number((average * 10).toFixed(2));
-		const gainData = this.calculateIncrease(averageDb);
+		const rmsDb = this.rmsToDb(rms);
+		const targetGainDb = this.targetRmsDb - rmsDb;
+		const targetGain = Math.pow(10, targetGainDb / 20);
+
+		const maxGain = Math.pow(10, this.config.max / 20);
+		const minGain = Math.pow(10, -this.config.max / 20);
+		const clampedGain = Math.max(minGain, Math.min(maxGain, targetGain));
 
 		return {
-			gain: Number((gainData.gain).toFixed(1)),
-			averageDb,
-			...gainData
-		};
-	}
-
-	private calculateIncrease(averageDb: number): {
-		gain: number;
-		boost: number;
-	} {
-		let boost = this.maxDb;
-
-		if (averageDb <= 1) {
-			boost = Number(((1 - averageDb) * 10).toFixed(2));
-			boost = Math.max(boost, this.maxDb);
-			boost = Math.min(boost, this.max);
-		}
-
-		return {
-			gain: Math.min(Math.max((this.max + (this.max - averageDb)) * boost, this.min), this.max),
-			boost
+			gain: Number(clampedGain.toFixed(4)),
+			rms: Number(rms.toFixed(6)),
+			rmsDb: Number(rmsDb.toFixed(2))
 		};
 	}
 
@@ -225,3 +318,4 @@ export class Normalizer {
 		return this.audio.currentTime;
 	}
 }
+

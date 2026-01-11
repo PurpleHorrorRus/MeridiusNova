@@ -1,26 +1,33 @@
 <template>
 	<div class="lyrics-modal">
 		<div class="modal-header">
-			<h2 class="modal-title">Текст песни</h2>
+			<h2 class="modal-title" v-html="audio.title"></h2>
+			<button class="modal-close-btn" @click="modalStore.close">
+				<Icon name="mdi:close" size="24" />
+			</button>
 		</div>
 
-		<div class="modal-content">
-			<div v-if="loading" class="loading-container">
+		<div class="modal-content" :ref="lyrics.lyricsRef">
+			<div v-if="isLoading" class="loading-container">
 				<LoadingSpinner />
 			</div>
 
-			<div v-else-if="lyricsText.length > 0" class="lyrics-content" ref="lyricsRef">
+			<div v-else-if="lyricsText.length > 0" class="lyrics-content">
 				<div
 					v-for="(line, index) in lyricsText"
 					:key="index"
+					:ref="el => { if (el) lyrics.lyricsLineRefs.value[index] = el as HTMLElement; }"
 					class="lyrics-line"
 					:class="{
 						active: canTrack && trackActive === index,
-						seekable: canTrack
+						seekable: canTrack && hasTimestamp(line)
 					}"
-					@click="handleSeek(line)"
+					@click="lyrics.handleSeek(line)"
 				>
-					{{ formatLine(line) }}
+					<span class="lyrics-line-text">{{ lyrics.formatLine(line) }}</span>
+					<span v-if="hasTimestamp(line)" class="lyrics-timestamp">
+						{{ formatTimestamp(line) }}
+					</span>
 				</div>
 			</div>
 
@@ -28,130 +35,66 @@
 				Текст песни недоступен
 			</div>
 
-			<div v-if="lyricsInfo?.credits" class="lyrics-credits">
-				{{ lyricsInfo.credits }}
-			</div>
+			<div v-if="lyrics.lyricsInfo.value?.credits" class="lyrics-credits" v-text="lyrics.lyricsInfo.value.credits" />
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from "vue";
-import type { TAudio, TLyrics } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useModal } from "~/composables/useModal";
-import { usePlayerStore } from "~/stores/player";
-import { storeToRefs } from "pinia";
+import { onMounted, watch, nextTick } from "vue";
+
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
+
+import { useModalStore } from "~/stores/modal";
+
+import { useLyrics } from "~/composables/useLyrics";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { getLyrics } = useAudioActions();
-const { closeModal } = useModal();
-const playerStore = usePlayerStore();
-const { song: currentSong, currentTime } = storeToRefs(playerStore);
+const modalStore = useModalStore();
+const lyrics = useLyrics(() => props.audio);
 
-const loading = ref(true);
-const lyricsInfo = ref<TLyrics | null>(null);
-const lyricsText = ref<Array<string | { line: string; begin: number }>>([]);
-const trackActive = ref(-1);
-const trackEnabled = ref(true);
-const lyricsRef = ref<HTMLDivElement | null>(null);
+const isLoading = lyrics.loading;
+const lyricsText = lyrics.lyricsText;
+const canTrack = lyrics.canTrack;
+const trackActive = lyrics.trackActive;
 
-const canTrack = computed(() => {
-	return trackEnabled.value
-		&& lyricsInfo.value?.lyrics
-		&& "timestamps" in (lyricsInfo.value.lyrics || {})
-		&& currentSong.value?.full_id === props.audio.full_id;
-});
+const hasTimestamp = (line: string | { line: string; begin: number }): boolean => {
+	return typeof line === "object" && "begin" in line;
+};
 
-const formatLine = (line: string | { line: string; begin: number }): string => {
-	return typeof line === "string" ? line : line.line;
+const formatTimestamp = (line: string | { line: string; begin: number }): string => {
+	if (typeof line === "object" && "begin" in line) {
+		const seconds = Math.floor(line.begin / 1000);
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
+	}
+	return "";
 };
 
 onMounted(async () => {
-	loading.value = true;
-
-	const result = await getLyrics(props.audio).catch(() => null);
+	await lyrics.loadLyrics();
 	
-	if (result) {
-		lyricsInfo.value = result;
-		
-		if (result.lyrics.timestamps) {
-			lyricsText.value = result.lyrics.timestamps.filter((timestamp: any) => Boolean(timestamp.line));
-		} else if (result.lyrics.text) {
-			lyricsText.value = result.lyrics.text.filter((line: string) => Boolean(line));
-		} else if (result.lyrics.ugc) {
-			lyricsText.value = result.lyrics.ugc.split("<br>").map((line: string) => line.trim()).filter(Boolean);
-		}
-	}
-
-	loading.value = false;
-
 	if (canTrack.value) {
+		lyrics.trackEnabled.value = true;
 		await nextTick();
-		updateTrack();
+		lyrics.updateTrack();
 	}
 });
 
-watch([currentTime, currentSong], () => {
-	if (canTrack.value) {
-		updateTrack();
-	}
-}, { deep: true });
-
-watch(trackActive, () => {
-	if (trackEnabled.value && trackActive.value >= 0) {
-		scrollToActive();
-	}
-});
-
-const updateTrack = () => {
-	if (!canTrack.value || lyricsText.value.length === 0) {
-		return;
-	}
-
-	const currentTimeMs = currentTime.value * 1000;
-	const timestamps = lyricsText.value as Array<{ line: string; begin: number }>;
-
-	if (timestamps.length === 0) {
-		return;
-	}
-
-	if (currentTimeMs < timestamps[0].begin) {
-		trackActive.value = -1;
-	} else if (currentTimeMs > timestamps[timestamps.length - 1].begin) {
-		trackActive.value = timestamps.length - 1;
-	} else {
-		const index = timestamps.findIndex((timestamp) => timestamp.begin > currentTimeMs);
-		trackActive.value = index > 0 ? index - 1 : 0;
-	}
-};
-
-const scrollToActive = () => {
-	if (!lyricsRef.value || trackActive.value < 0) {
-		return;
-	}
-
-	const lines = lyricsRef.value.querySelectorAll(".lyrics-line");
-	if (lines[trackActive.value]) {
-		lines[trackActive.value].scrollIntoView({
-			behavior: "smooth",
-			block: "center"
+watch(trackActive, (newValue, oldValue) => {
+	if (canTrack.value && newValue >= 0 && newValue !== oldValue) {
+		lyrics.trackEnabled.value = true;
+		nextTick(() => {
+			lyrics.scrollToActive();
 		});
 	}
-};
-
-const handleSeek = (line: string | { line: string; begin: number }) => {
-	if (canTrack.value && typeof line === "object" && "begin" in line) {
-		trackEnabled.value = true;
-		playerStore.seek(Math.ceil(line.begin / 1000));
-		updateTrack();
-		scrollToActive();
-	}
-};
+});
 </script>
 
 <style scoped lang="scss">
@@ -160,10 +103,27 @@ const handleSeek = (line: string | { line: string; begin: number }) => {
 	flex-direction: column;
 	height: 100%;
 	padding: 24px;
+	background: rgba(18, 18, 18, 0.95);
+	border-radius: 12px;
+
+	width: 100%;
+	box-sizing: border-box;
+
+	@media (max-width: 768px) {
+		padding: 8px;
+	}
 }
 
 .modal-header {
 	margin-bottom: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: relative;
+
+	@media (max-width: 768px) {
+		margin-bottom: 12px;
+	}
 }
 
 .modal-title {
@@ -171,6 +131,34 @@ const handleSeek = (line: string | { line: string; begin: number }) => {
 	font-weight: 700;
 	color: var(--text, #fff);
 	margin: 0;
+
+	@media (max-width: 768px) {
+		font-size: 18px;
+	}
+}
+
+.modal-close-btn {
+	background: rgba(255, 255, 255, 0.1);
+	border: none;
+	border-radius: 50%;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: rgba(255, 255, 255, 0.9);
+	cursor: pointer;
+	transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+	flex-shrink: 0;
+
+	&:hover {
+		background: rgba(255, 255, 255, 0.15);
+		color: #fff;
+	}
+
+	&:active {
+		opacity: 0.8;
+	}
 }
 
 .modal-content {
@@ -190,31 +178,70 @@ const handleSeek = (line: string | { line: string; begin: number }) => {
 .lyrics-content {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	padding: 16px;
+	gap: 2px;
+	padding: 12px;
+
+	@media (max-width: 768px) {
+		padding: 4px;
+	}
 }
 
 .lyrics-line {
-	font-size: 16px;
-	line-height: 1.6;
-	color: var(--text-secondary, #b3b3b3);
-	transition: all 0.2s;
-	padding: 8px 12px;
-	border-radius: 6px;
+	font-size: 15px;
+	line-height: 1.5;
+	padding: 4px 8px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	transition: color 0.2s ease;
+
+	@media (max-width: 768px) {
+		padding: 4px 4px;
+		gap: 8px;
+	}
+
+	&:not(.active) {
+		color: #888 !important;
+	}
 
 	&.seekable {
 		cursor: pointer;
 
-		&:hover {
-			background: var(--bg-hover, #2a2a2a);
+		&:hover:not(.active) {
+			color: #aaa !important;
 		}
 	}
 
 	&.active {
-		color: var(--text, #fff);
-		background: var(--bg-hover, #2a2a2a);
+		color: #fff !important;
 		font-weight: 500;
 	}
+}
+
+.lyrics-timestamp {
+	font-size: 11px;
+	color: #666;
+	font-weight: 500;
+	flex-shrink: 0;
+	opacity: 0.6;
+	transition: opacity 0.2s ease;
+	letter-spacing: 0.5px;
+}
+
+.lyrics-line.active .lyrics-timestamp {
+	opacity: 0.9;
+}
+
+.lyrics-line.seekable:hover .lyrics-timestamp {
+	opacity: 0.9;
+}
+
+.lyrics-line-text {
+	flex: 1;
+	text-align: left;
+	color: inherit;
 }
 
 .no-lyrics {
@@ -233,6 +260,12 @@ const handleSeek = (line: string | { line: string; begin: number }) => {
 	color: var(--text-secondary, #b3b3b3);
 	font-size: 14px;
 	text-align: center;
+
+	@media (max-width: 768px) {
+		margin-top: 8px;
+		padding: 8px;
+		font-size: 12px;
+	}
 }
 </style>
 

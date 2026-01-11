@@ -103,12 +103,6 @@ const clear = () => {
 	text-align: center;
 	letter-spacing: 0.5px;
 
-	&:hover {
-		border-color: var(--secondary, #e9003f);
-		background: var(--bg-hover, #2a2a2a);
-		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.1);
-	}
-
 	&:focus {
 		border-color: var(--secondary, #e9003f);
 		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.15);
@@ -136,13 +130,6 @@ const clear = () => {
 	width: 32px;
 	height: 32px;
 	flex-shrink: 0;
-
-	&:hover {
-		color: var(--text, #fff);
-		background: var(--bg-hover, #2a2a2a);
-		border-color: var(--secondary, #e9003f);
-		transform: scale(1.05);
-	}
 
 	&:active {
 		transform: scale(0.95);

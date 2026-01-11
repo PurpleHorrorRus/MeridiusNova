@@ -67,19 +67,23 @@ const loadData = async (linkParam?: string, nextFrom?: string) => {
 
 	const linkToUse = linkParam || link.value;
 
-	try {
-		const params: Record<string, string> = { link: linkToUse };
-		if (nextFrom) {
-			params.next_from = nextFrom;
-		}
+	const params: Record<string, string> = { link: linkToUse };
+	if (nextFrom) {
+		params.next_from = nextFrom;
+	}
 
-		const response = await $fetch<{
-			playlists: TPlaylist[];
-			more: TMore | null;
-		}>("/api/vk/search/category/playlists", {
-			params
-		});
+	const response = await $fetch<{
+		playlists: TPlaylist[];
+		more: TMore | null;
+	}>("/api/vk/search/category/playlists", {
+		params
+	}).catch((err: Error) => {
+		error.value = err.message || "Ошибка загрузки плейлистов";
+		console.error("Failed to load playlists", err);
+		return null;
+	});
 
+	if (response) {
 		if (nextFrom) {
 			playlists.value.push(...response.playlists);
 		} else {
@@ -88,13 +92,10 @@ const loadData = async (linkParam?: string, nextFrom?: string) => {
 
 		more.value = response.more;
 		error.value = null;
-	} catch (err) {
-		error.value = err instanceof Error ? err.message : "Ошибка загрузки плейлистов";
-		console.error("Failed to load playlists", err);
-	} finally {
-		loading.value = false;
-		loadingMore.value = false;
 	}
+
+	loading.value = false;
+	loadingMore.value = false;
 };
 
 const loadMore = async () => {

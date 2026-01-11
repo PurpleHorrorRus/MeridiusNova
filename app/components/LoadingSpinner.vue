@@ -19,6 +19,7 @@
 .spinner-icon {
 	animation: spin 1s linear infinite;
 	color: var(--text-secondary, #b3b3b3);
+	will-change: transform;
 }
 
 @keyframes spin {

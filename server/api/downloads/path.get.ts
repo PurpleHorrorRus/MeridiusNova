@@ -1,6 +1,11 @@
 import { downloadManager } from "~~/server/utils/download-manager";
 import path from "path";
 import fs from "fs-extra";
+import os from "os";
+
+const isExternalServer = (): boolean => {
+	return process.env.EXTERNAL_SERVER === "true" || process.env.EXTERNAL_SERVER === "1";
+};
 
 export default defineEventHandler(async (event) => {
 	const query = getQuery(event);
@@ -42,6 +47,16 @@ export default defineEventHandler(async (event) => {
 			statusCode: 404,
 			message: "File or folder not found"
 		});
+	}
+
+	const isInTmp = filePath.startsWith(os.tmpdir());
+
+	if (isExternalServer() && isInTmp) {
+		return {
+			path: filePath,
+			type: download.type === "audio" ? "file" : "folder",
+			requiresDownload: true
+		};
 	}
 
 	return {

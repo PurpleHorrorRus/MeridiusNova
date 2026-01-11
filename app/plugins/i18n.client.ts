@@ -15,9 +15,9 @@ const i18n: I18nFunction = (string: string, findOrVariables?: string | string[] 
 	// Новый способ: объект с переменными
 	if (typeof findOrVariables === "object" && !Array.isArray(findOrVariables) && replace === undefined) {
 		const variables = findOrVariables as I18nVariables;
-		Object.keys(variables).forEach((key) => {
-			const value = variables[key];
-			string = string.replaceAll(`{{ ${key} }}`, String(value));
+		Object.keys(variables).forEach((variableKey) => {
+			const value = variables[variableKey];
+			string = string.replaceAll(`{{ ${variableKey} }}`, String(value));
 		});
 		return string;
 	}
@@ -64,14 +64,14 @@ export default defineNuxtPlugin({
 	name: "i18n",
 	enforce: "post",
 	async setup() {
-		const { useSettingsStore } = await import("~/stores/settings");
 		const settingsStore = useSettingsStore();
+		const { settings, loaded } = storeToRefs(settingsStore);
 
-		if (!settingsStore.loaded) {
+		if (!loaded.value) {
 			await settingsStore.load();
 		}
 
-		const currentLocale = settingsStore.settings.general.lang || "ru";
+		const currentLocale = settings.value.general.lang || "ru";
 		const pack = reactive<StringsPack>(await loadLocale(currentLocale));
 
 		const strings = reactive({
@@ -88,7 +88,7 @@ export default defineNuxtPlugin({
 			Object.assign(strings.pack, newPack);
 		};
 
-		watch(() => settingsStore.settings.general.lang, async (newLang) => {
+		watch(() => settings.value.general.lang, async (newLang) => {
 			if (newLang) {
 				await loadLanguage(newLang);
 			}

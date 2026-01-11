@@ -18,7 +18,7 @@
 					:class="{ blur: current.cover.blur }"
 				/>
 				<div class="artist-info">
-					<h1 class="artist-name">{{ current.name }}</h1>
+					<h1 class="artist-name" v-text="current.name" />
 					<button
 						v-if="current.follow.hash"
 						@click="toggleFollow"
@@ -52,7 +52,7 @@
 						:key="collection.title"
 						class="collection-item"
 					>
-						<h3>{{ collection.title }}</h3>
+						<h3 v-text="collection.title" />
 						<div class="playlists-list">
 							<PlaylistCard
 								v-for="playlist in collection.playlists"
@@ -67,29 +67,33 @@
 
 			<div v-if="current.audios && current.audios.length > 0" class="section">
 				<h2>Треки</h2>
-				<div class="songs-list">
-					<Song
-						v-for="audio in current.audios"
-						:key="audio.full_id"
-						:audio="audio"
-					/>
-				</div>
+				<SongList
+					:songs="current.audios || []"
+					:virtualized="true"
+					:item-height="56"
+					:overscan="10"
+				/>
 			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-// useArtist is auto-imported from app/composables
+import { storeToRefs } from "pinia";
+
+import SongList from "~/components/SongList.vue";
+
+import { useArtistsStore } from "~/stores/artists";
 
 const route = useRoute();
 const artistParam = route.params.artist as string;
 
-const { current, loading, error: artistError, loadArtist } = useArtist();
+const artistsStore = useArtistsStore();
+const { current, loading, error: artistError } = storeToRefs(artistsStore);
 
 onMounted(async () => {
 	if (artistParam) {
-		await loadArtist(artistParam, true);
+		await artistsStore.loadArtist(artistParam, true);
 	}
 });
 
@@ -99,7 +103,6 @@ const toggleFollow = async () => {
 	}
 
 	// TODO: Implement follow/unfollow API
-	console.log("Toggle follow", current.value.follow);
 };
 </script>
 

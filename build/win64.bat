@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 echo ===================================
 echo Building Meridius Redux for Windows
 echo ===================================
@@ -8,7 +8,10 @@ echo.
 echo Step 1: Building Nuxt...
 set ESBUILD_WORKER_THREADS=0
 set ESBUILD_USE_INLINE_CACHE=1
-call npx --no-install nuxt build
+set TAURI=1
+set TAURI_PLATFORM=windows
+set REPOSITORY=%REPOSITORY%
+call npx --yes nuxt build
 if %errorlevel% neq 0 (
     echo Error: Nuxt build failed
     exit /b %errorlevel%

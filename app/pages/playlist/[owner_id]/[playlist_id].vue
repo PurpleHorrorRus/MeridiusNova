@@ -1,58 +1,34 @@
 <template>
 	<div class="playlist-page">
-		<div v-if="pending && !data && !error" class="loading">
-			<SkeletonPlaylist :show-header="isPlaylist" />
+		<div v-if="pending && !playlistData" class="loading">
+			<SkeletonPlaylist :show-header="true" />
 		</div>
 
-		<div v-else-if="error && !data" class="error">
-			{{ error }}
-		</div>
+		<div v-else-if="error && !playlistData" class="error" v-text="error" />
 
-		<div v-else class="playlist-content" ref="contentRef">
+		<div v-else class="playlist-page-content">
+			<ClientOnly>
+				<CollectionHeader
+					v-if="playlistData && isCollection && collectionUser"
+					:playlist="playlistData"
+					:user="collectionUser"
+					@play="handlePlay"
+				/>
+			</ClientOnly>
+
 			<PlaylistHeader
-				v-if="playlistInfo && isPlaylist"
-				:playlist="playlistInfo"
+				v-if="playlistData && !isCollection"
+				:playlist="playlistData"
 				@play="handlePlay"
 				@follow="handleFollow"
-				ref="playlistHeaderRef"
 			/>
 
-			<!-- User Playlists (only for "my music" - playlist_id === -1 and owner_id === userId) -->
-			<div v-if="!isPlaylist && showUserPlaylists && userPlaylists.length > 0" class="user-playlists-section">
-				<div class="user-playlists-header">
-					<h2 class="section-title">Моя музыка</h2>
-					<button @click="togglePlaylistsExpanded" class="expand-toggle-button">
-						<Icon :name="playlistsExpanded ? 'mdi:chevron-up' : 'mdi:chevron-down'" size="20" />
-						<span>{{ playlistsExpanded ? 'Скрыть' : 'Показать все' }}</span>
-					</button>
-				</div>
-				<div class="playlists-miniatures" :class="{ expanded: playlistsExpanded }">
-					<PlaylistMiniature
-						v-for="playlist in displayedPlaylists"
-						:key="`user-playlist-${playlist.owner_id}-${playlist.playlist_id}`"
-						:playlist="playlist"
-					/>
-				</div>
-			</div>
+			<!-- Навигация по вкладкам (только для коллекций) -->
+			<Navigation v-if="isCollection" />
 
-			<div class="playlist-tracks">
-			<div class="playlist-tracks-header">
-				<span class="tracks-header-title">Название</span>
-				<span class="tracks-header-album">Альбом</span>
-				<span class="tracks-header-duration">
-					<Icon name="mdi:clock-outline" size="16" />
-				</span>
-			</div>
-
-			<Song
-				v-for="(audio, index) in audios"
-				:key="`${audio.owner_id}-${audio.id}-${index}`"
-				:audio="audio"
-			/>
-
-				<div v-show="hasMore" class="load-more" ref="loadMoreRef">
-					<LoadingSpinner v-if="isLoadingMore" />
-				</div>
+			<!-- Содержимое вкладки -->
+			<div class="playlist-content">
+				<NuxtPage />
 			</div>
 		</div>
 	</div>
@@ -60,179 +36,272 @@
 
 <script setup lang="ts">
 import { useVkStore } from "~/stores/vk";
-import type { TParsedPayload } from "~~/server/api/vk/audio/types";
+import { usePlaylistStore } from "~/stores/playlist";
+
+import { authenticatedFetch } from "~/utils/api";
+import { isTauri } from "~/utils/tauri";
+
 import type { TPlaylist } from "~~/server/utils/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
 
 const route = useRoute();
 const vkStore = useVkStore();
 const ownerId = computed(() => Number(route.params.owner_id));
 const playlistId = computed(() => Number(route.params.playlist_id));
-const isPlaylist = computed(() => playlistId.value !== -1);
 const accessHash = computed(() => route.query.access_hash as string | undefined);
 
-const userId = computed(() => vkStore.user_id || 0);
-const showUserPlaylists = computed(() => playlistId.value === -1 && ownerId.value === userId.value);
+const playlistStore = usePlaylistStore();
 
-// Load user playlists if this is "my music"
-const { data: userPlaylistsData } = useFetch<{ count: number; playlists: TPlaylist[] }>(
-	showUserPlaylists.value ? "/api/vk/playlists" : "",
-	{
+// Загружаем данные плейлиста/коллекции
+const playlistData = ref<TPlaylist | null>(null);
+
+const isCollection = computed(() => playlistId.value === -1);
+
+// Для коллекций не загружаем плейлист через API, только для обычных плейлистов
+const playlistUrl = computed(() => {
+	if (isCollection.value) {
+		return "";
+	}
+	return `/api/vk/playlists/${ownerId.value}/${playlistId.value}`;
+});
+
+const playlistKey = computed(() => `playlist-${ownerId.value}-${playlistId.value}-${accessHash.value || ""}`);
+const { data, pending, error, refresh } = useAsyncData<TPlaylist | null>(
+	playlistKey,
+	() => authenticatedFetch<TPlaylist | null>(playlistUrl.value, {
 		params: {
-			owner_id: userId.value
+			list: "true",
+			access_hash: accessHash.value
+		}
+	}),
+	{
+		immediate: false,
+		lazy: true,
+		getCachedData: (key) => {
+			const cached = useNuxtApp().payload.data[key];
+			if (cached && Date.now() - (cached._timestamp || 0) < 30000) {
+				return cached;
+			}
+			return undefined;
+		},
+		transform: (data) => {
+			if (data) {
+				(data as any)._timestamp = Date.now();
+			}
+			return data;
 		}
 	}
 );
 
-const userPlaylists = computed(() => {
-	const playlists = userPlaylistsData.value?.playlists || [];
-	// Only show playlists with playlist_id !== -1 (not "my music")
-	return playlists.filter(p => p.playlist_id !== -1);
-});
-
-const playlistsExpanded = ref(false);
-const displayedPlaylists = computed(() => {
-	if (playlistsExpanded.value) {
-		return userPlaylists.value;
+// Запускаем загрузку только для обычных плейлистов
+watch([playlistUrl, isCollection], ([url, isCollectionValue]) => {
+	if (url && !isCollectionValue) {
+		refresh();
 	}
-	return userPlaylists.value.slice(0, 5); // Показываем только первые 5
-});
+}, { immediate: true });
 
-const togglePlaylistsExpanded = () => {
-	playlistsExpanded.value = !playlistsExpanded.value;
-};
+// Для коллекций загружаем информацию о пользователе
+const userInfo = ref<{
+	id: number;
+	first_name: string;
+	last_name: string;
+	photo_200?: string;
+	photo_max?: string;
+} | null>(null);
 
-const { playPlaylist } = usePlaylist();
-
-// Load playlist info if it's a playlist (загружаем ПЕРВЫМ, чтобы иметь доступ к list)
-const playlistData = ref<TPlaylist | null>(null);
-const { setCurrent } = usePlaylist();
-
-if (isPlaylist.value) {
-	const { data: playlistInfoData } = useFetch<TPlaylist>(`/api/vk/playlists/${ownerId.value}/${playlistId.value}`, {
+if (isCollection.value && ownerId.value !== vkStore.user_id) {
+	const { data: userData } = useFetch<Array<{
+		id: number;
+		first_name: string;
+		last_name: string;
+		photo_200?: string;
+		photo_max?: string;
+	}>>(`/api/vk/users`, {
 		query: {
-			list: "true"
+			user_ids: ownerId.value.toString(),
+			fields: "photo_200,photo_max"
 		}
 	});
-	
-	watch(playlistInfoData, (newPlaylistData) => {
-		playlistData.value = newPlaylistData || null;
-		if (newPlaylistData) {
-			setCurrent(newPlaylistData);
+
+	watch(userData, (users) => {
+		if (users && Array.isArray(users) && users.length > 0 && users[0]) {
+			userInfo.value = users[0];
+		} else {
+			userInfo.value = null;
 		}
 	}, { immediate: true });
 }
 
-const { data, pending, error } = useFetch<TParsedPayload>(
-	() => `/api/vk/audio/${ownerId.value}/${playlistId.value}`,
-	{
-		immediate: true,
-		cache: "no-store"
-	}
-);
-
-const audios = computed(() => {
-	// Сначала проверяем треки из playlist.list (если они есть)
-	if (playlistData.value && playlistData.value.list && Array.isArray(playlistData.value.list) && playlistData.value.list.length > 0) {
-		return playlistData.value.list;
-	}
-
-	// Fallback: используем треки из audio endpoint
-	if (data.value && data.value.audios) {
-	return data.value.audios;
-	}
-
-	return [];
-});
-
-// Предоставляем контекст треков для компонентов Song
-provideSongsContext(audios);
-
-const hasMore = computed(() => {
-	if (!data.value || !data.value.more) {
-		return false;
-	}
-	const more = data.value.more;
-	return Boolean(more.section_id && more.next_from);
-});
-
-const loadMoreRef = ref<HTMLElement | null>(null);
-const isLoadingMore = ref(false);
-const playlistHeaderRef = ref<HTMLElement | null>(null);
-
-const loadMore = async () => {
-	// Double check hasMore before loading
-	if (!hasMore.value || pending.value || isLoadingMore.value || !data.value || !data.value.more) {
-		return;
-	}
-
-	// Verify more parameters are not empty
-	const more = data.value.more;
-	if (!more.section_id || !more.next_from) {
-		return;
-	}
-
-	isLoadingMore.value = true;
-
-	const result = await $fetch<TParsedPayload>(`/api/vk/audio/${ownerId.value}/${playlistId.value}`, {
-		params: {
-			section_id: more.section_id,
-			next_from: more.next_from
-		}
-	}).catch(() => {
+// Подготавливаем данные пользователя для CollectionHeader
+const collectionUser = computed(() => {
+	if (!isCollection.value) {
 		return null;
-	});
-
-	if (result && data.value) {
-		if (result.audios && result.audios.length > 0) {
-			// Directly push to array to ensure reactivity
-			data.value.audios.push(...result.audios);
-		}
-		
-		// Always update more, even if empty (to stop loading)
-		if (result.more) {
-			data.value.more = result.more;
-		} else {
-			// If no more data, set empty more to stop loading
-			data.value.more = {
-				section_id: "",
-				next_from: "",
-				start_from: ""
-			};
-		}
 	}
 
-	isLoadingMore.value = false;
-};
-
-useScrollLoad(() => {
-	if (!hasMore.value) {
-		return;
+	const user = ownerId.value === vkStore.user_id ? vkStore.user : userInfo.value;
+	
+	if (!user) {
+		return null;
 	}
 
-	if (isLoadingMore.value) {
-		return;
-	}
-
-	loadMore();
-}, {
-	threshold: 200,
-	enabled: computed(() => {
-		// Всегда включаем observer, проверку делаем внутри
-		return !isLoadingMore.value;
-	})
+	return {
+		id: user.id,
+		first_name: user.first_name,
+		last_name: user.last_name,
+		photo_200: user.photo_200 || (user as any)?.photo_max,
+		photo_max: (user as any)?.photo_max || user.photo_200,
+		avatar: (user as any)?.avatar || user.photo_200 || (user as any)?.photo_max
+	};
 });
 
+// Для коллекций создаем плейлист на основе информации о пользователе
+// Для обычных плейлистов используем данные из API
+watch([data, isCollection, userInfo], ([newPlaylistData, isCollectionValue, userInfoValue]) => {
 
-const playlistInfo = computed(() => playlistData.value);
+	if (isCollectionValue) {
+		// Для коллекций всегда создаем плейлист на основе информации о пользователе
+		const user = ownerId.value === vkStore.user_id ? vkStore.user : userInfo.value;
+		const userName = user 
+			? `${user.first_name} ${user.last_name}`.trim() 
+			: `Пользователь ${ownerId.value}`;
+		
+		// Для коллекций restricted будет определяться на основе ответа от /api/vk/audio
+		// Пока устанавливаем false, дочерний компонент обновит это значение
+		playlistData.value = {
+			owner_id: ownerId.value,
+			playlist_id: -1,
+			raw_id: `${ownerId.value}_-1`,
+			title: userName,
+			cover_url: user?.photo_200 || (user as any)?.photo_max || (user as any)?.avatar || "",
+			description: "",
+			raw_description: "",
+			size: 0,
+			listens: 0,
+			last_updated: 0,
+			explicit: false,
+			followed: false,
+			official: false,
+			restricted: false,
+			access_hash: "",
+			follow_hash: "",
+			edit_hash: "",
+			context: "",
+			covers: [],
+			author: user ? {
+				id: user.id,
+				name: userName
+			} : undefined,
+			list: []
+		};
+	} else {
+		// Для обычных плейлистов используем данные из API
+		playlistData.value = newPlaylistData || null;
+	}
+	
+	if (playlistData.value) {
+		playlistStore.setCurrent(playlistData.value).catch(() => {
+			// Игнорируем ошибки при установке плейлиста
+		});
+	}
+}, { immediate: true });
+
+// Предоставляем playlistData для дочерних компонентов
+provide("playlistInfo", playlistData);
+
+// Предоставляем информацию о том, что библиотека скрыта
+const isCollectionRestricted = computed(() => {
+	return isCollection.value && Boolean(playlistData.value?.restricted);
+});
+provide("isCollectionRestricted", isCollectionRestricted);
 
 const handlePlay = async (playlist: TPlaylist) => {
-	await playPlaylist(playlist);
+	const playlistStore = usePlaylistStore();
+	await playlistStore.playPlaylist(playlist);
 };
 
-const handleFollow = async (playlist: TPlaylist) => {
-	// TODO: Implement follow/unfollow API
-	console.log("Toggle follow", playlist);
+const handleFollow = async (playlist: TPlaylist & { followed?: boolean }) => {
+	const playlistStore = usePlaylistStore();
+
+	if (!playlistData.value) {
+		return;
+	}
+
+	// Определяем операцию по полю followed из emit (до оптимистичного обновления)
+	// Если оно не передано, используем текущее значение из playlistData
+	const isFollowed = playlist.followed !== undefined 
+		? playlist.followed 
+		: (playlistData.value.followed ?? false);
+	
+	// Для follow ВСЕГДА используем данные владельца из original
+	// Для unfollow используем текущие данные (которые стали моими после follow)
+	let playlistForOperation: TPlaylist;
+	if (isFollowed) {
+		// Для unfollow используем текущие данные
+		playlistForOperation = playlistData.value;
+	} else {
+		// Для follow используем данные владельца из original
+		if (playlistData.value.original) {
+			playlistForOperation = {
+				...playlistData.value,
+				playlist_id: playlistData.value.original.playlist_id,
+				owner_id: playlistData.value.original.owner_id,
+				access_hash: playlistData.value.original.access_key
+			};
+		} else {
+			// Fallback на текущие данные (если нет original)
+			playlistForOperation = playlistData.value;
+		}
+	}
+	
+	// Выполняем операцию
+	const operation = isFollowed
+		? playlistStore.unfollowPlaylist(playlistForOperation)
+		: playlistStore.followPlaylist(playlistForOperation);
+
+	operation.then(async (result) => {
+		if (result && playlistData.value) {
+			if (!isFollowed && result.playlist_id && result.owner_id) {
+				// Если это follow, обновляем данные плейлиста из ответа (мои ID)
+				// Сохраняем исходные данные в original перед обновлением, если их еще нет
+				if (!playlistData.value.original) {
+					playlistData.value.original = {
+						playlist_id: playlistForOperation.playlist_id,
+						owner_id: playlistForOperation.owner_id,
+						access_key: playlistForOperation.access_hash || ""
+					};
+				}
+				playlistData.value.playlist_id = result.playlist_id;
+				playlistData.value.owner_id = result.owner_id;
+				playlistData.value.followed = true;
+			} else if (isFollowed) {
+				// Если это unfollow, заменяем данные на исходные из original
+				if (playlistData.value.original) {
+					playlistData.value.playlist_id = playlistData.value.original.playlist_id;
+					playlistData.value.owner_id = playlistData.value.original.owner_id;
+					playlistData.value.access_hash = playlistData.value.original.access_key;
+				}
+				playlistData.value.followed = false;
+			}
+
+			// Обновляем список плейлистов в фоне
+			vkStore.refreshPlaylists().then(async () => {
+				// Отправляем событие для обновления данных в sidebar
+				if (typeof window !== "undefined") {
+					window.dispatchEvent(new CustomEvent("playlists-updated"));
+				}
+				
+				if (isTauri() && typeof window !== "undefined") {
+					const { useTray } = await import("~/composables/useTray");
+					const tray = useTray();
+					await tray.loadPlaylists();
+				}
+			});
+		}
+	}).catch((error) => {
+		// Откатываем оптимистичное обновление при ошибке
+		if (playlistData.value) {
+			playlistData.value.followed = !isFollowed;
+		}
+	});
 };
 </script>
 
@@ -243,133 +312,40 @@ const handleFollow = async (playlist: TPlaylist) => {
 	min-height: 100%;
 }
 
+.playlist-page-content {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+}
+
 .playlist-content {
+	flex: 1;
 	display: flex;
 	flex-direction: column;
-}
-
-.playlist-tracks {
-	display: flex;
-	flex-direction: column;
-	padding: 0 32px 32px;
-}
-
-.playlist-tracks-header {
-	display: grid;
-	grid-template-columns: 1fr 1fr 80px;
-	gap: 16px;
-	padding: 8px 16px;
-	border-bottom: 1px solid var(--border, #282828);
-	color: var(--text-secondary, #b3b3b3);
-	font-size: 12px;
-	font-weight: 500;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	position: sticky;
-	top: 0;
-	background: var(--bg-primary, #121212);
-	z-index: 10;
-	align-items: center;
-}
-
-.tracks-header-title {
-	grid-column: 1;
-}
-
-.tracks-header-album {
-	grid-column: 2;
-}
-
-.tracks-header-duration {
-	grid-column: 3;
-	text-align: center;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 
 .loading {
 	padding: 32px;
+
+	@media (max-width: 768px) {
+		padding: 16px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 12px;
+	}
 }
 
 .error {
 	text-align: center;
 	padding: 40px;
-}
 
-.load-more {
-	text-align: center;
-	padding: 20px;
-	color: var(--text-secondary, #b3b3b3);
-}
-
-.user-playlists-section {
-	padding: 24px 32px;
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-	margin-bottom: 24px;
-}
-
-.user-playlists-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	margin-bottom: 4px;
-}
-
-.expand-toggle-button {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	background: var(--bg-secondary, #181818);
-	border: 1px solid var(--border, #282828);
-	border-radius: 20px;
-	padding: 8px 16px;
-	color: var(--text-secondary, #b3b3b3);
-	cursor: pointer;
-	transition: all 0.2s ease;
-	font-size: 13px;
-	font-weight: 500;
-
-	&:hover {
-		background: var(--bg-hover, #2a2a2a);
-		border-color: var(--border-secondary, #3a3a3a);
-		color: var(--text, #fff);
-		transform: translateY(-1px);
+	@media (max-width: 768px) {
+		padding: 20px;
 	}
 
-	&:active {
-		transform: translateY(0);
-	}
-}
-
-.section-title {
-	font-size: 28px;
-	font-weight: 700;
-	color: var(--text, #fff);
-	margin: 0;
-	letter-spacing: -0.5px;
-}
-
-.playlists-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-	gap: 24px;
-}
-
-.playlists-miniatures {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	max-height: 400px;
-	overflow: hidden;
-	transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-	padding: 4px 0;
-
-	&.expanded {
-		max-height: none;
+	@media (max-width: 480px) {
+		padding: 16px;
 	}
 }
 </style>

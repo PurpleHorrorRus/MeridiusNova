@@ -1,8 +1,10 @@
+import { storeToRefs } from "pinia";
+
 import { usePlayerStore } from "~/stores/player";
 import { usePlaylistStore } from "~/stores/playlist";
 import { useSettingsStore } from "~/stores/settings";
 
-const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+import { isTauri } from "~/utils/tauri";
 
 const hotkeyCooldowns = new Map<string, number>();
 const COOLDOWN_TIME = 200;
@@ -61,7 +63,8 @@ const createHandler = (action: string, handler: () => void) => {
 export const useHotkeys = () => {
 	const playerStore = usePlayerStore();
 	const playlistStore = usePlaylistStore();
-	const settingsStore = useSettingsStore();
+		const settingsStore = useSettingsStore();
+		const { settings } = storeToRefs(settingsStore);
 
 	const actionHandlers: Record<string, () => void> = {
 		playpause: createHandler("playpause", () => {
@@ -79,29 +82,29 @@ export const useHotkeys = () => {
 		}),
 
 		volup: createHandler("volup", () => {
-			const step = settingsStore.settings.player.step.hotkey / 100;
+			const step = settings.value.player.step.hotkey / 100;
 			playerStore.setVolume(Math.min(1, playerStore.volume + step));
 		}),
 
 		voldown: createHandler("voldown", () => {
-			const step = settingsStore.settings.player.step.hotkey / 100;
+			const step = settings.value.player.step.hotkey / 100;
 			playerStore.setVolume(Math.max(0, playerStore.volume - step));
 		}),
 
 		volmute: createHandler("volmute", () => {
 			settingsStore.updateSection("player", {
-				mute: !settingsStore.settings.player.mute
+				mute: !settings.value.player.mute
 			});
-			playerStore.setVolume(settingsStore.settings.player.mute ? 0 : settingsStore.settings.player.volume);
+			playerStore.setVolume(settings.value.player.mute ? 0 : playerStore.volume);
 		}),
 
 		rateup: createHandler("rateup", () => {
-			const step = settingsStore.settings.player.playbackRateStep.hotkey;
+			const step = settings.value.player.playbackRateStep.hotkey;
 			playerStore.setPlaybackRate(Math.min(2, playerStore.playbackRate + step));
 		}),
 
 		ratedown: createHandler("ratedown", () => {
-			const step = settingsStore.settings.player.playbackRateStep.hotkey;
+			const step = settings.value.player.playbackRateStep.hotkey;
 			playerStore.setPlaybackRate(Math.max(0.5, playerStore.playbackRate - step));
 		}),
 
@@ -115,12 +118,12 @@ export const useHotkeys = () => {
 	};
 
 	const registerHotkeys = async () => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 
 		const { register } = await import("@tauri-apps/plugin-global-shortcut");
-		const hotkeys = settingsStore.settings.hotkeys;
+		const hotkeys = settings.value.hotkeys;
 
 		for (const [action, accelerator] of Object.entries(hotkeys)) {
 			if (!accelerator || accelerator.length === 0) {
@@ -132,8 +135,6 @@ export const useHotkeys = () => {
 			const handler = actionHandlers[action];
 
 			if (handler) {
-				console.log("register hotkey", tauriAccelerator, action);
-
 				await register(tauriAccelerator, handler).catch((error) => {
 					console.error(`Failed to register hotkey ${action}: ${tauriAccelerator}`, error);
 				});
@@ -142,7 +143,7 @@ export const useHotkeys = () => {
 	};
 
 	const unregisterHotkeys = async () => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 
@@ -151,7 +152,7 @@ export const useHotkeys = () => {
 	};
 
 	const registerHotkey = async (action: string, accelerator: string) => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return false;
 		}
 
@@ -176,12 +177,12 @@ export const useHotkeys = () => {
 	};
 
 	const unregisterHotkey = async (action: string) => {
-		if (!isTauri || !import.meta.client) {
+		if (!isTauri() || !import.meta.client) {
 			return;
 		}
 
 		const { unregister } = await import("@tauri-apps/plugin-global-shortcut");
-		const hotkeys = settingsStore.settings.hotkeys;
+		const hotkeys = settings.value.hotkeys;
 		const accelerator = hotkeys[action];
 
 		if (accelerator) {

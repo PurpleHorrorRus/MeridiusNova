@@ -1,15 +1,15 @@
 import path from "node:path";
 import os from "node:os";
 import fs from "fs-extra";
-
 import { CookieJar } from "tough-cookie";
 import FileCookieStore from "tough-cookie-file-store";
-
 import type { UserSession } from "#auth-utils";
 import type { H3Event, EventHandlerRequest } from "h3";
 
-import { ERequestMethod, type TFetchCorsRequestInit } from "./types";
-import type { TWebTokenResponse } from "../types/auth";
+import { ERequestMethod } from "./types";
+
+import type { TFetchCorsRequestInit } from "./types";
+import type { TWebTokenError, TWebTokenResponse } from "../types/auth";
 
 export type TRequestOptions = {
 	method?: ERequestMethod;
@@ -107,8 +107,10 @@ export class Http {
 	}
 
 	public async request<T extends string | Record<string, any> | any[]>(url: string, form: Record<string, string | number | boolean | Record<string, any>> = {}, options: TRequestOptions = { method: ERequestMethod.POST }): Promise<T> {
-		if (!/vk\.ru/.test(url)) {
-			url = `https://vk.ru${url}`;
+		if (/^https:\/\/vk\.ru\/https?:\/\//.test(url)) {
+			url = url.replace(/^https:\/\/vk\.ru\//, "");
+		} else if (!/^https?:\/\//.test(url)) {
+			url = `https://vk.ru${url.startsWith("/") ? "" : "/"}${url}`;
 		}
 
 		const hostname = new URL(url).href;
@@ -138,7 +140,11 @@ export class Http {
 			}
 		}
 
-		if (configuration.redirectCodes.includes(request.status)) {
+		if (request.status === 307) {
+			await this.request(request.headers.get("location")!, {}, {
+				method: ERequestMethod.GET
+			});
+		} else if (configuration.redirectCodes.includes(request.status)) {
 			return await this.request(request.headers.get("location")!, {}, {
 				method: ERequestMethod.GET
 			});
@@ -155,7 +161,7 @@ export class Http {
 			const decodedFixed = decodedText.replace(/&#(\d+);/g, (_, code) => {
 				const charCode = Number(code);
 				const char = String.fromCharCode(charCode);
-				
+
 				// Экранируем специальные символы JSON, которые должны быть экранированы в строках
 				// Но делаем это только если символ не является частью уже экранированной последовательности
 				if (charCode < 32) {
@@ -177,43 +183,40 @@ export class Http {
 
 			// Пытаемся распарсить JSON с обработкой ошибок
 			let parsed: T | null = null;
-			try {
-				parsed = JSON.parse(decodedFixed) as T;
-			} catch (error) {
+			parsed = await Promise.resolve(JSON.parse(decodedFixed) as T).catch(async (error: Error) => {
 				// Если парсинг не удался, пытаемся исправить проблемные символы
-				try {
-					// Простое исправление: находим позицию ошибки и пытаемся исправить
-					const errorMessage = error instanceof Error ? error.message : String(error);
-					const positionMatch = errorMessage.match(/position (\d+)/);
-					
-					if (positionMatch) {
-						const errorPosition = Number(positionMatch[1]);
-						// Находим проблемный символ и пытаемся его экранировать
-						const beforeError = decodedFixed.substring(0, errorPosition);
-						const atError = decodedFixed[errorPosition];
-						const afterError = decodedFixed.substring(errorPosition + 1);
-						
-						// Если это неэкранированный управляющий символ, экранируем его
-						let fixed = decodedFixed;
-						if (atError && atError.charCodeAt(0) < 32 && atError !== '\n' && atError !== '\r' && atError !== '\t') {
-							// Заменяем проблемный символ на экранированную версию
-							fixed = beforeError + `\\u${atError.charCodeAt(0).toString(16).padStart(4, "0")}` + afterError;
-						} else if (atError === '"' && !beforeError.endsWith('\\')) {
-							// Неэкранированная кавычка внутри строки
-							fixed = beforeError + '\\"' + afterError;
-						}
-						
-						parsed = JSON.parse(fixed) as T;
-					} else {
-						// Если не удалось найти позицию, пробуем общее исправление
-						throw error;
+				const errorMessage = error.message;
+				const positionMatch = errorMessage.match(/position (\d+)/);
+
+				if (positionMatch) {
+					const errorPosition = Number(positionMatch[1]);
+					// Находим проблемный символ и пытаемся его экранировать
+					const beforeError = decodedFixed.substring(0, errorPosition);
+					const atError = decodedFixed[errorPosition];
+					const afterError = decodedFixed.substring(errorPosition + 1);
+
+					// Если это неэкранированный управляющий символ, экранируем его
+					let fixed = decodedFixed;
+					if (atError && atError.charCodeAt(0) < 32 && atError !== '\n' && atError !== '\r' && atError !== '\t') {
+						// Заменяем проблемный символ на экранированную версию
+						fixed = beforeError + `\\u${atError.charCodeAt(0).toString(16).padStart(4, "0")}` + afterError;
+					} else if (atError === '"' && !beforeError.endsWith('\\')) {
+						// Неэкранированная кавычка внутри строки
+						fixed = beforeError + '\\"' + afterError;
 					}
-				} catch (parseError) {
-					// Если и это не помогло, логируем ошибку и возвращаем исходный текст
-					console.warn("Failed to parse JSON:", parseError instanceof Error ? parseError.message : String(parseError));
-					console.warn("JSON snippet (first 500 chars):", decodedFixed.substring(0, 500));
+
+					return await Promise.resolve(JSON.parse(fixed) as T).catch((parseError: Error) => {
+						// Если и это не помогло, логируем ошибку
+						console.warn("Failed to parse JSON:", parseError.message);
+						console.warn("JSON snippet (first 500 chars):", decodedFixed.substring(0, 500));
+						return null;
+					});
 				}
-			}
+
+				// Если не удалось найти позицию, возвращаем null
+				return null;
+			});
+
 			return (parsed ?? decodedFixed) as T;
 		}
 
@@ -225,7 +228,7 @@ export class Http {
 			}) as T;
 		}
 
-		return this.parseResponse<T>(text);
+		return await this.parseResponse<T>(text);
 	}
 
 	public async login(): Promise<TWebTokenResponse["data"] | false> {
@@ -242,26 +245,39 @@ export class Http {
 	}
 
 	public async webToken(access_token: string = ""): Promise<TWebTokenResponse["data"]> {
-		const response = await this.request<TWebTokenResponse>(configuration.endpoints.webToken, {
+		const response = await this.request<TWebTokenResponse | TWebTokenError>(configuration.endpoints.webToken, {
 			version: configuration.webToken.version,
 			app_id: configuration.webToken.app_id,
 			access_token
 		}, configuration.auth.options);
-	
-		return response.data;
+
+		if ((response as TWebTokenError).type === "error" || (response as TWebTokenError).error_code) {
+			throw response;
+		}
+
+		return (response as TWebTokenResponse).data;
 	}
 
-	protected parseResponse<T extends string | Record<string, any> | any[]>(text: string): T {
-		try {
-			return JSON.parse(text) as T;
-		} catch {
-			try {
-				const decoded = atob(text);
-				return JSON.parse(decoded) as T;
-			} catch {
-				return text as unknown as T;
+	protected async parseResponse<T extends string | Record<string, any> | any[]>(text: string): Promise<T> {
+		const parseJson = async (str: string): Promise<T | null> => {
+			return await Promise.resolve(JSON.parse(str) as T).catch(() => null);
+		};
+
+		const parsed = await parseJson(text);
+		if (parsed !== null) {
+			return parsed;
+		}
+
+		const decoded = await Promise.resolve(atob(text)).catch(() => null);
+
+		if (decoded) {
+			const decodedParsed = await parseJson(decoded);
+			if (decodedParsed !== null) {
+				return decodedParsed;
 			}
 		}
+
+		return text as unknown as T;
 	}
 
 	protected getDeviceId(length = 21) {
@@ -274,19 +290,27 @@ export class Http {
 	}
 }
 
-let httpInstance: Http | null = null;
+const solveCookiesPath = (userId: number): string => {
+	return userId !== -1
+		? path.resolve(os.homedir(), ".meridius", `cookies-${userId}.json`)
+		: path.resolve(os.homedir(), ".meridius", "cookies.json");
+};
 
-export const getHttpInstance = (): Http => {
-	if (!httpInstance) {
-		let cookiesPath = path.resolve(os.homedir(), ".meridius");
+export const migrateCookies = (userId: number = -1): string => {
+	const defaultCookiePath = solveCookiesPath(-1);
+	const targetCookiePath = solveCookiesPath(userId);
 
-		if (!fs.pathExistsSync(cookiesPath)) {
-			fs.mkdirpSync(cookiesPath);
-		}
-
-		cookiesPath = path.resolve(cookiesPath, "cookies.json");
-		httpInstance = new Http(cookiesPath);
+	if (userId !== -1 && fs.existsSync(defaultCookiePath)) {
+		fs.copyFileSync(defaultCookiePath, targetCookiePath);
+		fs.removeSync(defaultCookiePath);
 	}
 
-	return httpInstance;
+	return userId !== -1
+		? targetCookiePath
+		: defaultCookiePath;
+}
+
+export const getHttpInstance = (userId: number = -1): Http => {
+	const cookiesPath = solveCookiesPath(userId);
+	return new Http(cookiesPath);
 };

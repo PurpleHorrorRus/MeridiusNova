@@ -16,6 +16,13 @@ export const useStrings = () => {
 	const $i18n = nuxtApp.vueApp?.config?.globalProperties?.$i18n as I18nFunction | undefined;
 	const $strings = nuxtApp.vueApp?.config?.globalProperties?.$strings as Record<string, any> | undefined;
 
+	// Делаем strings реактивным, отслеживая изменения в globalProperties
+	const strings = computed(() => {
+		// Отслеживаем изменения в globalProperties для реактивности
+		const currentStrings = nuxtApp.vueApp?.config?.globalProperties?.$strings as Record<string, any> | undefined;
+		return i18nPlugin?.strings || currentStrings || $strings || {};
+	});
+
 	const getString = (path: string): string => {
 		if (i18nPlugin?.getString) {
 			return i18nPlugin.getString(path);
@@ -44,7 +51,7 @@ export const useStrings = () => {
 	};
 
 	return {
-		strings: i18nPlugin?.strings || $strings || {},
+		strings,
 		getString,
 		translate,
 		i18n: translate,

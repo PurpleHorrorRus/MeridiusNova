@@ -1,3 +1,5 @@
+import { isTauri } from "~/utils/tauri";
+
 export const useFFmpegStore = defineStore("ffmpeg", {
 	state: (): {
 		path: string;
@@ -23,29 +25,44 @@ export const useFFmpegStore = defineStore("ffmpeg", {
 				return false;
 			}
 
-			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
 
-			if (isTauri) {
+			if (isTauri()) {
 				const { join } = await import("@tauri-apps/api/path");
 				const { exists } = await import("@tauri-apps/plugin-fs");
 				const { appDataDir } = await import("@tauri-apps/api/path");
+				const { platform } = await import("@tauri-apps/plugin-os");
+				const platformName = platform();
 
 				const appData = await appDataDir();
-				const ffmpegDir = await join(appData, "..", "ffmpeg");
-				const ffmpegPath = await join(ffmpegDir, "ffmpeg.exe");
+				const ffmpegDir = await join(appData, "ffmpeg");
+				const isWindows = platformName === "windows";
+				const ffmpegExe = isWindows ? "ffmpeg.exe" : "ffmpeg";
+				const ffmpegPath = await join(ffmpegDir, ffmpegExe);
 
 				this.path = ffmpegPath;
 				this.exist = await exists(ffmpegPath);
+
+				if (!this.exist) {
+					const { homeDir } = await import("@tauri-apps/api/path");
+					const home = await homeDir();
+					const oldFFmpegPath = await join(home, ".ffmpeg", ffmpegExe);
+					const oldExists = await exists(oldFFmpegPath);
+
+					if (oldExists) {
+						this.path = oldFFmpegPath;
+						this.exist = true;
+					}
+				}
 			} else {
-				const path = await import("path");
-				const fs = await import("fs-extra");
-				const os = await import("os");
+				const response = await $fetch<{ exists: boolean; path: string | null }>("/api/ffmpeg/check").catch(() => null);
 
-				const homeDir = os.homedir();
-				const ffmpegPath = process.env.FFMPEG_BINARY || path.join(homeDir, ".ffmpeg", "ffmpeg");
-
-				this.path = ffmpegPath;
-				this.exist = fs.existsSync(ffmpegPath);
+				if (response) {
+					this.exist = response.exists;
+					this.path = response.path || "";
+				} else {
+					this.exist = false;
+					this.path = "";
+				}
 			}
 
 			return this.exist;
@@ -91,7 +108,6 @@ export const useFFmpegStore = defineStore("ffmpeg", {
 					if (download.status === "completed") {
 						this.downloading = false;
 						this.progress = { percent: 100, speed: 0 };
-						this.path = response.path;
 						await this.check();
 					} else if (download.status === "failed") {
 						this.downloading = false;

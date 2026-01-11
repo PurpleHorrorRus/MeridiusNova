@@ -6,7 +6,7 @@
 		@click="handleAdd"
 		title="Добавить в библиотеку"
 	>
-		<Icon name="mdi:plus" size="18" />
+		<Icon name="mdi:heart-outline" size="22" />
 	</button>
 
 	<button
@@ -15,7 +15,7 @@
 		@click="handleDelete"
 		:title="deleteTitle"
 	>
-		<Icon name="mdi:close" size="18" />
+		<Icon name="mdi:heart" size="22" />
 	</button>
 
 	<button
@@ -24,7 +24,7 @@
 			@click="handleEdit"
 			title="Редактировать"
 		>
-			<Icon name="mdi:pencil" size="18" />
+			<Icon name="mdi:pencil" size="22" />
 		</button>
 
 		<button
@@ -33,7 +33,7 @@
 			@click="handleLyrics"
 			title="Текст песни"
 		>
-			<Icon name="mdi:text" size="18" />
+			<Icon name="mdi:text" size="22" />
 		</button>
 
 		<button
@@ -42,7 +42,7 @@
 			@click="handleDownload"
 			title="Скачать"
 		>
-			<Icon name="mdi:download" size="18" />
+			<Icon name="mdi:download" size="22" />
 		</button>
 
 		<button
@@ -51,7 +51,7 @@
 			@click="handleShare"
 			title="Поделиться"
 		>
-			<Icon name="mdi:share" size="18" />
+			<Icon name="mdi:share" size="22" />
 		</button>
 
 		<button
@@ -59,148 +59,101 @@
 			@click="handleSimilar"
 			title="Найти похожее"
 		>
-			<Icon name="mdi:music-note" size="18" />
+			<Icon name="mdi:music-note" size="22" />
 		</button>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { TAudio } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useModal } from "~/composables/useModal";
-import { useSongProps } from "~/composables/useSongProps";
-import { usePlaylist } from "~/composables/usePlaylist";
+import { storeToRefs } from "pinia";
+
+import { useSettingsStore } from "~/stores/settings";
 import { usePlaylistStore } from "~/stores/playlist";
-import { usePlaylistActions } from "~/composables/usePlaylistActions";
-import { useVkStore } from "~/stores/vk";
+
+import { useSongsContext } from "~/composables/useSongsContext";
+import { useIsTauri } from "~/composables/useIsTauri";
+
+import type { TAudio } from "~~/server/utils/types";
 
 const props = defineProps<{
 	audio: TAudio;
 }>();
 
-const { addAudio, deleteAudio, downloadAudio, shareAudio, getSimilarTracks } = useAudioActions();
-const { openModal } = useModal();
-const { generateSongProps } = useSongProps();
-const { current, playing } = usePlaylist();
+const emit = defineEmits<{
+	action: [action: string, data?: any];
+}>();
+
+const songsContext = useSongsContext();
 const playlistStore = usePlaylistStore();
-const { removeSongFromPlaylist } = usePlaylistActions();
+const { isTauri } = useIsTauri();
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 
-const songProps = computed(() => generateSongProps(props.audio));
-const vkStore = useVkStore();
+const audio = computed(() => {
+	if (songsContext?.value) {
+		const found = songsContext.value.find(t => t.id === props.audio.id);
+		if (found) {
+			return found;
+		}
+	}
+	return props.audio;
+});
 
-const canAdd = computed(() => songProps.value.canAdd);
-
-const currentPlaylist = computed(() => {
-	return playing.value || current.value;
+const canAdd = computed(() => {
+	return Boolean(audio.value.canAdd);
 });
 
 const canDelete = computed(() => {
-	// Можно удалить из библиотеки
-	if (songProps.value.canDelete) {
-		return true;
-	}
-	
-	// Можно удалить из плейлиста пользователя
-	const playlist = currentPlaylist.value;
-	if (playlist && playlist.playlist_id >= 0 && playlist.owner_id === vkStore.user_id) {
-		return true;
-	}
-	
-	return false;
+	return playlistStore.canDelete(audio.value, { canDelete: Boolean(audio.value.canDelete) });
 });
 
 const deleteTitle = computed(() => {
-	const playlist = currentPlaylist.value;
-	
-	// Если это плейлист пользователя (не библиотека)
-	if (playlist && playlist.playlist_id >= 0 && playlist.owner_id === vkStore.user_id) {
-		return "Удалить из плейлиста";
-	}
-	
-	return "Удалить из библиотеки";
+	return playlistStore.getDeleteTitle(audio.value);
 });
 
 const canEdit = computed(() => {
-	return props.audio.can_edit;
+	return Boolean(audio.value.canEdit);
 });
 
 const hasLyrics = computed(() => {
-	return Boolean(props.audio.lyrics);
+	return Boolean(audio.value.hasLyrics);
 });
 
 const canDownload = computed(() => {
-	return !props.audio.is_restriction;
+	return !audio.value.is_restriction && settings.value.download.enable;
 });
 
 const canShare = computed(() => {
-	return !props.audio.is_restriction;
+	return Boolean(audio.value.canShare);
 });
 
-const handleAdd = async () => {
-	await addAudio(props.audio).catch(console.error);
+const handleAdd = () => {
+	emit("action", "add", audio.value);
 };
 
-const handleDelete = async () => {
-	const playlist = currentPlaylist.value;
-	
-	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0, плейлист принадлежит пользователю и нет addedSong - удаляем из плейлиста
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& playlist.owner_id === vkStore.user_id
-		&& !(props.audio as any).addedSong;
-	
-	let result;
-	
-	if (shouldRemoveFromPlaylist) {
-		// Удаляем из плейлиста
-		result = await removeSongFromPlaylist(props.audio, playlist).catch(console.error);
-		
-		if (result?.success) {
-			// Обновляем размер плейлиста
-			if (playlist.size !== undefined) {
-				playlist.size = Math.max(0, (playlist.size || 0) - 1);
-			}
-		}
-	} else {
-		// Удаляем из библиотеки
-		result = await deleteAudio(props.audio).catch(console.error);
-	}
-	
-	if (result?.success) {
-		// Обновляем состояние: удаляем трек из плейлистов и очереди
-		playlistStore.removeSongByFullId(props.audio.full_id);
-		
-		// Если удаленный трек был текущим, переключаемся на следующий
-		const currentSong = playlistStore.currentSong;
-		if (currentSong && currentSong.full_id === props.audio.full_id) {
-			playlistStore.next();
-		}
-	}
+const handleDelete = () => {
+	emit("action", "delete", audio.value);
 };
 
 const handleEdit = () => {
-	openModal("editTrack", { audio: props.audio });
+	emit("action", "edit", audio.value);
 };
 
 const handleLyrics = () => {
-	openModal("lyrics", { audio: props.audio });
+	emit("action", "lyrics", audio.value);
 };
 
-const handleDownload = async () => {
-	await downloadAudio(props.audio).catch(console.error);
+const handleDownload = () => {
+	emit("action", "download", audio.value);
 };
 
 const handleShare = () => {
-	openModal("shareAudio", { audio: props.audio });
+	emit("action", "share", audio.value);
 };
 
-const handleSimilar = async () => {
-	const result = await getSimilarTracks(props.audio).catch(() => null);
-	if (result) {
-		navigateTo(`/songs/${props.audio.id}?audio_owner_id=${props.audio.owner_id}`);
-	}
+const handleSimilar = () => {
+	emit("action", "similar", audio.value);
 };
 </script>
 
@@ -219,12 +172,12 @@ const handleSimilar = async () => {
 	cursor: pointer;
 	padding: 4px;
 	border-radius: 4px;
-	transition: all 0.2s;
+	transition: background-color 0.2s, color 0.2s;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 20px;
-	height: 20px;
+	width: 24px;
+	height: 24px;
 
 	&:hover {
 		color: var(--text, #fff);

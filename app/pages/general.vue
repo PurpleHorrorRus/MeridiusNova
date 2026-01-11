@@ -20,9 +20,11 @@
 			<div v-if="recommendations && recommendations.playlists && recommendations.playlists.length > 0" class="section">
 				<h2 class="section-title">{{ recommendations.title || getString("general.recommendations") }}</h2>
 				<div class="playlists-grid">
-					<PlaylistCard
+					<LazyPlaylistCard
 						v-for="(item, index) in recommendations.playlists"
 						:key="`rec-${index}-${(item as ReadonlyPlaylistLike).owner_id}-${(item as ReadonlyPlaylistLike).playlist_id}`"
+						v-memo="[(item as ReadonlyPlaylistLike).raw_id, (item as ReadonlyPlaylistLike).owner_id, (item as ReadonlyPlaylistLike).playlist_id]"
+						hydrate-on-visible
 						:playlist="toMutablePlaylist(item as ReadonlyPlaylistLike)"
 						:show-play-button="true"
 					/>
@@ -41,7 +43,7 @@
 					<UserPlaylist
 						v-for="playlist in userPlaylistsCategory.playlists"
 						:key="`user-${playlist.owner_id}-${playlist.playlist_id}`"
-						:playlist="playlist"
+						:playlist="toMutablePlaylist(playlist as ReadonlyPlaylistLike)"
 					/>
 				</div>
 			</div>
@@ -50,9 +52,11 @@
 			<div v-if="vibes && vibes.playlists && vibes.playlists.length > 0" class="section">
 				<h2 class="section-title">{{ vibes.title || "Vibe" }}</h2>
 				<div class="playlists-grid">
-					<PlaylistCard
+					<LazyPlaylistCard
 						v-for="playlist in vibes.playlists"
 						:key="`vibe-${playlist.owner_id}-${playlist.playlist_id}`"
+						v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+						hydrate-on-visible
 						:playlist="toMutablePlaylist(playlist as ReadonlyPlaylistLike)"
 						:show-play-button="true"
 					/>
@@ -63,9 +67,11 @@
 			<div v-if="exploreData && exploreData.albums && exploreData.albums.length > 0" class="section">
 				<h2 class="section-title">{{ getString("general.newAlbums") }}</h2>
 				<div class="albums-list">
-					<AlbumCard
+					<LazyAlbumCard
 						v-for="album in exploreData.albums"
 						:key="`album-${album.owner_id || ''}-${album.playlist_id || ''}`"
+						v-memo="[album.owner_id, album.playlist_id]"
+						hydrate-on-visible
 						:album="album"
 						:show-play-button="true"
 					/>
@@ -76,9 +82,11 @@
 			<div v-if="exploreData && exploreData.artists && exploreData.artists.length > 0" class="section">
 				<h2 class="section-title">{{ getString("general.newArtists") }}</h2>
 				<div class="artists-grid">
-					<ArtistCard
+					<LazyArtistCard
 						v-for="artist in exploreData.artists"
 						:key="`artist-${artist.full_id}`"
+						v-memo="[artist.full_id]"
+						hydrate-on-visible
 						:artist="toMutableArtist(artist)"
 					/>
 				</div>
@@ -88,9 +96,10 @@
 			<div v-if="exploreData && exploreData.releases && exploreData.releases.length > 0" class="section">
 				<h2 class="section-title">{{ getString("general.newReleases") }}</h2>
 				<div class="songs-list">
-					<Song
+					<LazySong
 						v-for="release in exploreData.releases"
 						:key="`release-${release.full_id}`"
+						hydrate-on-visible
 						:audio="toMutableAudio(release)"
 					/>
 				</div>
@@ -106,7 +115,7 @@
 						class="chart-item"
 					>
 						<span class="chart-position">{{ index + 1 }}</span>
-						<Song :audio="toMutableAudio(track)" />
+						<LazySong hydrate-on-visible :audio="toMutableAudio(track)" />
 					</div>
 				</div>
 			</div>
@@ -117,11 +126,13 @@
 				:key="`general-${collection.title}`"
 				class="section"
 			>
-				<h2 class="section-title">{{ collection.title }}</h2>
+				<h2 class="section-title" v-text="collection.title" />
 				<div class="playlists-grid">
-					<PlaylistCard
+					<LazyPlaylistCard
 						v-for="playlist in collection.playlists"
 						:key="`general-${playlist.owner_id}-${playlist.playlist_id}`"
+						v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+						hydrate-on-visible
 						:playlist="toMutablePlaylist(playlist as ReadonlyPlaylistLike)"
 						:show-play-button="true"
 					/>
@@ -134,11 +145,13 @@
 				:key="`explore-${collection.title}`"
 				class="section"
 			>
-				<h2 class="section-title">{{ collection.title }}</h2>
+				<h2 class="section-title" v-text="collection.title" />
 				<div class="playlists-grid">
-					<PlaylistCard
+					<LazyPlaylistCard
 						v-for="playlist in collection.playlists"
 						:key="`explore-${playlist.owner_id}-${playlist.playlist_id}`"
+						v-memo="[playlist.raw_id, playlist.owner_id, playlist.playlist_id]"
+						hydrate-on-visible
 						:playlist="toMutablePlaylist(playlist as ReadonlyPlaylistLike)"
 						:show-play-button="true"
 					/>
@@ -151,11 +164,18 @@
 
 <script setup lang="ts">
 const { getString } = useStrings();
-import { ref, onMounted } from "vue";
+import { ref, onMounted, defineAsyncComponent } from "vue";
+
+const LazySong = defineAsyncComponent(() => import("~/components/Song/Song.vue"));
+const LazyPlaylistCard = defineAsyncComponent(() => import("~/components/PlaylistCard.vue"));
+import UserPlaylist from "~/components/General/UserPlaylist.vue";
+
+import { provideSongsContext } from "~/composables/useSongsContext";
+
 import type { TPlaylistCollection, TExploreData, TPlaylist, TArtist } from "~~/server/utils/types";
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import { provideSongsContext } from "~/composables/useSongsContext";
-import UserPlaylist from "~/components/General/UserPlaylist.vue";
+const LazyArtistCard = defineAsyncComponent(() => import("~/components/ArtistCard.vue"));
+const LazyAlbumCard = defineAsyncComponent(() => import("~/components/AlbumCard.vue"));
 
 // Хелперы для преобразования readonly типов в обычные
 type ReadonlyPlaylistLike = { readonly owner_id: number; readonly playlist_id: number; readonly raw_id: string; readonly title: string; readonly cover_url: string; readonly description: string; readonly raw_description?: string; readonly size: number; readonly listens: number; readonly last_updated: number; readonly explicit: boolean; readonly followed: boolean; readonly official: boolean; readonly restricted: boolean; readonly access_hash: string; readonly follow_hash: string; readonly edit_hash: string; readonly context?: string; readonly author?: TPlaylistAuthor; readonly covers?: readonly string[]; readonly artists?: Array<{ readonly name: string; readonly link: string; }>; readonly year?: number; readonly subtitle?: string; readonly list?: readonly unknown[]; };
@@ -211,11 +231,23 @@ const toMutableArtist = (artist: { cover?: string; coverUrl_p?: string; coverUrl
 	};
 };
 
-const { general, loading: generalLoading, error: generalError, loadGeneral } = useGeneral();
-const { explore: exploreData, loading: exploreLoading, error: exploreError, loadExplore } = useExplore();
+const { data: general, pending: generalLoading, error: generalError, execute: loadGeneral } = useFetch<TPlaylistCollection[]>("/api/vk/general");
+const currentParams = ref<{ count?: number }>({});
+const { data: exploreData, pending: exploreLoading, error: exploreError, execute: executeExplore } = useFetch<TExploreData>("/api/vk/explore");
 
-const pending = computed(() => generalLoading.value || exploreLoading.value);
-const error = computed(() => generalError.value || exploreError.value);
+const loadExplore = async (newParams: { count?: number } = {}) => {
+	currentParams.value = newParams;
+	await executeExplore();
+};
+
+const pending = computed(() => {
+	return generalLoading.value || exploreLoading.value;
+});
+
+const error = computed(() => {
+	return generalError.value || exploreError.value;
+});
+
 const isRefreshing = ref(false);
 
 const handleRefresh = async () => {
@@ -238,20 +270,22 @@ const handleRefresh = async () => {
 
 // Find recommendations (type === "recommendations" with popup param)
 const recommendations = computed(() => {
-	if (!general.value || general.value.length === 0) return null;
-	return general.value.find(c => {
-		if (c.type !== "recommendations") return false;
-		if (!c.params) return false;
+	if (!general.value || general.value.length === 0) {
+		return null;
+	}
+
+	return general.value.find(category => {
+		if (category.type !== "recommendations") return false;
+		if (!category.params) return false;
 		
 		// Проверяем, является ли params URLSearchParams или обычным объектом
-		if (c.params instanceof URLSearchParams) {
-			return c.params.get("popup")?.includes("recoms");
+		if (category.params instanceof URLSearchParams) {
+			return category.params.get("popup")?.includes("recoms");
 		}
 		
 		// Если params - это объект после сериализации
-		if (typeof c.params === "object" && c.params !== null && "popup" in c.params) {
-			const popup = c.params.popup;
-			return popup && String(popup).includes("recoms");
+		if (typeof category.params === "object" && category.params !== null && "popup" in category.params) {
+			return category.params.popup && String(category.params.popup).includes("recoms");
 		}
 		
 		return false;
@@ -280,93 +314,109 @@ const userPlaylistsCategory = computed(() => {
 
 // Find vibes
 const vibes = computed(() => {
-	if (!general.value || general.value.length === 0) return null;
-	return general.value.find(c => c.type === "vibes");
+	if (!general.value || general.value.length === 0) {
+		return null;
+	}
+
+	return general.value.find(category => category.type === "vibes");
 });
 
 // Filter general collections (exclude recommendations, vibes, and first user playlists)
 const generalCollections = computed(() => {
-	if (!general.value) return [];
+	if (!general.value) {
+		return [];
+	}
 	
-	let filtered = [...general.value];
+	const filtered: typeof general.value = [];
+	let skipFirst = true;
 	
-	// Remove recommendations
-	const recIndex = filtered.findIndex(c => {
-		if (c.type !== "recommendations" || !c.params) return false;
+	for (let i = 0; i < general.value.length; i++) {
+		const category = general.value[i];
+		if (!category) continue;
 		
-		// Проверяем, является ли params URLSearchParams или обычным объектом
-		if (c.params instanceof URLSearchParams) {
-			return c.params.get("popup")?.includes("recoms");
+		// Skip first item (user playlists)
+		if (skipFirst) {
+			skipFirst = false;
+			continue;
 		}
 		
-		// Если params - это объект после сериализации
-		if (typeof c.params === "object" && c.params !== null && "popup" in c.params) {
-			const popup = c.params.popup;
-			return popup && String(popup).includes("recoms");
+		// Skip recommendations
+		if (category.type === "recommendations" && category.params) {
+			let isRecommendations = false;
+			if (category.params instanceof URLSearchParams) {
+				isRecommendations = category.params.get("popup")?.includes("recoms") || false;
+			} else if (typeof category.params === "object" && category.params !== null && "popup" in category.params) {
+				isRecommendations = Boolean(category.params.popup && String(category.params.popup).includes("recoms"));
+			}
+			if (isRecommendations) continue;
 		}
 		
-		return false;
-	});
-	if (recIndex >= 0) {
-		filtered.splice(recIndex, 1);
+		// Skip vibes
+		if (category.type === "vibes") continue;
+		
+		// Only include categories with playlists
+		if (category.playlists && category.playlists.length > 0) {
+			filtered.push(category);
+		}
 	}
 	
-	// Remove first item (user playlists)
-	if (filtered.length > 0) {
-		filtered.splice(0, 1);
-	}
-	
-	// Remove vibes
-	const vibesIndex = filtered.findIndex(c => c.type === "vibes");
-	if (vibesIndex >= 0) {
-		filtered.splice(vibesIndex, 1);
-	}
-	
-	return filtered.filter(c => c.playlists && c.playlists.length > 0);
+	return filtered;
 });
 
 // Explore playlists collections
 const exploreCollections = computed(() => {
-	if (!exploreData.value || !exploreData.value.playlists) return [];
-	// Проверяем, что playlists - это массив, а не объект
-	return exploreData.value.playlists.filter(c => {
-		if (!c.playlists) return false;
-		// Если playlists - это массив
-		if (Array.isArray(c.playlists)) {
-			return c.playlists.length > 0;
+	if (!exploreData.value?.playlists) return [];
+	
+	const filtered: typeof exploreData.value.playlists = [];
+	
+	for (let i = 0; i < exploreData.value.playlists.length; i++) {
+		const c = exploreData.value.playlists[i];
+		if (!c?.playlists) continue;
+		
+		if (Array.isArray(c.playlists) && c.playlists.length > 0) {
+			filtered.push(c);
+		} else if (typeof c.playlists === "object" && Object.keys(c.playlists).length > 0) {
+			filtered.push(c);
 		}
-		// Если playlists - это объект, проверяем, есть ли в нем элементы
-		if (typeof c.playlists === "object") {
-			return Object.keys(c.playlists).length > 0;
-		}
-		return false;
-	});
+	}
+	
+	return filtered;
 });
 
 
 // Собираем все треки со страницы для контекста
-const allSongs = computed<TAudio[]>(() => {
+const allSongs = computed(() => {
+	if (!exploreData.value) {
+		return [];
+	}
+	
 	const songs: TAudio[] = [];
 	
 	// Releases
-	if (exploreData.value?.releases) {
-		songs.push(...exploreData.value.releases.map(toMutableAudio));
+	if (exploreData.value.releases) {
+		for (let i = 0; i < exploreData.value.releases.length; i++) {
+			songs.push(toMutableAudio(exploreData.value.releases[i]));
+		}
 	}
 	
 	// Chart
-	if (exploreData.value?.chart) {
-		songs.push(...exploreData.value.chart.map(toMutableAudio));
+	if (exploreData.value.chart) {
+		for (let i = 0; i < exploreData.value.chart.length; i++) {
+			songs.push(toMutableAudio(exploreData.value.chart[i]));
+		}
 	}
 	
 	// Artists (если это треки)
-	if (exploreData.value?.artists) {
-		songs.push(...exploreData.value.artists.map(toMutableAudio));
+	if (exploreData.value.artists) {
+		for (let i = 0; i < exploreData.value.artists.length; i++) {
+			songs.push(toMutableAudio(exploreData.value.artists[i]));
+		}
 	}
 	
 	return songs;
 });
 
-// Предоставляем контекст треков для компонентов Song
+// Предоставляем контекст треков для компонентов Song (передаем computed для реактивности)
 provideSongsContext(allSongs);
 
 const userPlaylistsSectionRef = ref<HTMLElement | null>(null);
@@ -385,11 +435,27 @@ onMounted(() => {
 	padding: 32px 48px;
 	min-height: 100%;
 
+	@media (max-width: 768px) {
+		padding: 20px 24px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 16px 16px;
+	}
+
 	&-content {
 		display: flex;
 		flex-direction: column;
 		gap: 48px;
 		max-width: 100%;
+
+		@media (max-width: 768px) {
+			gap: 32px;
+		}
+
+		@media (max-width: 480px) {
+			gap: 24px;
+		}
 	}
 }
 
@@ -398,12 +464,28 @@ onMounted(() => {
 	flex-direction: column;
 	gap: 24px;
 
+	@media (max-width: 768px) {
+		gap: 20px;
+	}
+
+	@media (max-width: 480px) {
+		gap: 16px;
+	}
+
 	&-title {
 		font-size: 28px;
 		font-weight: 700;
 		margin: 0;
 		color: var(--text, #fff);
 		letter-spacing: -0.5px;
+
+		@media (max-width: 768px) {
+			font-size: 24px;
+		}
+
+		@media (max-width: 480px) {
+			font-size: 20px;
+		}
 	}
 }
 
@@ -439,6 +521,16 @@ onMounted(() => {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 	gap: 24px;
+
+	@media (max-width: 768px) {
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 16px;
+	}
+
+	@media (max-width: 480px) {
+		grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+		gap: 12px;
+	}
 }
 
 .chart-list {

@@ -1,6 +1,9 @@
 import { getGeneralRequestsInstance } from "./general";
+import { requireAuth } from "~~/server/utils/auth-check";
 
 export default defineEventHandler(async (event) => {
+	requireAuth(event);
+	
 	const generalRequests = getGeneralRequestsInstance(event);
 	
 	// Отключаем кэширование браузера

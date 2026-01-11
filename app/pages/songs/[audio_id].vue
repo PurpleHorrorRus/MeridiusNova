@@ -6,14 +6,7 @@
 
 		<div v-else-if="tracks.length > 0" class="tracks-container">
 			<h1 class="page-title">Похожие треки</h1>
-			<div class="tracks-list">
-				<Song
-					v-for="(track, index) in tracks"
-					:key="track.full_id"
-					:audio="track"
-					:index="index"
-				/>
-			</div>
+			<SongList :songs="tracks" :table-mode="true" />
 		</div>
 
 		<div v-else class="no-tracks">
@@ -24,13 +17,17 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import type { TAudio } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import Song from "~/components/Song/Song.vue";
+
+import SongList from "~/components/SongList.vue";
 import LoadingSpinner from "~/components/LoadingSpinner.vue";
 
+import { useAudioStore } from "~/stores/audio";
+
+import { createAudioFromIds } from "~/utils/audio";
+
+import type { TAudio } from "~~/server/utils/types";
+
 const route = useRoute();
-const { getSimilarTracks } = useAudioActions();
 
 const loading = ref(true);
 const tracks = ref<TAudio[]>([]);
@@ -44,13 +41,10 @@ onMounted(async () => {
 		return;
 	}
 
-	const audio: TAudio = {
-		id: audioId,
-		owner_id: audioOwnerId,
-		full_id: `${audioOwnerId}_${audioId}`
-	} as TAudio;
+	const audio = createAudioFromIds(audioId, audioOwnerId);
 
-	const result = await getSimilarTracks(audio).catch(() => ({ audios: [] }));
+	const audioStore = useAudioStore();
+	const result = await audioStore.getSimilarTracks(audio).catch(() => ({ audios: [] }));
 	tracks.value = result.audios || [];
 	loading.value = false;
 });

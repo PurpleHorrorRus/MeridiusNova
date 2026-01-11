@@ -1,11 +1,19 @@
-import { type TAuthSession } from "~~/server/utils/types";
-import webTokenPost from "./web-token.post";
+import jwt from "jsonwebtoken";
+
+import { generateDeviceFingerprint, generateSessionId } from "~~/server/utils/device-fingerprint";
+import { addSession, getSessionData, removeSession } from "~~/server/utils/session-storage";
+import { configuration, getHttpInstance, migrateCookies } from "~~/server/utils/http";
+import { cookieSignOptions } from "./web-token.post";
+
+import type { TCookie } from "~~/server/types/auth";
+import type { TAuthSession } from "~~/server/utils/types";
 
 export default defineEventHandler(async (event) => {
 	const http = getHttpInstance();
+	const config = useRuntimeConfig();
 
 	const userSession = await getUserSession(event);
-	const session = (userSession as unknown as { session?: TAuthSession })?.session;
+	const session = userSession?.session as TAuthSession;
 
 	if (!session || !session.qr || !session.init) {
 		throw createError({
@@ -31,7 +39,22 @@ export default defineEventHandler(async (event) => {
 		access_token: ""
 	}, configuration.auth.options);
 
-	if (qrCheckResponse.response.status === 2) {
+	if (qrCheckResponse.type === "error" || (qrCheckResponse as any).error_code) {
+		const errorCode = (qrCheckResponse as any).error_code || "unknown";
+		const errorInfo = (qrCheckResponse as any).error_info || (qrCheckResponse as any).error_msg || "Произошла ошибка при авторизации";
+
+		throw createError({
+			statusCode: 400,
+			statusMessage: errorInfo,
+			data: {
+				error_code: errorCode,
+				error_info: errorInfo,
+				type: "error"
+			}
+		});
+	}
+
+	if (qrCheckResponse.response?.status === 2) {
 		const connectCodeAuthResponse = await http.request<TCheckResponse>(configuration.endpoints.qr.connectCodeAuth, {
 			token: qrCheckResponse.response.super_app_token,
 			uuid: http.uuid,
@@ -50,12 +73,101 @@ export default defineEventHandler(async (event) => {
 			version: 1
 		}, configuration.auth.options);
 
-		if (connectCodeAuthResponse.type === "error") {
-			throw connectCodeAuthResponse;
+		if (connectCodeAuthResponse.type === "error" || (connectCodeAuthResponse as any).error_code) {
+			const errorCode = (connectCodeAuthResponse as any).error_code || "unknown";
+			const errorInfo = (connectCodeAuthResponse as any).error_info || (connectCodeAuthResponse as any).error_msg || "Произошла ошибка при авторизации";
+
+			throw createError({
+				statusCode: 400,
+				statusMessage: errorInfo,
+
+				data: {
+					error_code: errorCode,
+					error_info: errorInfo,
+					type: "error"
+				}
+			});
 		}
 
 		await http.request<string>(connectCodeAuthResponse.data.next_step_url);
-		return await webTokenPost(event);
+
+		const oldCookie = getCookie(event, "token") || "";
+		let decoded: TCookie | false = false;
+
+		if (oldCookie) {
+			decoded = await Promise.resolve(jwt.verify(oldCookie, config.cookieKey, cookieSignOptions as jwt.VerifyOptions) as TCookie).catch(() => {
+				return false;
+			});
+
+			if (decoded !== false) {
+				const isOldToken = !decoded.sessionId || !decoded.deviceFingerprint;
+				if (!isOldToken) {
+					const currentDeviceFingerprint = generateDeviceFingerprint(event);
+					const oldSession = decoded.sessionId ? getSessionData(decoded.sessionId) : null;
+
+					if (oldSession && oldSession.deviceFingerprint === currentDeviceFingerprint) {
+						removeSession(decoded.sessionId);
+					}
+				}
+			}
+		}
+
+		const accessToken = connectCodeAuthResponse.data.access_token;
+		const webToken = await http.webToken(accessToken).catch((error: any) => {
+			const errorCode = error?.error_code || error?.code || "unknown";
+			const errorInfo = error?.error_info || error?.error_msg || error?.message || "Произошла ошибка при получении токена";
+
+			throw createError({
+				statusCode: 400,
+				statusMessage: errorInfo,
+				data: {
+					error_code: errorCode,
+					error_info: errorInfo,
+					type: "error"
+				}
+			});
+		});
+
+		if (!webToken) {
+			throw createError({
+				statusCode: 400,
+				statusMessage: "Не удалось получить токен авторизации",
+				data: {
+					error_code: "token_error",
+					error_info: "Не удалось получить токен авторизации",
+					type: "error"
+				}
+			});
+		}
+
+		migrateCookies(webToken.user_id);
+
+		const sessionId = generateSessionId();
+		const deviceFingerprint = generateDeviceFingerprint(event);
+
+		addSession(webToken.user_id, sessionId, deviceFingerprint);
+
+		const token = jwt.sign({
+			access_token: webToken.access_token,
+			user_id: webToken.user_id,
+			expires: webToken.expires,
+			sessionId,
+			deviceFingerprint
+		}, config.cookieKey, cookieSignOptions);
+
+		await setUserSession(event, {
+			loggedIn: true,
+			user: { id: webToken.user_id }
+		});
+
+		setCookie(event, "token", token, {
+			httpOnly: true,
+			secure: false,
+			sameSite: "strict",
+			expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+		});
+
+		return webToken;
 	}
 	
 	return false;

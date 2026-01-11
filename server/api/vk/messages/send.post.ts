@@ -1,5 +1,6 @@
-import { BaseRequest } from "~~/server/utils/base";
 import type { EventHandlerRequest, H3Event } from "h3";
+
+import { BaseRequest } from "~~/server/utils/base";
 
 export default defineEventHandler(async (event) => {
 	const baseRequest = new BaseRequest(event);

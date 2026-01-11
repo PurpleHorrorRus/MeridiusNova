@@ -2,7 +2,7 @@
 	<div
 		v-if="show"
 		class="context-menu-overlay"
-		@click="close"
+		@click="$emit('close')"
 		@contextmenu.prevent
 	>
 		<div
@@ -26,7 +26,7 @@
 				class="context-menu-item"
 				@click="handleAdd"
 			>
-				<Icon name="mdi:plus" size="18" />
+				<Icon name="mdi:heart-outline" size="18" />
 				<span>Добавить в библиотеку</span>
 			</button>
 
@@ -35,8 +35,8 @@
 				class="context-menu-item"
 				@click="handleDelete"
 			>
-				<Icon name="mdi:delete" size="18" />
-				<span>{{ deleteLabel }}</span>
+				<Icon name="mdi:heart" size="18" />
+				<span v-text="deleteLabel" />
 			</button>
 
 			<div v-if="songProps.canDelete && currentPlaylist" class="context-menu-divider"></div>
@@ -71,7 +71,7 @@
 			</button>
 
 			<button
-				v-if="songProps.canDownload"
+				v-if="songProps.canDownload && isTauri"
 				class="context-menu-item"
 				@click="handleDownload"
 			>
@@ -115,7 +115,7 @@
 						:height="32"
 						class="playlist-submenu-cover"
 					/>
-					<span>{{ playlist.title }}</span>
+					<span v-text="playlist.title" />
 				</button>
 				<div v-if="myPlaylists.length === 0" class="context-menu-item context-menu-item-disabled">
 					<span>Нет плейлистов</span>
@@ -126,15 +126,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import type { TAudio, TPlaylist } from "~~/server/utils/types";
-import { useAudioActions } from "~/composables/useAudioActions";
-import { useSongProps } from "~/composables/useSongProps";
-import { usePlaylist } from "~/composables/usePlaylist";
-import { useModal } from "~/composables/useModal";
+import { ref, computed, watch } from "vue";
+
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
+
+import { useEventListener } from "~/composables/useEventListener";
+import { useIsTauri } from "~/composables/useIsTauri";
+
 import Cover from "~/components/Cover.vue";
+
+import type { TAudio, TPlaylist } from "~~/server/utils/types";
 
 const props = defineProps<{
 	show: boolean;
@@ -144,14 +146,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	close: [];
+	action: [action: string, data?: any];
 }>();
 
-const { addAudio, deleteAudio, addSongToPlaylist, removeSongFromPlaylist, downloadAudio, shareAudio, getSimilarTracks } = useAudioActions();
-const { generateSongProps } = useSongProps();
-const { current, playing } = usePlaylist();
-const { openModal } = useModal();
+const { isTauri } = useIsTauri();
 const vkStore = useVkStore();
 const playlistStore = usePlaylistStore();
+const { current, playing } = storeToRefs(playlistStore);
 
 const showPlaylistSubmenu = ref(false);
 const menuStyle = ref<{ left?: string; top?: string }>({});
@@ -160,24 +161,28 @@ const playlists = ref<TPlaylist[]>([]);
 const playlistMenuTimeout = ref<NodeJS.Timeout | null>(null);
 
 const songProps = computed(() => {
-	const defaultProps = {
-		canAdd: false,
-		canDelete: false,
-		canAddPlaylist: false,
-		canEdit: false,
-		canShare: false,
-		hasLyrics: false,
-		canDownload: false,
-		isRestricted: false
-	};
-
 	if (!props.audio) {
-		return defaultProps;
+		return {
+			canAdd: false,
+			canDelete: false,
+			canAddPlaylist: false,
+			canEdit: false,
+			canShare: false,
+			hasLyrics: false,
+			canDownload: false,
+			isRestricted: false
+		};
 	}
 
 	return {
-		...defaultProps,
-		...generateSongProps(props.audio)
+		canAdd: Boolean(props.audio.canAdd),
+		canDelete: Boolean(props.audio.canDelete),
+		canAddPlaylist: Boolean(props.audio.canAddPlaylist),
+		canEdit: Boolean(props.audio.canEdit),
+		canShare: Boolean(props.audio.canShare),
+		hasLyrics: Boolean(props.audio.hasLyrics),
+		canDownload: !props.audio.is_restriction,
+		isRestricted: Boolean(props.audio.is_restriction)
 	};
 });
 
@@ -186,15 +191,11 @@ const currentPlaylist = computed(() => {
 });
 
 const deleteLabel = computed(() => {
-	const playlist = currentPlaylist.value;
-	
-	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0 и нет addedSong - удаляем из плейлиста
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& !(props.audio as any)?.addedSong;
-	
-	return shouldRemoveFromPlaylist ? "Удалить из плейлиста" : "Удалить из библиотеки";
+	if (!props.audio) {
+		return "Удалить из библиотеки";
+	}
+
+	return playlistStore.getDeleteTitle(props.audio);
 });
 
 const myPlaylists = computed(() => {
@@ -205,61 +206,22 @@ const myPlaylists = computed(() => {
 	});
 });
 
-const close = () => {
+const handleAdd = () => {
+	if (!props.audio) {
+		return;
+	}
+
+	emit("action", "add", props.audio);
 	emit("close");
 };
 
-const handleAdd = async () => {
+const handleDelete = () => {
 	if (!props.audio) {
 		return;
 	}
 
-	await addAudio(props.audio).catch(console.error);
-	close();
-};
-
-const handleDelete = async () => {
-	if (!props.audio) {
-		return;
-	}
-
-	const playlist = currentPlaylist.value;
-	
-	// Определяем, удаляем из плейлиста или из библиотеки
-	// Логика как в старом проекте: если playlist_id >= 0 и нет addedSong - удаляем из плейлиста
-	const shouldRemoveFromPlaylist = playlist 
-		&& playlist.playlist_id >= 0 
-		&& !(props.audio as any).addedSong;
-	
-	let result;
-	
-	if (shouldRemoveFromPlaylist) {
-		// Удаляем из плейлиста
-		result = await removeSongFromPlaylist(props.audio, playlist).catch(console.error);
-		
-		if (result?.success) {
-			// Обновляем размер плейлиста
-			if (playlist.size !== undefined) {
-				playlist.size = Math.max(0, (playlist.size || 0) - 1);
-			}
-		}
-	} else {
-		// Удаляем из библиотеки
-		result = await deleteAudio(props.audio).catch(console.error);
-	}
-	
-	if (result?.success) {
-		// Обновляем состояние: удаляем трек из плейлистов и очереди
-		playlistStore.removeSongByFullId(props.audio.full_id);
-		
-		// Если удаленный трек был текущим, переключаемся на следующий
-		const currentSong = playlistStore.currentSong;
-		if (currentSong && currentSong.full_id === props.audio.full_id) {
-			playlistStore.next();
-		}
-	}
-	
-	close();
+	emit("action", "delete", props.audio);
+	emit("close");
 };
 
 const handlePlaylistMenuEnter = () => {
@@ -296,14 +258,14 @@ const loadPlaylists = async () => {
 	playlists.value = data.playlists || [];
 };
 
-const handleSelectPlaylist = async (playlist: TPlaylist) => {
+const handleSelectPlaylist = (playlist: TPlaylist) => {
 	if (!props.audio) {
 		return;
 	}
 
-	await addSongToPlaylist(props.audio, playlist).catch(console.error);
+	emit("action", "add-to-playlist", { audio: props.audio, playlist });
 	showPlaylistSubmenu.value = false;
-	close();
+	emit("close");
 };
 
 const handleEdit = () => {
@@ -311,8 +273,8 @@ const handleEdit = () => {
 		return;
 	}
 
-	openModal("editTrack", { audio: props.audio });
-	close();
+	emit("action", "edit", props.audio);
+	emit("close");
 };
 
 const handleLyrics = () => {
@@ -320,17 +282,17 @@ const handleLyrics = () => {
 		return;
 	}
 
-	openModal("lyrics", { audio: props.audio });
-	close();
+	emit("action", "lyrics", props.audio);
+	emit("close");
 };
 
-const handleDownload = async () => {
+const handleDownload = () => {
 	if (!props.audio) {
 		return;
 	}
 
-	await downloadAudio(props.audio).catch(console.error);
-	close();
+	emit("action", "download", props.audio);
+	emit("close");
 };
 
 const handleShare = () => {
@@ -338,46 +300,26 @@ const handleShare = () => {
 		return;
 	}
 
-	openModal("shareAudio", { audio: props.audio });
-	close();
+	emit("action", "share", props.audio);
+	emit("close");
 };
 
-const handleSimilar = async () => {
+const handleSimilar = () => {
 	if (!props.audio) {
 		return;
 	}
 
-	const result = await getSimilarTracks(props.audio).catch(() => null);
-	if (result) {
-		navigateTo(`/songs/${props.audio.id}?audio_owner_id=${props.audio.owner_id}`);
-	}
-	close();
+	emit("action", "similar", props.audio);
+	emit("close");
 };
 
-const handleRemoveFromPlaylist = async () => {
+const handleRemoveFromPlaylist = () => {
 	if (!props.audio || !currentPlaylist.value) {
 		return;
 	}
 
-	const result = await removeSongFromPlaylist(props.audio, currentPlaylist.value).catch(console.error);
-	
-	if (result?.success) {
-		// Обновляем состояние: удаляем трек из плейлиста и очереди
-		playlistStore.removeSongByFullId(props.audio.full_id);
-		
-		// Если удаленный трек был текущим, переключаемся на следующий
-		const currentSong = playlistStore.currentSong;
-		if (currentSong && currentSong.full_id === props.audio.full_id) {
-			playlistStore.next();
-		}
-		
-		// Обновляем размер плейлиста
-		if (currentPlaylist.value.size !== undefined) {
-			currentPlaylist.value.size = Math.max(0, (currentPlaylist.value.size || 0) - 1);
-		}
-	}
-	
-	close();
+	emit("action", "remove-from-playlist", { audio: props.audio, playlist: currentPlaylist.value });
+	emit("close");
 };
 
 const updatePosition = () => {
@@ -524,23 +466,16 @@ const handleClickOutside = (event: MouseEvent) => {
 		const isOnSong = target.closest(".song");
 		
 		if (isOnSong) {
-			// Предотвращаем всплытие события, чтобы клик на треке не запустил воспроизведение
-			event.stopPropagation();
-		}
-		
-		close();
+		// Предотвращаем всплытие события, чтобы клик на треке не запустил воспроизведение
+		event.stopPropagation();
+	}
+	
+	emit("close");
 	}
 };
 
-onMounted(() => {
-	document.addEventListener("click", handleClickOutside);
-	document.addEventListener("contextmenu", close);
-});
-
-onUnmounted(() => {
-	document.removeEventListener("click", handleClickOutside);
-	document.removeEventListener("contextmenu", close);
-});
+useEventListener(document, "click", handleClickOutside);
+useEventListener(document, "contextmenu", () => emit("close"));
 </script>
 
 <style scoped lang="scss">
@@ -575,7 +510,7 @@ onUnmounted(() => {
 	color: var(--text, #fff);
 	cursor: pointer;
 	border-radius: 6px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease;
 	text-align: left;
 	font-size: 14px;
 	position: relative;

@@ -53,14 +53,12 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
 import { useVkStore } from "~/stores/vk";
 
 const { getString } = useStrings();
 const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
 const vkStore = useVkStore();
-
-const settings = computed(() => settingsStore.settings);
 const profiles = ref<any[]>([]);
 
 onMounted(async () => {
@@ -96,7 +94,7 @@ const loadProfiles = async () => {
 		}
 	}
 
-	if (vkStore.user && !profiles.value.some(profile => profile.id === vkStore.user_id)) {
+	if (vkStore.user && !profiles.value.some(profileItem => profileItem.id === vkStore.user_id)) {
 		profiles.value.unshift({
 			id: vkStore.user.id,
 			first_name: vkStore.user.first_name,
@@ -122,7 +120,7 @@ const switchAccount = async (index: number) => {
 		return;
 	}
 
-	const accountIndex = settings.value.vk.accounts.findIndex(account => account.user === profile.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === profile.id);
 	
 	if (accountIndex >= 0) {
 		settingsStore.updateSection("vk", { active: accountIndex });
@@ -138,7 +136,7 @@ const removeAccount = (index: number) => {
 		return;
 	}
 
-	const accountIndex = settings.value.vk.accounts.findIndex(account => account.user === profile.id);
+	const accountIndex = settings.value.vk.accounts.findIndex(accountItem => accountItem.user === profile.id);
 	
 	if (accountIndex >= 0) {
 		const currentAccountIndex = settings.value.vk.accounts.findIndex(account => 
@@ -211,12 +209,6 @@ const openLogin = () => {
 		padding: 14px;
 		gap: 12px;
 	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 }
 
 .settings-button {
@@ -230,12 +222,6 @@ const openLogin = () => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 	white-space: nowrap;
-
-	&:hover {
-		background: var(--primary-hover, #ff1a5c);
-		transform: translateY(-1px);
-		box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-	}
 
 	&:active {
 		transform: translateY(0);
@@ -258,12 +244,6 @@ const openLogin = () => {
 	border-radius: 10px;
 	transition: all 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-	}
 
 	&.active {
 		border-color: var(--secondary, #e9003f);
@@ -322,22 +302,12 @@ const openLogin = () => {
 	cursor: pointer;
 	transition: all 0.2s ease;
 
-	&:hover {
-		background: var(--bg-hover, #2a2a2a);
-		transform: translateY(-1px);
-	}
-
 	&:active {
 		transform: translateY(0);
 	}
 
 	&.danger {
 		background: var(--secondary, #e9003f);
-
-		&:hover {
-			background: var(--primary-hover, #ff1a5c);
-			box-shadow: 0 4px 12px rgba(233, 0, 63, 0.3);
-		}
 	}
 }
 </style>

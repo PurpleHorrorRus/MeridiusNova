@@ -9,9 +9,7 @@
 		</div>
 
 		<div class="artist-card-info">
-			<div class="artist-card-name" :title="artist.name">
-				{{ artist.name }}
-			</div>
+			<div class="artist-card-name" :title="artist.name" v-once v-text="artist.name" />
 		</div>
 	</div>
 </template>
@@ -27,19 +25,12 @@ const emit = defineEmits<{
 	click: [artist: TArtist];
 }>();
 
-const coverSize = computed(() => {
-	if (typeof window === "undefined") {
-		return 160;
-	}
+const coverSize = typeof window === "undefined" ? 160 : (() => {
 	const width = window.innerWidth;
-	if (width <= 480) {
-		return 80;
-	}
-	if (width <= 768) {
-		return 100;
-	}
+	if (width <= 480) return 80;
+	if (width <= 768) return 100;
 	return 160;
-});
+})();
 
 const handleClick = () => {
 	emit("click", props.artist);
@@ -50,10 +41,12 @@ const handleClick = () => {
 <style scoped lang="scss">
 .artist-card {
 	cursor: pointer;
-	transition: transform 0.2s;
+	padding: 0;
 
 	&:hover {
-		transform: translateY(-4px);
+		.artist-card-cover {
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		}
 	}
 
 	&-cover {
@@ -66,6 +59,21 @@ const handleClick = () => {
 		display: flex;
 		align-items: center;
 		justify-content: center;
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: -4px;
+			left: -4px;
+			right: -4px;
+			bottom: -4px;
+			border-radius: 4px;
+			opacity: 0.2;
+			transition: opacity 0.2s ease;
+			pointer-events: none;
+			z-index: -1;
+			background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.2) 0%, transparent 70%);
+		}
 
 		@media (max-width: 480px) {
 			margin-bottom: 8px;

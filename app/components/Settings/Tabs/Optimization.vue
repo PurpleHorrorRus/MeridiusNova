@@ -3,7 +3,7 @@
 		<div class="settings-section">
 			<h2 class="section-title">{{ getString("settings.optimization.title") }}</h2>
 			<div class="settings-items">
-				<div class="settings-item">
+				<div v-if="isTauri()" class="settings-item">
 					<label class="settings-label">
 						<input
 							type="checkbox"
@@ -15,9 +15,7 @@
 					</label>
 				</div>
 
-				<div v-if="hardwareAccelerationHint" class="settings-tip">
-					{{ hardwareAccelerationHint }}
-				</div>
+				<div v-if="isTauri()" class="settings-tip" v-text="getString('settings.hints.optimization.hardwareAcceleration')" />
 
 				<div class="settings-item">
 					<label class="settings-label">
@@ -34,9 +32,7 @@
 					</label>
 				</div>
 
-				<div v-if="downloadAutoHint" class="settings-tip">
-					{{ downloadAutoHint }}
-				</div>
+				<div class="settings-tip" v-text="getString('settings.hints.optimization.download.auto')" />
 
 				<div v-if="!settings.optimization.download.auto" class="settings-item">
 					<label class="settings-label">
@@ -54,8 +50,45 @@
 					/>
 				</div>
 
-				<div v-if="downloadFixedHint" class="settings-tip">
-					{{ downloadFixedHint }}
+				<div v-if="!settings.optimization.download.auto" class="settings-tip" v-text="getString('settings.hints.optimization.download.fixed')" />
+			</div>
+		</div>
+
+		<div v-if="!isTauri()" class="settings-section">
+			<h2 class="section-title">{{ getString("settings.downloads.title") }}</h2>
+			<div class="settings-items">
+				<div class="settings-item">
+					<label class="settings-label">
+						<input
+							type="checkbox"
+							:checked="settings.download.enable"
+							@change="updateDownloadEnable"
+							class="settings-checkbox"
+						/>
+						{{ getString("settings.downloads.enable") }}
+					</label>
+				</div>
+
+				<div class="settings-item">
+					<label class="settings-label" v-text="getString('settings.downloads.template.title')" />
+
+					<input
+						:value="settings.download.template"
+						@input="updateTemplate"
+						type="text"
+						class="settings-input"
+						:placeholder="templatePlaceholder"
+					/>
+				</div>
+
+				<div class="settings-tip" v-text="getString('settings.hints.downloads.template')" />
+
+				<div class="settings-tip">
+					{{ getString("settings.downloads.template.headers") }}: {{ headers }}
+				</div>
+
+				<div class="settings-tip settings-info">
+					{{ getString("settings.downloads.mobile.note") }}
 				</div>
 			</div>
 		</div>
@@ -63,23 +96,22 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingsStore } from "~/stores/settings";
+import { isTauri } from "~/utils/tauri";
 
 const { getString } = useStrings();
 const settingsStore = useSettingsStore();
-const settings = computed(() => settingsStore.settings);
-
-const lang = computed(() => settings.value.general.lang as "ru" | "en");
-const hardwareAccelerationHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.hardwareAcceleration);
-const downloadAutoHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.auto);
-const downloadFixedHint = computed(() => settings.value.settingHints[lang.value]?.optimization?.download?.fixed);
+const { settings } = storeToRefs(settingsStore);
 
 const autoDownloadCount = computed(() => {
 	if (import.meta.client && typeof navigator !== "undefined" && navigator.hardwareConcurrency) {
 		return Math.round(navigator.hardwareConcurrency / 2);
 	}
+
 	return 2;
 });
+
+const headers = "{{ index }}, {{ performer }}, {{ title }}, {{ id }}, {{ owner }}";
+const templatePlaceholder = "{{ performer }} - {{ title }}";
 
 const updateHardwareAcceleration = (event: Event) => {
 	const target = event.target as HTMLInputElement;
@@ -105,6 +137,16 @@ const updateFixedDownloads = (event: Event) => {
 			fixed: value
 		}
 	});
+};
+
+const updateDownloadEnable = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	settingsStore.updateSection("download", { enable: target.checked });
+};
+
+const updateTemplate = (event: Event) => {
+	const target = event.target as HTMLInputElement;
+	settingsStore.updateSection("download", { template: target.value });
 };
 </script>
 
@@ -147,7 +189,7 @@ const updateFixedDownloads = (event: Event) => {
 	background: var(--bg-secondary, #1a1a1a);
 	border: 1px solid var(--border, #282828);
 	border-radius: 10px;
-	transition: all 0.2s ease;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 	max-width: 100%;
 	box-sizing: border-box;
@@ -156,12 +198,6 @@ const updateFixedDownloads = (event: Event) => {
 		flex-wrap: wrap;
 		padding: 14px;
 		gap: 12px;
-	}
-
-	&:hover {
-		background: var(--bg-tertiary, #282828);
-		border-color: var(--border-secondary, #2a2a2a);
-		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 	}
 }
 
@@ -181,11 +217,6 @@ const updateFixedDownloads = (event: Event) => {
 	height: 20px;
 	cursor: pointer;
 	accent-color: var(--secondary, #e9003f);
-	transition: transform 0.15s ease;
-
-	&:hover {
-		transform: scale(1.1);
-	}
 }
 
 .settings-range {
@@ -195,11 +226,6 @@ const updateFixedDownloads = (event: Event) => {
 	border-radius: 3px;
 	outline: none;
 	cursor: pointer;
-	transition: all 0.2s ease;
-
-	&:hover {
-		height: 8px;
-	}
 
 	&::-webkit-slider-thumb {
 		appearance: none;
@@ -208,13 +234,8 @@ const updateFixedDownloads = (event: Event) => {
 		background: var(--secondary, #e9003f);
 		border-radius: 50%;
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: transform 0.2s ease;
 		box-shadow: 0 2px 4px rgba(233, 0, 63, 0.3);
-	}
-
-	&::-webkit-slider-thumb:hover {
-		transform: scale(1.2);
-		box-shadow: 0 4px 8px rgba(233, 0, 63, 0.4);
 	}
 }
 
@@ -238,5 +259,38 @@ const updateFixedDownloads = (event: Event) => {
 	border: 1px solid var(--border, #282828);
 	border-radius: 8px;
 	border-left: 3px solid var(--secondary, #e9003f);
+}
+
+.settings-info {
+	border-left-color: var(--text-secondary, #b3b3b3);
+}
+
+.settings-input {
+	flex: 1;
+	padding: 10px 14px;
+	background: var(--bg-tertiary, #2a2a2a);
+	border: 1px solid var(--border, #3a3a3a);
+	border-radius: 6px;
+	min-width: 0;
+	max-width: 100%;
+	box-sizing: border-box;
+	color: var(--text, #fff);
+	font-size: 14px;
+	font-weight: 500;
+	outline: none;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+
+	@media (max-width: 768px) {
+		width: 100%;
+	}
+
+	&:focus {
+		border-color: var(--secondary, #e9003f);
+		box-shadow: 0 0 0 3px rgba(233, 0, 63, 0.1);
+	}
+
+	&::placeholder {
+		color: var(--text-tertiary, #6b6b6b);
+	}
 }
 </style>

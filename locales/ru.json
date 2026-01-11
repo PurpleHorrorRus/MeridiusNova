@@ -57,7 +57,11 @@
 	"playlist": {
 		"tracks": "треков",
 		"duration": "Длительность",
-		"updated": "Обновлено"
+		"updated": "Обновлено",
+		"tracksHeader": {
+			"title": "Название",
+			"album": "Альбом"
+		}
 	},
 	"search": {
 		"placeholder": "Поиск музыки...",
@@ -65,9 +69,29 @@
 		"noResults": "Ничего не найдено"
 	},
 	"collection": {
+		"type": "Коллекция",
+		"user": "Пользователь {{ id }}",
 		"tabs": {
 			"music": "Музыка",
-			"playlists": "Плейлисты"
+			"playlists": "Плейлисты",
+			"wall": "Стена"
+		}
+	},
+	"library": {
+		"hidden": "Библиотека пользователя скрыта"
+	},
+	"queue": {
+		"source": {
+			"playlist": "Плейлист",
+			"myMusic": "Моя музыка",
+			"wall": "Стена",
+			"feed": "Лента",
+			"updates": "Обновления",
+			"general": "Главная",
+			"artist": "Артист",
+			"popular": "Популярное",
+			"search": "Поиск",
+			"vkMix": "VK Mix"
 		}
 	}
 }

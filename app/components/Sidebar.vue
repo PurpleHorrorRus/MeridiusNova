@@ -1,225 +1,181 @@
 <template>
 	<div class="sidebar">
-		<div v-if="!showSearchInTitlebar" class="sidebar-search">
-			<div class="search-input-wrapper">
-				<Icon name="mdi:magnify" size="20" class="search-icon" />
-				<input
-					v-model="searchQuery"
-					type="text"
-					:placeholder="getString('search.placeholder')"
-					class="search-input"
-					@keydown.enter="handleSearchKeydown"
-				/>
-				<button
-					v-if="searchQuery"
-					@click="clearSearch"
-					class="search-clear"
-				>
-					<Icon name="mdi:close" size="16" />
-				</button>
-			</div>
-		</div>
+		<ClientOnly>
+			<MobileBottomNav v-if="showBottomNavigation" />
 
-		<nav class="sidebar-nav">
-			<NuxtLink
-				v-for="item in navigationItems"
-				:key="item.path"
-				:to="item.path"
-				class="nav-item"
-				:class="{ active: isActive(item.path) }"
-			>
-				<Icon :name="item.icon" size="24" />
-				<span class="nav-item-text">{{ item.label }}</span>
-			</NuxtLink>
-		</nav>
+			<div v-else class="desktop-sidebar">
+				<SidebarSearch :show-search-in-titlebar="showSearchInTitlebar" />
 
-		<button
-			@click="openSettings"
-			class="sidebar-settings-button"
-		>
-			<Icon name="mdi:cog" size="24" />
-			<span class="sidebar-settings-text">{{ getString("navigation.settings") }}</span>
-		</button>
+				<SidebarNavigation
+					:user-playlists="userPlaylists"
+					:playlists-expanded="playlistsExpanded"
+					:playlist-playing-states="playlistPlayingStates"
+					:playlist-loading-states="playlistLoadingStates"
+					@update:playlists-expanded="playlistsExpanded = $event"
+					@playlist-play="handlePlaylistPlay"
+					@playlist-created="loadUserPlaylists"
+				/>
 
-		<div v-if="user" class="sidebar-user-section">
-			<div
-				v-if="accounts.length > 1"
-				@click="showAccountMenu = !showAccountMenu"
-				class="sidebar-user"
-			>
-				<img
-					v-if="user.photo_max || user.photo_200"
-					:src="user.photo_max || user.photo_200"
-					:alt="userName"
-					class="user-avatar"
-				/>
-				<div v-else class="user-avatar-placeholder">
-					{{ userName.charAt(0).toUpperCase() }}
-				</div>
-				<div class="user-info">
-					<div class="user-name">{{ userName }}</div>
-					<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
-				</div>
-				<Icon name="mdi:chevron-down" size="20" class="user-chevron" />
-			</div>
-			<div
-				v-else
-				class="sidebar-user"
-			>
-				<img
-					v-if="user.photo_max || user.photo_200"
-					:src="user.photo_max || user.photo_200"
-					:alt="userName"
-					class="user-avatar"
-				/>
-				<div v-else class="user-avatar-placeholder">
-					{{ userName.charAt(0).toUpperCase() }}
-				</div>
-				<div class="user-info">
-					<div class="user-name">{{ userName }}</div>
-					<div v-if="user.screen_name" class="user-screen-name">@{{ user.screen_name }}</div>
+				<div class="sidebar-bottom-section">
+					<Downloads v-if="!isTauri()" :show-label="true" :icon-size="24" />
+
+					<SidebarSettingsButton />
+
+					<SidebarUser :accounts="accounts" />
 				</div>
 			</div>
 
-			<div v-if="showAccountMenu && accounts.length > 1" class="account-menu">
-				<div
-					v-for="account in accounts"
-					:key="account.id"
-					@click="switchAccount(account)"
-					class="account-menu-item"
-					:class="{ active: account.id === user.id }"
-				>
-					<img
-						v-if="account.photo_100 || account.photo_max"
-						:src="account.photo_100 || account.photo_max"
-						:alt="getAccountName(account)"
-						class="account-menu-avatar"
+			<template #fallback>
+				<div class="desktop-sidebar">
+					<SidebarSearch :show-search-in-titlebar="false" />
+
+					<SidebarNavigation
+						:user-playlists="userPlaylists"
+						:playlists-expanded="playlistsExpanded"
+						:playlist-playing-states="playlistPlayingStates"
+						:playlist-loading-states="playlistLoadingStates"
+						@update:playlists-expanded="playlistsExpanded = $event"
+						@playlist-play="handlePlaylistPlay"
+						@playlist-created="loadUserPlaylists"
 					/>
-					<div v-else class="account-menu-avatar-placeholder">
-						{{ getAccountName(account).charAt(0).toUpperCase() }}
-					</div>
-					<div class="account-menu-info">
-						<div class="account-menu-name">{{ getAccountName(account) }}</div>
+
+					<div class="sidebar-bottom-section">
+						<Downloads v-if="!isTauri()" :show-label="true" :icon-size="24" />
+
+						<SidebarSettingsButton />
+
+						<SidebarUser :accounts="accounts" />
 					</div>
 				</div>
-			</div>
-		</div>
+			</template>
+		</ClientOnly>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { useVkStore } from "~/stores/vk";
-import { useSettingsStore } from "~/stores/settings";
-import { useModal } from "~/composables/useModal";
+import MobileBottomNav from "~/components/Navigation/MobileBottomNav.vue";
+import SidebarSearch from "~/components/Navigation/SidebarSearch.vue";
+import SidebarNavigation from "~/components/Navigation/SidebarNavigation.vue";
+import SidebarSettingsButton from "~/components/Navigation/SidebarSettingsButton.vue";
+import SidebarUser from "~/components/Navigation/SidebarUser.vue";
+import Downloads from "~/components/Downloads/Downloads.vue";
 
-const { getString } = useStrings();
-const route = useRoute();
+import { useVkStore } from "~/stores/vk";
+import { usePlaylistStore } from "~/stores/playlist";
+import { usePlayerStore } from "~/stores/player";
+
+import { useEventListener } from "~/composables/useEventListener";
+
+import { isTauri } from "~/utils/tauri";
+
+const playlistStore = usePlaylistStore();
+
 const vkStore = useVkStore();
 const settingsStore = useSettingsStore();
-const { openSettings } = useModal();
+const { settings } = storeToRefs(settingsStore);
+const playerStore = usePlayerStore();
 
 const userId = computed(() => vkStore.user_id || 0);
-const searchQuery = ref("");
-const showAccountMenu = ref(false);
 const accounts = ref<any[]>([]);
+const userPlaylists = ref<any[]>([]);
+const playlistsExpanded = ref(false);
+const playlistPlayingStates = ref<Record<string, boolean>>({});
+const playlistLoadingStates = ref<Record<string, boolean>>({});
 
-const windowWidth = ref(typeof window !== "undefined" ? window.innerWidth : 0);
+const windowWidth = ref(0);
 
 const showSearchInTitlebar = computed(() => {
 	return windowWidth.value <= 600;
 });
 
-if (typeof window !== "undefined") {
-	const handleResize = () => {
-		windowWidth.value = window.innerWidth;
-	};
-
-	onMounted(() => {
-		window.addEventListener("resize", handleResize);
-	});
-
-	onUnmounted(() => {
-		window.removeEventListener("resize", handleResize);
-	});
-}
-
-const navigationItems = computed(() => [
-	{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
-	{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
-	{ path: "/queue", label: "Очередь", icon: "mdi:playlist-play" }
-]);
-
-const isActive = (path: string): boolean => {
-	if (path === "/general") {
-		return route.path === "/general";
-	}
-	return route.path.startsWith(path);
-};
-
-const user = computed(() => vkStore.user);
-const userName = computed(() => {
-	if (!user.value) {
-		return "";
-	}
-	return `${user.value.first_name || ""} ${user.value.last_name || ""}`.trim() || "Пользователь";
+const showBottomNavigation = computed(() => {
+	return windowWidth.value <= 600;
 });
 
-const handleSearchKeydown = (event: KeyboardEvent) => {
-	if (event.key === "Enter") {
-		const query = searchQuery.value.trim();
-		if (query.length > 0) {
-			navigateTo(`/search?q=${encodeURIComponent(query)}`);
-		}
+const updatePlaylistStates = () => {
+	userPlaylists.value.forEach(playlist => {
+		const currentPlaying = playlistStore.playing;
+		const isCurrent = currentPlaying && currentPlaying.raw_id === playlist.raw_id;
+		playlistPlayingStates.value[playlist.raw_id] = Boolean(isCurrent && !playerStore.paused);
+	});
+};
+
+const handlePlaylistPlay = async (playlist: any) => {
+	const playlistRawId = playlist.raw_id;
+	const currentPlaying = playlistStore.playing;
+	const isCurrent = currentPlaying && currentPlaying.raw_id === playlistRawId;
+
+	if (isCurrent && !playerStore.paused) {
+		playerStore.pause();
+		playlistPlayingStates.value[playlistRawId] = false;
+	} else if (isCurrent && playerStore.paused) {
+		playerStore.resume();
+		playlistPlayingStates.value[playlistRawId] = true;
+	} else {
+		playlistLoadingStates.value[playlistRawId] = true;
+		await playlistStore.playPlaylist(playlist).finally(() => {
+			playlistLoadingStates.value[playlistRawId] = false;
+		});
 	}
 };
 
-const clearSearch = () => {
-	searchQuery.value = "";
-};
+// Объединяем watchers для оптимизации производительности
+watch([() => playlistStore.playing, () => playerStore.paused, () => playerStore.isPlaying], () => {
+	updatePlaylistStates();
+}, { immediate: true });
 
-onMounted(async () => {
-	await settingsStore.load();
-	await loadAccounts();
-});
-
-const loadAccounts = async () => {
-	const accountIds = settingsStore.settings.vk.accounts.map(account => account.user);
-
-	if (accountIds.length === 0) {
+const loadUserPlaylists = async () => {
+	if (!userId.value) {
+		userPlaylists.value = [];
 		return;
 	}
 
-	const chunks = [];
-	for (let i = 0; i < accountIds.length; i += 100) {
-		chunks.push(accountIds.slice(i, i + 100));
-	}
-
-	for (const chunk of chunks) {
-		const response = await $fetch("/api/vk/users", {
-			params: {
-				user_ids: chunk.join(","),
-				fields: "photo_100"
-			}
-		}).catch(() => null);
-
-		if (response && Array.isArray(response)) {
-			accounts.value.push(...response);
+	const playlistsData = await $fetch<{ count: number; playlists: any[] }>("/api/vk/playlists", {
+		params: {
+			owner_id: userId.value
 		}
-	}
+	}).catch(() => {
+		return { count: 0, playlists: [] };
+	});
+
+	userPlaylists.value = playlistsData.playlists || [];
 };
 
-const getAccountName = (account: any): string => {
-	return `${account.first_name || ""} ${account.last_name || ""}`.trim() || "User";
+const loadAccounts = async () => {
+	const vkStore = useVkStore();
+	const accountIds = settings.value.vk.accounts.map(account => account.user).filter((id): id is number => typeof id === "number");
+	const loadedAccounts = await vkStore.loadUserAccounts(accountIds);
+	accounts.value.push(...loadedAccounts);
 };
 
-const switchAccount = async (account: any) => {
-	const accountIndex = settingsStore.settings.vk.accounts.findIndex(acc => acc.user === account.id);
-	if (accountIndex >= 0) {
-		settingsStore.updateSection("vk", { active: accountIndex });
-		showAccountMenu.value = false;
-		await navigateTo("/?reload=1");
+onMounted(async () => {
+	if (typeof window !== "undefined") {
+		windowWidth.value = window.innerWidth;
+
+		const handleResize = () => {
+			windowWidth.value = window.innerWidth;
+		};
+
+		useEventListener(window, "resize", handleResize);
 	}
-};
+
+	await settingsStore.load();
+	await loadAccounts();
+	playlistsExpanded.value = Boolean(settings.value.appearance.sidebarPlaylistsExpanded ?? false);
+	await loadUserPlaylists();
+});
+
+watch(userId, async () => {
+	playlistsExpanded.value = Boolean(settings.value.appearance.sidebarPlaylistsExpanded ?? false);
+	await loadUserPlaylists();
+});
+
+// Обновляем список плейлистов при событии обновления
+if (typeof window !== "undefined") {
+	window.addEventListener("playlists-updated", async () => {
+		await loadUserPlaylists();
+	});
+}
 </script>
 
 <style scoped lang="scss">
@@ -232,7 +188,16 @@ const switchAccount = async (account: any) => {
 	border-right: 1px solid var(--border, #2a2a2a);
 	overflow-y: auto;
 	overflow-x: hidden;
-	transition: width 0.3s ease;
+
+	@media (max-width: 600px) {
+		padding-bottom: 60px;
+		width: 100%;
+		height: calc(100% - 60px);
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: 999;
+	}
 
 	@media (max-width: 1000px) {
 		width: 200px;
@@ -245,503 +210,65 @@ const switchAccount = async (account: any) => {
 	@media (max-width: 700px) {
 		width: 160px;
 	}
-
-	@media (max-width: 600px) {
-		width: 80px;
-	}
 }
 
-.sidebar-header {
-	padding: 20px;
-	border-bottom: 1px solid var(--border, #2a2a2a);
-
-	@media (max-width: 1000px) {
-		padding: 16px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 12px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 12px;
-		display: flex;
-		justify-content: center;
-	}
-}
-
-.sidebar-logo {
-	font-size: 20px;
-	font-weight: 700;
-	color: var(--text, #fff);
-
-	@media (max-width: 1000px) {
-		font-size: 18px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 16px;
-	}
-
-	@media (max-width: 600px) {
-		font-size: 14px;
-	}
-}
-
-.sidebar-search {
-	position: relative;
-	padding: 10px 20px;
-	border-bottom: 1px solid var(--border, #2a2a2a);
-
-	@media (max-width: 1000px) {
-		padding: 8px 16px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 6px 12px;
-	}
-
-	@media (max-width: 600px) {
-		display: none;
-	}
-}
-
-.search-input-wrapper {
-	position: relative;
-	display: flex;
-	align-items: center;
-	background: var(--bg-tertiary, #2a2a2a);
-	border-radius: 6px;
-	padding: 8px 12px;
-	gap: 8px;
-
-	@media (max-width: 1000px) {
-		padding: 6px 10px;
-		gap: 6px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 5px 8px;
-		gap: 5px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 8px;
-		width: 48px;
-		justify-content: center;
-	}
-}
-
-.search-icon {
-	color: var(--text-secondary, #b3b3b3);
-	flex-shrink: 0;
-}
-
-.search-input {
-	flex: 1;
-	background: transparent;
-	border: none;
-	outline: none;
-	color: var(--text, #fff);
-	font-size: 14px;
-
-	@media (max-width: 1000px) {
-		font-size: 13px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 12px;
-	}
-
-	@media (max-width: 600px) {
-		display: none;
-	}
-
-	&::placeholder {
-		color: var(--text-secondary, #b3b3b3);
-	}
-}
-
-.search-clear {
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 4px;
-	color: var(--text-secondary, #b3b3b3);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: color 0.2s;
-
-	&:hover {
-		color: var(--text, #fff);
-	}
-}
-
-
-.sidebar-nav {
+.desktop-sidebar {
 	display: flex;
 	flex-direction: column;
-	padding: 10px 0;
-	flex: 1;
-
-	@media (max-width: 1000px) {
-		padding: 8px 0;
-	}
-
-	@media (max-width: 800px) {
-		padding: 6px 0;
-	}
+	height: 100%;
 
 	@media (max-width: 600px) {
-		padding: 4px 0;
+		display: none;
 	}
 }
 
-.nav-item {
+.sidebar-bottom-section {
 	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 20px;
-	color: var(--text-secondary, #b3b3b3);
-	text-decoration: none;
-	transition: all 0.2s;
-	border-left: 2px solid transparent;
-	position: relative;
+	flex-direction: column;
+	margin-top: auto;
+	overflow: visible;
 
-	@media (max-width: 1000px) {
-		padding: 10px 16px;
-		gap: 10px;
-	}
+	:deep(.downloads-container) {
+		width: 100%;
+		position: relative;
+		overflow: visible;
 
-	@media (max-width: 800px) {
-		padding: 8px 12px;
-		gap: 8px;
-	}
+		.downloads-button {
+			width: 100%;
+			height: auto;
+			padding: 12px 20px;
+			justify-content: flex-start;
+			gap: 12px;
+			border-top: 1px solid var(--border, #2a2a2a);
+			border-radius: 0;
 
-	@media (max-width: 600px) {
-		padding: 10px;
-		justify-content: center;
-		gap: 0;
-		border-left: none;
-		border-top: 2px solid transparent;
-	}
+			@media (max-width: 1000px) {
+				padding: 10px 16px;
+				gap: 10px;
+			}
 
-	&:hover {
-		background: var(--hover, #2a2a2a);
-		color: var(--text, #fff);
-	}
+			@media (max-width: 800px) {
+				padding: 8px 12px;
+				gap: 8px;
+			}
 
-	&.active {
-		color: var(--secondary, #e9003f);
-
-		&::before {
-			content: "";
-			position: absolute;
-			left: 0;
-			top: 50%;
-			transform: translateY(-50%);
-			width: 2px;
-			height: 60%;
-			background: var(--secondary, #e9003f);
-			border-radius: 0 2px 2px 0;
-		}
-
-		@media (max-width: 600px) {
-			&::before {
-				left: 50%;
-				top: 0;
-				transform: translateX(-50%);
-				width: 60%;
-				height: 2px;
-				border-radius: 0 0 2px 2px;
+			@media (max-width: 600px) {
+				padding: 10px;
+				justify-content: center;
+				gap: 0;
 			}
 		}
-	}
 
-	&-text {
-		font-size: 14px;
-		font-weight: 500;
-
-		@media (max-width: 1000px) {
-			font-size: 13px;
-		}
-
-		@media (max-width: 800px) {
-			font-size: 12px;
-		}
-
-		@media (max-width: 600px) {
-			display: none;
-		}
-	}
-
-	@media (max-width: 600px) {
-		:deep(svg) {
-			width: 24px;
-			height: 24px;
-		}
-	}
-}
-
-.sidebar-user-section {
-	position: relative;
-}
-
-.sidebar-user {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 15px 20px;
-	border-top: 1px solid var(--border, #2a2a2a);
-	background: var(--bg-secondary, #1a1a1a);
-	text-decoration: none;
-	color: inherit;
-	transition: background 0.2s;
-	cursor: pointer;
-
-	@media (max-width: 1000px) {
-		padding: 12px 16px;
-		gap: 10px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 10px 12px;
-		gap: 8px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 10px;
-		justify-content: center;
-		gap: 0;
-	}
-
-	&:hover {
-		background: var(--hover, #2a2a2a);
-	}
-}
-
-.user-chevron {
-	color: var(--text-secondary, #b3b3b3);
-	transition: transform 0.2s;
-	margin-left: auto;
-
-	.sidebar-user:hover & {
-		color: var(--text, #fff);
-	}
-}
-
-.account-menu {
-	position: absolute;
-	bottom: 100%;
-	left: 0;
-	right: 0;
-	background: var(--bg-sidebar, #1a1a1a);
-	border: 1px solid var(--border, #2a2a2a);
-	border-radius: 8px 8px 0 0;
-	max-height: 300px;
-	overflow-y: auto;
-	z-index: 100;
-}
-
-.account-menu-item {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 20px;
-	cursor: pointer;
-	transition: background 0.2s;
-
-	&:hover {
-		background: var(--hover, #2a2a2a);
-	}
-
-	&.active {
-		background: var(--bg-tertiary, #2a2a2a);
-	}
-}
-
-.account-menu-avatar,
-.account-menu-avatar-placeholder {
-	width: 32px;
-	height: 32px;
-	border-radius: 50%;
-	object-fit: cover;
-	flex-shrink: 0;
-}
-
-.account-menu-avatar-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--secondary, #e9003f);
-	color: var(--text, #fff);
-	font-weight: 600;
-	font-size: 14px;
-}
-
-.account-menu-info {
-	flex: 1;
-	min-width: 0;
-}
-
-.account-menu-name {
-	font-size: 13px;
-	font-weight: 500;
-	color: var(--text, #fff);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.user-avatar,
-.user-avatar-placeholder {
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	object-fit: cover;
-	flex-shrink: 0;
-
-	@media (max-width: 1000px) {
-		width: 36px;
-		height: 36px;
-	}
-
-	@media (max-width: 800px) {
-		width: 32px;
-		height: 32px;
-	}
-
-	@media (max-width: 600px) {
-		width: 40px;
-		height: 40px;
-	}
-}
-
-.user-avatar-placeholder {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--secondary, #e9003f);
-	color: var(--text, #fff);
-	font-weight: 600;
-	font-size: 16px;
-
-	@media (max-width: 1000px) {
-		font-size: 14px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 12px;
-	}
-
-	@media (max-width: 600px) {
-		font-size: 16px;
-	}
-}
-
-.user-info {
-	flex: 1;
-	min-width: 0;
-
-	@media (max-width: 600px) {
-		display: none;
-	}
-}
-
-.user-name {
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--text, #fff);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-
-	@media (max-width: 1000px) {
-		font-size: 13px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 12px;
-	}
-}
-
-.user-screen-name {
-	font-size: 12px;
-	color: var(--text-secondary, #b3b3b3);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-
-	@media (max-width: 1000px) {
-		font-size: 11px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 10px;
-	}
-}
-
-.sidebar-settings-button {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	padding: 12px 20px;
-	color: var(--text-secondary, #b3b3b3);
-	background: transparent;
-	border: none;
-	border-top: 1px solid var(--border, #2a2a2a);
-	cursor: pointer;
-	transition: all 0.2s;
-	text-align: left;
-	width: 100%;
-
-	@media (max-width: 1000px) {
-		padding: 10px 16px;
-		gap: 10px;
-	}
-
-	@media (max-width: 800px) {
-		padding: 8px 12px;
-		gap: 8px;
-	}
-
-	@media (max-width: 600px) {
-		padding: 10px;
-		justify-content: center;
-		gap: 0;
-	}
-
-	&:hover {
-		background: var(--hover, #2a2a2a);
-		color: var(--text, #fff);
-	}
-}
-
-.sidebar-settings-text {
-	font-size: 14px;
-	font-weight: 500;
-
-	@media (max-width: 1000px) {
-		font-size: 13px;
-	}
-
-	@media (max-width: 800px) {
-		font-size: 12px;
-	}
-
-	@media (max-width: 600px) {
-		display: none;
-	}
-}
-
-@media (max-width: 600px) {
-	.sidebar-settings-button {
-		:deep(svg) {
-			width: 24px;
-			height: 24px;
+		.downloads-menu {
+			position: fixed;
+			top: auto;
+			bottom: auto;
+			right: auto;
+			left: auto;
+			width: 320px;
+			transform-origin: top left;
+			z-index: 1001;
 		}
 	}
 }
 </style>
-
