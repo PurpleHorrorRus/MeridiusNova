@@ -1,16 +1,11 @@
-import { Client } from "@xhayper/discord-rpc";
-import { ActivityType } from "discord-api-types/v10";
-import { storeToRefs } from "pinia";
-
 import { usePlayerStore } from "./player";
 import { usePlaylistStore } from "./playlist";
 import { useSettingsStore } from "./settings";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
-import { isExternalServer } from "~/utils/api";
 
 export type TDiscordActivity = {
-	type: ActivityType;
+	type: number;
 	details?: string;
 	state?: string;
 	largeImageKey?: string;
@@ -20,7 +15,7 @@ export type TDiscordActivity = {
 	endTimestamp?: number;
 };
 
-let client: Client | null = null;
+let client: any = null;
 
 export const useDiscordStore = defineStore("discord", {
 	state: () => ({
@@ -31,12 +26,17 @@ export const useDiscordStore = defineStore("discord", {
 
 	actions: {
 		async connect() {
-			if (client) {
-				return true;
+			if (!import.meta.client) {
+				return false;
 			}
 
-			if (!import.meta.client || isExternalServer()) {
+			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+			if (!isTauri) {
 				return false;
+			}
+
+			if (client) {
+				return true;
 			}
 
 			const settingsStore = useSettingsStore();
@@ -45,12 +45,22 @@ export const useDiscordStore = defineStore("discord", {
 				return false;
 			}
 
-			const config = useRuntimeConfig();
+			console.log("[Discord RPC]: Connecting...");
+
+			const { Client } = await import("@xhayper/discord-rpc");
+
+			const clientId = process.env.DISCORD_CLIENT_ID || "";
+			const clientSecret = process.env.DISCORD_CLIENT_SECRET || "";
+
+			if (!clientId || !clientSecret) {
+				console.error("[Discord RPC]: Client ID or Secret not configured");
+				return false;
+			}
 			
 			client = new Client({
-				clientId: config.public.discordClientId as string,
-				clientSecret: config.discordClientSecret as string,
-				transport: { type: "websocket" }
+				clientId,
+				clientSecret,
+				transport: { type: "ipc" }
 			});
 
 			const connected = await client.connect().catch((error) => {
@@ -61,6 +71,7 @@ export const useDiscordStore = defineStore("discord", {
 
 			if (connected) {
 				this.connected = true;
+				console.log("[Discord RPC]: Ready");
 			}
 
 			return connected;
@@ -68,6 +79,11 @@ export const useDiscordStore = defineStore("discord", {
 
 		async setActivity(song?: TAudio) {
 			if (!import.meta.client) {
+				return false;
+			}
+
+			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+			if (!isTauri) {
 				return false;
 			}
 
@@ -100,12 +116,16 @@ export const useDiscordStore = defineStore("discord", {
 				? currentSong.album.thumb.photo_600
 				: undefined;
 
+			const { ActivityType } = await import("discord-api-types/v10");
+
 			const activity: TDiscordActivity = {
 				type: ActivityType.Listening,
 				details: currentSong.performer || "Meridius",
 				state: currentSong.title,
 				largeImageKey: albumThumb || (currentSong.coverUrl_p && !/\.svg/.test(currentSong.coverUrl_p) ? currentSong.coverUrl_p : "") || "meridiushq"
 			};
+
+			console.log("[Discord RPC]: Update activity", currentSong.full_id);
 
 			if (playlist && playlist.playlist_id && playlist.playlist_id !== -1) {
 				activity.smallImageText = playlist.title;
@@ -134,12 +154,8 @@ export const useDiscordStore = defineStore("discord", {
 				return false;
 			}
 
-			const config = useRuntimeConfig();
-			const isExternalServer = process.env.EXTERNAL_SERVER === "true"
-				|| process.env.EXTERNAL_SERVER === "1"
-				|| config.public.externalServer;
-
-			if (isExternalServer) {
+			const isTauri = typeof window !== "undefined" && "__TAURI__" in window;
+			if (!isTauri) {
 				return false;
 			}
 
@@ -148,6 +164,7 @@ export const useDiscordStore = defineStore("discord", {
 			}
 
 			await this.throttle();
+			console.log("[Discord RPC]: Clear activity");
 
 			return client.user?.clearActivity().catch((error) => {
 				console.error("[Discord RPC]: Failed to clear activity", error);
@@ -163,6 +180,8 @@ export const useDiscordStore = defineStore("discord", {
 			const timeLeft = this.timestamp !== 0 && now - this.timestamp < delay
 				? delay - (now - this.timestamp)
 				: defaultDelay;
+
+			console.log("[Discord RPC]: Throttle =", timeLeft, "ms");
 
 			if (this.timeout) {
 				clearTimeout(this.timeout);
@@ -182,7 +201,7 @@ export const useDiscordStore = defineStore("discord", {
 				this.timeout = null;
 			}
 
-			if (client) {
+			if (import.meta.client && client) {
 				client.destroy();
 				client = null;
 			}

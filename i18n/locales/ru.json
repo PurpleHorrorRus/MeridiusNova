@@ -355,6 +355,15 @@
 			"cancel": "Отмена",
 			"confirm": "Подтвердить"
 		},
+		"update": {
+			"title": "Доступно обновление",
+			"newVersion": "Новая версия",
+			"currentVersion": "Текущая версия",
+			"description": "Описание изменений",
+			"install": "Установить обновление",
+			"installing": "Установка...",
+			"cancel": "Отмена"
+		},
 		"close": "Закрыть"
 	},
 	"downloads": {

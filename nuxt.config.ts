@@ -158,6 +158,8 @@ export default defineNuxtConfig({
 		discordClientSecret: process.env.DISCORD_CLIENT_SECRET || "",
 
 		public: {
+			repository: process.env.REPOSITORY || "",
+			
 			externalServer: process.env.EXTERNAL_SERVER === "true"
 				|| process.env.EXTERNAL_SERVER === "1",
 

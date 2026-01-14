@@ -11,7 +11,7 @@ export interface ModalCustomProps {
 	title?: string;
 }
 
-type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | "songActions" | null;
+type ModalType = "confirm" | "settings" | "custom" | "editTrack" | "lyrics" | "shareAudio" | "songActions" | "update" | null;
 
 interface ModalState {
 	isOpen: boolean;
@@ -116,6 +116,10 @@ export const useModalStore = defineStore("modal", {
 				component,
 				props: props || {}
 			}, callbacks);
+		},
+
+		openUpdate() {
+			this.open("update", {});
 		}
 	}
 });

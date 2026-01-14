@@ -132,6 +132,9 @@
 				{ "path": "$HOME/.meridius" },
 				{ "path": "$HOME/.meridius/**" }
 			]
-		}
+		},
+		"updater:default",
+		"updater:allow-check",
+		"updater:allow-download-and-install"
 	]
 }
