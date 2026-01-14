@@ -320,6 +320,15 @@
 			"cancel": "Cancel",
 			"confirm": "Confirm"
 		},
+		"update": {
+			"title": "Update Available",
+			"newVersion": "New Version",
+			"currentVersion": "Current Version",
+			"description": "What's New",
+			"install": "Install Update",
+			"installing": "Installing...",
+			"cancel": "Cancel"
+		},
 		"close": "Close"
 	},
 	"downloads": {

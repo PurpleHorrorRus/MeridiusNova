@@ -139,17 +139,11 @@ export const useUpdater = () => {
 			return false;
 		}
 
-		const updaterModule = await import("@tauri-apps/plugin-updater").catch((error) => {
+		const { check } = await import("@tauri-apps/plugin-updater").catch((error) => {
 			updateError.value = "Failed to load updater module";
 			console.error("Failed to import updater module:", error);
-			return null;
+			return { check: null };
 		});
-
-		if (!updaterModule) {
-			return false;
-		}
-
-		const check = updaterModule.check || (updaterModule as any).default?.check;
 
 		if (!check) {
 			updateError.value = "Updater check function not available";

@@ -70,13 +70,15 @@ export const useVolumeSlider = () => {
 			await setVolume(moveVolume);
 		};
 
-		const handleMouseUp = () => {
+		const handleMouseUp = async () => {
 			if (volumeDragHandlers.value) {
 				document.removeEventListener("mousemove", volumeDragHandlers.value.move);
 				document.removeEventListener("mouseup", volumeDragHandlers.value.up);
 			}
 			isDraggingVolume.value = false;
 			volumeDragHandlers.value = null;
+
+			await settingsStore.updateSection("player", { volume: playerStore.volume }, true);
 		};
 
 		document.addEventListener("mousemove", handleMouseMove);

@@ -852,7 +852,7 @@ export const usePlayerStore = defineStore("player", {
 				await this.setVolume(0);
 			}
 
-			await useSettingsStore().updateSection("player", { mute: this.muted });
+			await useSettingsStore().updateSection("player", { mute: this.muted }, true);
 		},
 
 		async setPlaybackRate(rate: number) {

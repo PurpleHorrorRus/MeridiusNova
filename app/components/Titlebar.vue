@@ -35,7 +35,7 @@
 		<div id="titlebar-right">
 			<Downloads />
 
-			<div v-if="updateAvailable" class="titlebar-update-notification" @click="modalStore.openSettings">
+			<div v-if="updateAvailable" class="titlebar-update-notification" @click="modalStore.openUpdate">
 				<Icon name="mdi:download" size="16" />
 				<span class="update-text" v-text="getString('titlebar.update.available')" />
 			</div>

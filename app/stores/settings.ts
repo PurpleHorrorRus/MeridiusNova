@@ -14,31 +14,27 @@ type TTauriLocalSettings = {
 	};
 };
 
-const loadTauriLocalSettings = async (): Promise<Partial<TTauriLocalSettings> | null> => {
-	if (!isTauri() || !import.meta.client) {
+const loadTauriLocalSettings = (): Partial<TTauriLocalSettings> | null => {
+	if (!isTauri() || !import.meta.client || typeof window === "undefined") {
 		return null;
 	}
 
-	const { Store } = await import("@tauri-apps/plugin-store");
-	const store = await Store.load(".tauri-local.dat");
-	const saved = await store.get<Partial<TTauriLocalSettings>>("tauriLocal");
+	const saved = localStorage.getItem("tauriLocal");
+	if (!saved) {
+		return null;
+	}
 
-	await store.close().catch(() => {});
-
-	return saved || null;
+	return JSON.parse(saved);
 };
 
-const saveTauriLocalSettings = async (localSettings: Partial<TTauriLocalSettings>): Promise<void> => {
-	if (!isTauri() || !import.meta.client) {
+const saveTauriLocalSettings = (localSettings: Partial<TTauriLocalSettings>): void => {
+	if (!isTauri() || !import.meta.client || typeof window === "undefined") {
 		return;
 	}
 
-	const { Store } = await import("@tauri-apps/plugin-store");
-	const store = await Store.load(".tauri-local.dat");
-	await store.set("tauriLocal", localSettings);
-	await store.save();
-
-	await store.close().catch(() => {});
+	setTimeout(() => {
+		localStorage.setItem("tauriLocal", JSON.stringify(localSettings));
+	}, 0);
 };
 
 const defaultSettings: TSettings = {
@@ -227,6 +223,8 @@ const mergeSettings = (settings: Partial<TSettings>, defaults: TSettings): TSett
 	return merged;
 };
 
+let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useSettingsStore = defineStore("settings", {
 	state: (): { settings: TSettings; loaded: boolean } => ({
 		settings: { ...defaultSettings },
@@ -243,7 +241,7 @@ export const useSettingsStore = defineStore("settings", {
 				let localSettings: Partial<TTauriLocalSettings> | null = null;
 
 				if (isTauri()) {
-					localSettings = await loadTauriLocalSettings();
+					localSettings = loadTauriLocalSettings();
 				}
 
 				const saved = await loadSettingsFromServer();
@@ -284,7 +282,7 @@ export const useSettingsStore = defineStore("settings", {
 			await saveSettingsToServer(this.settings);
 
 			if (isTauri()) {
-				await saveTauriLocalSettings({
+				saveTauriLocalSettings({
 					general: {
 						server: this.settings.general.server
 					},
@@ -300,14 +298,26 @@ export const useSettingsStore = defineStore("settings", {
 			await this.save();
 		},
 
-		async updateSection<T extends keyof TSettings>(section: T, updates: Partial<TSettings[T]>) {
+		async updateSection<T extends keyof TSettings>(section: T, updates: Partial<TSettings[T]>, immediate = false) {
 			const currentValue = this.settings[section];
 			if (typeof currentValue === "object" && currentValue !== null && !Array.isArray(currentValue)) {
 				this.settings[section] = { ...currentValue, ...updates } as TSettings[T];
 			} else {
 				this.settings[section] = updates as TSettings[T];
 			}
+
+			if (immediate) {
 			await this.save();
+			} else {
+				if (saveDebounceTimer) {
+					clearTimeout(saveDebounceTimer);
+				}
+
+				saveDebounceTimer = setTimeout(() => {
+					this.save();
+					saveDebounceTimer = null;
+				}, 500);
+			}
 		},
 
 		reset() {

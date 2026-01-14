@@ -10,6 +10,7 @@
 			<div class="modal-container" :class="{ 'modal-container-lyrics': modalStore.type === 'lyrics' }">
 				<ModalConfirm v-if="modalStore.type === 'confirm'" />
 				<ModalSettings v-else-if="modalStore.type === 'settings'" />
+				<ModalUpdate v-else-if="modalStore.type === 'update'" />
 				<ModalEditTrack
 					v-else-if="modalStore.type === 'editTrack'"
 					:audio="(modalStore.props as any).audio"
@@ -44,6 +45,7 @@ import ModalLyrics from "~/components/Modals/ModalLyrics.vue";
 import ModalSettings from "~/components/ModalSettings.vue";
 import ModalShareAudio from "~/components/Modals/ModalShareAudio.vue";
 import ModalSongActions from "~/components/Modals/ModalSongActions.vue";
+import ModalUpdate from "~/components/Modals/ModalUpdate.vue";
 
 import { useModalStore } from "~/stores/modal";
 
@@ -54,7 +56,7 @@ const modalStore = useModalStore();
 const handleOverlayClick = () => {
 	if (modalStore.type === "settings") {
 		modalStore.close();
-	} else if (modalStore.type === "confirm") {
+	} else if (modalStore.type === "confirm" || modalStore.type === "update") {
 		modalStore.cancel();
 	} else {
 		modalStore.close();
@@ -65,7 +67,7 @@ const handleEscape = (event: KeyboardEvent) => {
 	if (event.key === "Escape" && modalStore.isOpen) {
 		if (modalStore.type === "settings") {
 			modalStore.close();
-		} else if (modalStore.type === "confirm") {
+		} else if (modalStore.type === "confirm" || modalStore.type === "update") {
 			modalStore.cancel();
 		} else {
 			modalStore.close();
