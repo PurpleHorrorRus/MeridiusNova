@@ -776,16 +776,14 @@ export const usePlayerStore = defineStore("player", {
 			}
 		},
 
-		async prev() {
+		async prev(options?: { forceSwitch?: boolean }) {
 			const playlistStore = usePlaylistStore();
 
-			if (this.currentTime > 3) { // Seek to 0 if > 3s
+			if (!options?.forceSwitch && this.currentTime > 3) {
 				this.seek(0);
 				return;
 			}
 
-			// Всегда пытаемся переключиться, если есть треки в плейлисте
-			// Метод previous() сам обработает repeat и shuffle
 			if (playlistStore.playingSongs.length > 0) {
 				await playlistStore.previous();
 				const prevSong = playlistStore.currentSong;

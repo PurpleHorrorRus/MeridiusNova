@@ -13,7 +13,7 @@
 			</div>
 			
 			<div class="fullscreen-controls-center">
-				<button class="btn-control-fullscreen" @click.stop="playerStore.prev()">
+				<button class="btn-control-fullscreen" @click.stop="playerStore.prev({ forceSwitch: true })">
 					<Icon name="mdi:skip-previous" size="32" />
 				</button>
 				

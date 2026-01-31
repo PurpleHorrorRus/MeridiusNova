@@ -7,6 +7,10 @@
 			@touchmove="handleFullscreenTouchMove"
 			@touchend="handleFullscreenTouchEnd"
 		>
+			<div class="fullscreen-player-bg" aria-hidden="true">
+				<div class="fullscreen-player-bg-gradient" :style="{ background: bgGradient }"></div>
+				<div class="fullscreen-player-bg-overlay"></div>
+			</div>
 			<div class="fullscreen-player-content" :class="{ 'lyrics-open': showLyrics, 'queue-open': showQueue }" @click="handleContentClick">
 				<button class="fullscreen-close-btn" @click.stop="toggleFullscreen">
 					<Icon name="mdi:close" size="24" />
@@ -91,6 +95,7 @@ import { usePlaylistStore } from "~/stores/playlist";
 
 import { useIsMobile } from "~/composables/useIsMobile";
 import { useLyrics } from "~/composables/useLyrics";
+import { useCoverGradient } from "~/composables/useCoverGradient";
 
 import type { TAudio } from "~~/server/api/vk/audio/types";
 
@@ -135,6 +140,13 @@ const nextSong = computed(() => {
 	return null;
 });
 
+const coverUrl = computed(() => {
+	const song = currentSong.value;
+	return song ? (song.cover || song.coverUrl_p || "/no-cover.webp") : "";
+});
+
+const { gradient: bgGradient } = useCoverGradient(coverUrl);
+
 // Touch events for fullscreen mode
 let touchStartY = 0;
 let touchStartX = 0;
@@ -177,7 +189,7 @@ const toggleQueue = () => {
 };
 
 const playPrevious = async () => {
-	await playerStore.prev();
+	await playerStore.prev({ forceSwitch: true });
 };
 
 const playNext = async () => {
@@ -370,10 +382,36 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 	right: 0;
 	bottom: 0;
 	z-index: 10000;
-	background: linear-gradient(135deg, rgb(18, 18, 18) 0%, rgb(30, 30, 30) 100%);
+	background: linear-gradient(160deg, rgb(14, 14, 18) 0%, rgb(22, 20, 28) 50%, rgb(18, 16, 24) 100%);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.fullscreen-player-bg {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+}
+
+.fullscreen-player-bg-gradient {
+	position: absolute;
+	inset: 0;
+	background-size: cover;
+	transition: background 0.6s ease;
+}
+
+.fullscreen-player-bg-overlay {
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(
+		ellipse at 50% 50%,
+		rgba(12, 12, 18, 0.55) 0%,
+		rgba(10, 10, 16, 0.8) 55%,
+		rgba(6, 6, 12, 0.92) 100%
+	);
+	pointer-events: none;
 }
 
 .fullscreen-fade-enter-active {
@@ -409,6 +447,7 @@ const handleFullscreenTouchEnd = (event: TouchEvent) => {
 	flex-direction: column;
 	padding: 40px;
 	position: relative;
+	z-index: 1;
 	transition: none;
 
 	@media (max-width: 768px) {
