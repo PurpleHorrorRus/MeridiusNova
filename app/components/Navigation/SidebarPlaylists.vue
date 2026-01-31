@@ -165,12 +165,12 @@ const handlePlaylistPlay = async (playlist: any) => {
 		&::before {
 			content: "";
 			position: absolute;
-			left: -21px;
-			top: 0;
-			bottom: 0;
-			width: 2px;
+			left: 8px;
+			top: 6px;
+			bottom: 6px;
+			width: 3px;
 			background: var(--secondary, #e9003f);
-			border-radius: 2px 0 0 2px;
+			border-radius: 0 2px 2px 0;
 		}
 
 		@media (max-width: 600px) {

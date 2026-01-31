@@ -63,7 +63,7 @@ export const useDiscordStore = defineStore("discord", {
 				transport: { type: "ipc" }
 			});
 
-			const connected = await client.connect().catch((error) => {
+			const connected = await client.connect().catch((error: unknown) => {
 				console.error("[Discord RPC]: Failed to connect", error);
 				client = null;
 				return false;
@@ -143,7 +143,7 @@ export const useDiscordStore = defineStore("discord", {
 				activity.state = details;
 			}
 
-			return client?.user?.setActivity(activity).catch((error) => {
+			return client?.user?.setActivity(activity).catch((error: unknown) => {
 				console.error("[Discord RPC]: Failed to update activity", error);
 				return false;
 			});
@@ -166,7 +166,7 @@ export const useDiscordStore = defineStore("discord", {
 			await this.throttle();
 			console.log("[Discord RPC]: Clear activity");
 
-			return client.user?.clearActivity().catch((error) => {
+			return client.user?.clearActivity().catch((error: unknown) => {
 				console.error("[Discord RPC]: Failed to clear activity", error);
 				return false;
 			});

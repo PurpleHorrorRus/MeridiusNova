@@ -98,10 +98,13 @@ services:
 secrets:
   NUXT_SESSION_PASSWORD:
     environment: NUXT_SESSION_PASSWORD
+
   NUXT_COOKIE_KEY:
     environment: NUXT_COOKIE_KEY
+
   DISCORD_CLIENT_ID:
     environment: DISCORD_CLIENT_ID
+
   DISCORD_CLIENT_SECRET:
     environment: DISCORD_CLIENT_SECRET
 

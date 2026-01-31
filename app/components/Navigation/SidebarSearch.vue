@@ -42,15 +42,22 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 <style scoped lang="scss">
 .sidebar-search {
 	position: relative;
-	padding: 10px 20px;
+	flex-shrink: 0;
+	height: 52px;
+	display: flex;
+	align-items: center;
+	padding: 0 20px;
 	border-bottom: 1px solid var(--border, #2a2a2a);
+	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
-		padding: 8px 16px;
+		height: 48px;
+		padding: 0 16px;
 	}
 
 	@media (max-width: 800px) {
-		padding: 6px 12px;
+		height: 44px;
+		padding: 0 12px;
 	}
 
 	@media (max-width: 600px) {
@@ -66,23 +73,33 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	position: relative;
 	display: flex;
 	align-items: center;
+	height: 36px;
+	min-height: 36px;
 	background: var(--bg-tertiary, #2a2a2a);
+	border: 1px solid transparent;
 	border-radius: 6px;
-	padding: 8px 12px;
+	padding: 0 12px;
 	gap: 8px;
+	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
-		padding: 6px 10px;
+		height: 32px;
+		min-height: 32px;
+		padding: 0 10px;
 		gap: 6px;
 	}
 
 	@media (max-width: 800px) {
-		padding: 5px 8px;
+		height: 30px;
+		min-height: 30px;
+		padding: 0 8px;
 		gap: 5px;
 	}
 
 	@media (max-width: 600px) {
-		padding: 8px;
+		height: 48px;
+		min-height: 48px;
+		padding: 0 8px;
 		width: 48px;
 		justify-content: center;
 	}
@@ -96,14 +113,18 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 .search-input {
 	flex: 1;
 	min-width: 0;
+	height: 100%;
+	padding: 0;
 	background: transparent;
 	border: none;
 	outline: none;
 	color: var(--text, #fff);
 	font-size: 14px;
+	line-height: 1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
 		font-size: 13px;
@@ -119,6 +140,10 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 
 	&::placeholder {
 		color: var(--text-secondary, #b3b3b3);
+	}
+
+	&:focus {
+		outline: none;
 	}
 }
 

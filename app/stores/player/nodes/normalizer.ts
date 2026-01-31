@@ -81,7 +81,7 @@ export class Normalizer {
 
 			const segmentData: SegmentData = {
 				frag: data.frag,
-				data: data.data,
+				data: this.toArrayBuffer(data.data),
 				normalized: false
 			};
 
@@ -226,6 +226,9 @@ export class Normalizer {
 	}
 
 	private async calculateRms(data: ArrayBuffer): Promise<number> {
+		if (data.byteLength === 0) {
+			return 0;
+		}
 		// Используем копию данных, чтобы не изменять оригинал
 		const buffer = data.slice(0);
 		let decodedData: AudioBuffer | null = null;
@@ -316,6 +319,17 @@ export class Normalizer {
 
 	private get playerTime(): number {
 		return this.audio.currentTime;
+	}
+
+	/** HLS.js BUFFER_APPENDING передаёт data как Uint8Array; decodeAudioData требует ArrayBuffer. */
+	private toArrayBuffer(data: ArrayBuffer | ArrayBufferView): ArrayBuffer {
+		if (data instanceof ArrayBuffer) {
+			return data;
+		}
+		const view = data as Uint8Array;
+		const start = view.byteOffset;
+		const end = start + view.byteLength;
+		return view.buffer.slice(start, end);
 	}
 }
 

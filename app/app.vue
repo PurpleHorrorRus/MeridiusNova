@@ -1,5 +1,9 @@
 <template>
-	<NuxtLayout>
+	<div v-if="!authChecked" class="app-loading">
+		<LoadingSpinner />
+	</div>
+
+	<NuxtLayout v-else>
 		<NuxtPage :transition="{
 			name: 'page',
 			mode: 'out-in'
@@ -13,7 +17,7 @@ import { isTauri } from "~/utils/tauri";
 
 const authInit = useAuthInit();
 const route = useRoute();
-
+const authChecked = ref(false);
 
 const getRedirectPath = (): string | null => {
 	if (typeof window === "undefined") {
@@ -58,6 +62,8 @@ onMounted(async () => {
 
 		await navigateTo("/auth");
 	}
+
+	authChecked.value = true;
 });
 
 onUnmounted(async () => {

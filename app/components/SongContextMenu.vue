@@ -1,15 +1,16 @@
 <template>
-	<div
-		v-if="show"
-		class="context-menu-overlay"
-		@click="$emit('close')"
-		@contextmenu.prevent
-	>
+	<Teleport to="body">
 		<div
-			class="context-menu"
-			:style="menuStyle"
-			@click.stop
+			v-if="show"
+			class="context-menu-overlay"
+			@click="$emit('close')"
+			@contextmenu.prevent
 		>
+			<div
+				class="context-menu"
+				:style="menuStyle"
+				@click.stop
+			>
 			<button
 				v-if="songProps.canAddPlaylist"
 				class="context-menu-item context-menu-item-with-submenu"
@@ -122,11 +123,13 @@
 				</div>
 			</div>
 		</div>
-	</div>
+		</div>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
+import { storeToRefs } from "pinia";
 
 import { useVkStore } from "~/stores/vk";
 import { usePlaylistStore } from "~/stores/playlist";
@@ -157,6 +160,8 @@ const { current, playing } = storeToRefs(playlistStore);
 const showPlaylistSubmenu = ref(false);
 const menuStyle = ref<{ left?: string; top?: string }>({});
 const submenuStyle = ref<{ left?: string; top?: string }>({});
+const menuLeft = ref(0);
+const menuTop = ref(0);
 const playlists = ref<TPlaylist[]>([]);
 const playlistMenuTimeout = ref<NodeJS.Timeout | null>(null);
 
@@ -322,57 +327,34 @@ const handleRemoveFromPlaylist = () => {
 	emit("close");
 };
 
+const MENU_WIDTH = 240;
+const MENU_HEIGHT = 300;
+const SUBMENU_WIDTH = 200;
+const SUBMENU_HEIGHT = 400;
+const PADDING = 8;
+
 const updatePosition = () => {
 	if (!props.position) {
 		return;
 	}
 
-	const menuWidth = 240;
-	const menuHeight = 300;
-	const padding = 8;
+	const { x, y } = props.position;
+	const maxLeft = window.innerWidth - MENU_WIDTH - PADDING;
+	const maxTop = window.innerHeight - MENU_HEIGHT - PADDING;
 
-	let left = props.position.x;
-	let top = props.position.y;
+	let left = x;
+	if (left > maxLeft) left = maxLeft;
+	if (left < PADDING) left = PADDING;
 
-	// Проверяем, помещается ли меню справа
-	if (left + menuWidth > window.innerWidth) {
-		left = window.innerWidth - menuWidth - padding;
+	let top = y;
+	if (top + MENU_HEIGHT > window.innerHeight - PADDING) {
+		top = y - MENU_HEIGHT >= PADDING ? y - MENU_HEIGHT : maxTop;
 	}
+	if (top < PADDING) top = PADDING;
+	if (top > maxTop) top = maxTop;
 
-	// Проверяем, помещается ли меню слева
-	if (left < padding) {
-		left = padding;
-	}
-
-	// Всегда пытаемся открыть снизу от точки клика
-	// Если меню выходит за нижнюю границу, ограничиваем позицию
-	if (top + menuHeight > window.innerHeight - padding) {
-		const maxTop = window.innerHeight - menuHeight - padding;
-		
-		// Если точка клика ниже maxTop, используем точку клика (меню будет частично видно)
-		// Если точка клика выше maxTop, ограничиваем до maxTop
-		// Только если maxTop отрицательный или слишком маленький, открываем сверху
-		if (maxTop < padding) {
-			// Меню полностью не помещается снизу, открываем сверху
-			top = props.position.y - menuHeight;
-		} else if (props.position.y <= maxTop) {
-			// Точка клика ниже или равна maxTop, используем точку клика (меню будет частично видно снизу)
-			// top уже равен props.position.y, ничего не меняем
-		} else {
-			// Точка клика выше maxTop, ограничиваем до maxTop
-			top = maxTop;
-		}
-	}
-	
-	// Финальная проверка границ
-	if (top < padding) {
-		top = padding;
-	}
-	
-	if (top + menuHeight > window.innerHeight - padding) {
-		top = window.innerHeight - menuHeight - padding;
-	}
-
+	menuLeft.value = left;
+	menuTop.value = top;
 	menuStyle.value = {
 		left: `${left}px`,
 		top: `${top}px`
@@ -380,53 +362,22 @@ const updatePosition = () => {
 };
 
 const updateSubmenuPosition = () => {
-	if (!props.position) {
-		return;
-	}
+	const maxLeft = window.innerWidth - SUBMENU_WIDTH - PADDING;
+	const maxTop = window.innerHeight - SUBMENU_HEIGHT - PADDING;
 
-	const menuWidth = 240;
-	const submenuWidth = 200;
-	const submenuHeight = 400;
-	const padding = 8;
+	let left = menuLeft.value + MENU_WIDTH;
+	if (left + SUBMENU_WIDTH > window.innerWidth - PADDING) {
+		left = menuLeft.value - SUBMENU_WIDTH;
+	}
+	if (left < PADDING) left = PADDING;
+	if (left > maxLeft) left = maxLeft;
 
-	let left = props.position.x + menuWidth;
-	let top = props.position.y;
-
-	// Проверяем, помещается ли подменю справа
-	if (left + submenuWidth > window.innerWidth) {
-		// Открываем слева от основного меню
-		left = props.position.x - submenuWidth;
+	let top = menuTop.value;
+	if (top + SUBMENU_HEIGHT > window.innerHeight - PADDING) {
+		top = menuTop.value - SUBMENU_HEIGHT >= PADDING ? menuTop.value - SUBMENU_HEIGHT : maxTop;
 	}
-
-	// Проверяем, помещается ли подменю слева
-	if (left < padding) {
-		left = padding;
-	}
-
-	// Всегда пытаемся открыть снизу от точки клика
-	// Если подменю выходит за нижнюю границу, ограничиваем только если это необходимо
-	if (top + submenuHeight > window.innerHeight - padding) {
-		const maxTop = window.innerHeight - submenuHeight - padding;
-		
-		// Если ограниченная позиция все еще ниже или на уровне точки клика,
-		// используем ограниченную позицию (подменю будет частично видно)
-		// Иначе открываем сверху от точки клика
-		if (maxTop >= props.position.y) {
-			top = maxTop;
-		} else {
-			// Подменю полностью не помещается снизу, открываем сверху
-			top = props.position.y - submenuHeight;
-		}
-	}
-	
-	// Финальная проверка границ
-	if (top < padding) {
-		top = padding;
-	}
-	
-	if (top + submenuHeight > window.innerHeight - padding) {
-		top = window.innerHeight - submenuHeight - padding;
-	}
+	if (top < PADDING) top = PADDING;
+	if (top > maxTop) top = maxTop;
 
 	submenuStyle.value = {
 		left: `${left}px`,

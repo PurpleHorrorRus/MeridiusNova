@@ -9,13 +9,6 @@
 		</div>
 
 		<div v-else class="general-content">
-			<!-- Refresh button -->
-			<div class="refresh-header">
-				<button @click="handleRefresh" :disabled="isRefreshing" class="refresh-button" :class="{ refreshing: isRefreshing }">
-					<Icon name="mdi:refresh" :size="18" />
-				</button>
-			</div>
-
 			<!-- Recommendations -->
 			<div v-if="recommendations && recommendations.playlists && recommendations.playlists.length > 0" class="section">
 				<h2 class="section-title">{{ recommendations.title || getString("general.recommendations") }}</h2>
@@ -247,26 +240,6 @@ const pending = computed(() => {
 const error = computed(() => {
 	return generalError.value || exploreError.value;
 });
-
-const isRefreshing = ref(false);
-
-const handleRefresh = async () => {
-	if (isRefreshing.value) return;
-
-	isRefreshing.value = true;
-
-	// Очищаем кэш
-	await clearNuxtData("general");
-	await clearNuxtData((key) => key.startsWith("explore-"));
-
-	// Перезагружаем данные
-	await Promise.all([
-		loadGeneral(),
-		loadExplore({ count: 6 })
-	]);
-
-	isRefreshing.value = false;
-};
 
 // Find recommendations (type === "recommendations" with popup param)
 const recommendations = computed(() => {
@@ -582,50 +555,6 @@ onMounted(() => {
 	padding: 60px 40px;
 	color: var(--text-secondary, #b3b3b3);
 	font-size: 16px;
-}
-
-.refresh-header {
-	display: flex;
-	justify-content: flex-end;
-	margin-bottom: -32px;
-	padding-right: 8px;
-}
-
-.refresh-button {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	background: transparent;
-	border-radius: 50%;
-	color: var(--text-secondary, #b3b3b3);
-	cursor: pointer;
-	transition: all 0.2s ease;
-
-	&:hover:not(:disabled) {
-		background: var(--hover, rgba(255, 255, 255, 0.1));
-		color: var(--text, #fff);
-	}
-
-	&:disabled {
-		cursor: not-allowed;
-		opacity: 0.5;
-	}
-
-	&.refreshing {
-		animation: spin 1s linear infinite;
-	}
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
 }
 </style>
 
