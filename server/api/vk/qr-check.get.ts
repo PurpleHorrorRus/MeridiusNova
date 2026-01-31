@@ -17,15 +17,15 @@ export default defineEventHandler(async (event) => {
 
 	if (!session || !session.qr || !session.init) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "QR session not found"
+			status: 400,
+			statusText: "QR session not found"
 		});
 	}
 
 	if (session.qr.expires_in < Math.floor(Date.now() / 1000)) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "QR code expired"
+			status: 400,
+			statusText: "QR code expired"
 		});
 	}
 
@@ -44,8 +44,8 @@ export default defineEventHandler(async (event) => {
 		const errorInfo = (qrCheckResponse as any).error_info || (qrCheckResponse as any).error_msg || "Произошла ошибка при авторизации";
 
 		throw createError({
-			statusCode: 400,
-			statusMessage: errorInfo,
+			status: 400,
+			statusText: errorInfo,
 			data: {
 				error_code: errorCode,
 				error_info: errorInfo,
@@ -78,8 +78,8 @@ export default defineEventHandler(async (event) => {
 			const errorInfo = (connectCodeAuthResponse as any).error_info || (connectCodeAuthResponse as any).error_msg || "Произошла ошибка при авторизации";
 
 			throw createError({
-				statusCode: 400,
-				statusMessage: errorInfo,
+				status: 400,
+				statusText: errorInfo,
 
 				data: {
 					error_code: errorCode,
@@ -118,8 +118,8 @@ export default defineEventHandler(async (event) => {
 			const errorInfo = error?.error_info || error?.error_msg || error?.message || "Произошла ошибка при получении токена";
 
 			throw createError({
-				statusCode: 400,
-				statusMessage: errorInfo,
+				status: 400,
+				statusText: errorInfo,
 				data: {
 					error_code: errorCode,
 					error_info: errorInfo,
@@ -130,8 +130,8 @@ export default defineEventHandler(async (event) => {
 
 		if (!webToken) {
 			throw createError({
-				statusCode: 400,
-				statusMessage: "Не удалось получить токен авторизации",
+				status: 400,
+				statusText: "Не удалось получить токен авторизации",
 				data: {
 					error_code: "token_error",
 					error_info: "Не удалось получить токен авторизации",

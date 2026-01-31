@@ -6,14 +6,14 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.artists || !Array.isArray(body.artists)) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Artists array is required"
 		});
 	}
 
 	if (!body.hash) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Hash is required"
 		});
 	}

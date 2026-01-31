@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!downloadId) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "downloadId is required"
 		});
 	}
@@ -22,14 +22,14 @@ export default defineEventHandler(async (event) => {
 
 	if (!download) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "Download not found"
 		});
 	}
 
 	if (download.status !== "completed") {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Download is not completed"
 		});
 	}
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!filePath || !fs.existsSync(filePath)) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "File or folder not found"
 		});
 	}

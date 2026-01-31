@@ -87,8 +87,17 @@ const handlePlayPause = async () => {
 	cursor: pointer;
 	display: flex;
 	flex-direction: column;
-	width: 100%;
+	width: 300px;
+	flex-shrink: 0;
 	padding: 0;
+
+	@media (max-width: 768px) {
+		width: 260px;
+	}
+
+	@media (max-width: 480px) {
+		width: 200px;
+	}
 
 	&:hover {
 		.album-card-overlay {
@@ -202,30 +211,35 @@ const handlePlayPause = async () => {
 		flex-direction: column;
 		gap: 4px;
 		padding: 10px 0 0 0;
+		min-height: 56px;
 	}
 
 	&-title {
 		font-weight: 600;
 		font-size: 13px;
-		white-space: nowrap;
+		line-height: 1.3;
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	&-text {
 		font-size: 13px;
+		line-height: 1.3;
 		color: var(--text-secondary, #666);
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	&-subtext {
 		font-size: 13px;
+		line-height: 1.3;
 		color: var(--text-tertiary, #999);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 }
 </style>

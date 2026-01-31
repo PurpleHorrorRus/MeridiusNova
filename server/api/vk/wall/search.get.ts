@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!ownerId) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "owner_id is required"
 		});
 	}

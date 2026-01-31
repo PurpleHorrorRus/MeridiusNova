@@ -12,8 +12,8 @@ export default defineEventHandler(async (event) => {
 		const errorData = error && typeof error === "object" && "data" in error ? error.data : null;
 		
 		throw createError({
-			statusCode: error && typeof error === "object" && "statusCode" in error 
-				? Number(error.statusCode) 
+			status: error && typeof error === "object" && ("statusCode" in error || "status" in error)
+				? Number("status" in error ? (error as { status: number }).status : (error as { statusCode: number }).statusCode)
 				: 500,
 			message: `Failed to load playlists: ${error.message || String(error)}`,
 			data: errorData

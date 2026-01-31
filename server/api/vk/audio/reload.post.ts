@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.audio_ids) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "audio_ids is required"
 		});
 	}

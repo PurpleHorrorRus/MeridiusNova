@@ -13,8 +13,8 @@ export default defineEventHandler(async (event) => {
 
 	if (isNaN(owner_id) || isNaN(playlist_id)) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "Invalid owner_id or playlist_id"
+			status: 400,
+			statusText: "Invalid owner_id or playlist_id"
 		});
 	}
 

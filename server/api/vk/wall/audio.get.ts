@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!ownerId || !postId) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "owner_id and post_id are required"
 		});
 	}

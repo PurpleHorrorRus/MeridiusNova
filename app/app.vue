@@ -1,10 +1,9 @@
 <template>
-	<div v-if="!authChecked" class="app-loading">
-		<LoadingSpinner />
-	</div>
-
-	<NuxtLayout v-else>
-		<NuxtPage :transition="{
+	<NuxtLayout>
+		<div v-if="!authChecked" class="app-loading">
+			<LoadingSpinner />
+		</div>
+		<NuxtPage v-else :transition="{
 			name: 'page',
 			mode: 'out-in'
 		}" />
@@ -170,11 +169,12 @@ body {
 }
 
 .app-loading {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 100%;
-	height: 100vh;
 	background: var(--bg-primary, #121212);
 }
 </style>

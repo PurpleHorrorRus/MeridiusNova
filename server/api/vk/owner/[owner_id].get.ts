@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!owner_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "owner_id is required"
 		});
 	}
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
 		if (!users || !Array.isArray(users) || users.length === 0) {
 			throw createError({
-				statusCode: 404,
+				status: 404,
 				message: "User not found"
 			});
 		}
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
 
 		if (!response || !response.groups || !Array.isArray(response.groups) || response.groups.length === 0) {
 			throw createError({
-				statusCode: 404,
+				status: 404,
 				message: "Group not found"
 			});
 		}

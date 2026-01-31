@@ -227,8 +227,8 @@ export default defineEventHandler(async (event) => {
 
     if (!cacheEnabled) {
         throw createError({
-            statusCode: 503,
-            statusMessage: "Cache is disabled"
+            status: 503,
+            statusText: "Cache is disabled"
         });
     }
 
@@ -237,8 +237,8 @@ export default defineEventHandler(async (event) => {
 
     if (!fullId) {
         throw createError({
-            statusCode: 400,
-            statusMessage: "full_id is required"
+            status: 400,
+            statusText: "full_id is required"
         });
     }
 
@@ -248,8 +248,8 @@ export default defineEventHandler(async (event) => {
 
     if (isNaN(ownerId) || isNaN(id)) {
         throw createError({
-            statusCode: 400,
-            statusMessage: "Invalid full_id format"
+            status: 400,
+            statusText: "Invalid full_id format"
         });
     }
 
@@ -304,8 +304,8 @@ export default defineEventHandler(async (event) => {
         if (!exposedUrl) {
             if (!originalUrl) {
                 throw createError({
-                    statusCode: 401,
-                    statusMessage: "Unauthorized - cache not available and no authentication"
+                    status: 401,
+                    statusText: "Unauthorized - cache not available and no authentication"
                 });
             }
 
@@ -320,8 +320,8 @@ export default defineEventHandler(async (event) => {
 
             if (exposeError || !exposed) {
                 throw createError({
-                    statusCode: 500,
-                    statusMessage: `Failed to expose source URL: ${exposeError?.message || "Unknown error"}`
+                    status: 500,
+                    statusText: `Failed to expose source URL: ${exposeError?.message || "Unknown error"}`
                 });
             }
 
@@ -335,15 +335,15 @@ export default defineEventHandler(async (event) => {
 
         if (m3u8Error || !m3u8Response) {
             throw createError({
-                statusCode: 500,
-                statusMessage: `Failed to fetch m3u8: ${m3u8Error?.message || "Unknown error"}`
+                status: 500,
+                statusText: `Failed to fetch m3u8: ${m3u8Error?.message || "Unknown error"}`
             });
         }
 
         if (!m3u8Response.ok) {
             throw createError({
-                statusCode: 500,
-                statusMessage: `Failed to fetch m3u8: HTTP ${m3u8Response.status}`
+                status: 500,
+                statusText: `Failed to fetch m3u8: HTTP ${m3u8Response.status}`
             });
         }
 
@@ -354,8 +354,8 @@ export default defineEventHandler(async (event) => {
 
         if (arrayBufferError || !arrayBuffer) {
             throw createError({
-                statusCode: 500,
-                statusMessage: `Failed to read m3u8 response: ${arrayBufferError?.message || "Unknown error"}`
+                status: 500,
+                statusText: `Failed to read m3u8 response: ${arrayBufferError?.message || "Unknown error"}`
             });
         }
 
@@ -369,8 +369,8 @@ export default defineEventHandler(async (event) => {
     if (!m3u8Content.trim().startsWith("#EXTM3U") && !m3u8Content.includes("#EXTM3U")) {
         await cacheManager.deleteTrackCache(fullId);
         throw createError({
-            statusCode: 400,
-            statusMessage: "Cached content is not an m3u8 playlist"
+            status: 400,
+            statusText: "Cached content is not an m3u8 playlist"
         });
     }
 
@@ -384,8 +384,8 @@ export default defineEventHandler(async (event) => {
 
     if (!host) {
         throw createError({
-            statusCode: 500,
-            statusMessage: "Unable to determine host"
+            status: 500,
+            statusText: "Unable to determine host"
         });
     }
 

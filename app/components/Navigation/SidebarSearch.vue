@@ -29,6 +29,10 @@ const props = defineProps<{
 
 const searchQuery = ref("");
 
+const clearSearch = () => {
+	searchQuery.value = "";
+};
+
 const handleSearchKeydown = (event: KeyboardEvent) => {
 	if (event.key === "Enter") {
 		const query = searchQuery.value.trim();
@@ -46,18 +50,17 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	height: 52px;
 	display: flex;
 	align-items: center;
-	padding: 0 20px;
-	border-bottom: 1px solid var(--border, #2a2a2a);
+	padding: 0 12px 0 12px;
 	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
 		height: 48px;
-		padding: 0 16px;
+		padding: 0 10px 0 16px;
 	}
 
 	@media (max-width: 800px) {
 		height: 44px;
-		padding: 0 12px;
+		padding: 0 8px 0 12px;
 	}
 
 	@media (max-width: 600px) {
@@ -73,6 +76,8 @@ const handleSearchKeydown = (event: KeyboardEvent) => {
 	position: relative;
 	display: flex;
 	align-items: center;
+	width: 100%;
+	max-width: 100%;
 	height: 36px;
 	min-height: 36px;
 	background: var(--bg-tertiary, #2a2a2a);

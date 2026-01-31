@@ -180,7 +180,7 @@ const check = async () => {
 		credentials: "include"
 	}).then(data => [null, data]).catch((err: any) => {
 		const errorData = err?.data || err?.response?._data || {};
-		const errorInfo = errorData.error_info || errorData.error_msg || err?.statusMessage || err?.message || "Произошла ошибка при авторизации";
+		const errorInfo = errorData.error_info || errorData.error_msg || err?.statusText || err?.statusMessage || err?.message || "Произошла ошибка при авторизации";
 		
 		return [errorInfo, null];
 	});

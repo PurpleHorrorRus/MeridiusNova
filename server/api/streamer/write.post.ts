@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body || !body.path || !body.song) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Path and song data are required"
 		});
 	}

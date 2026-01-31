@@ -732,7 +732,7 @@ export class AudioRequests extends BaseRequest implements IRequest {
 	public async queue(audio: TAudio): Promise<any> {
 		if (!audio) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to pass audio object"
 			});
 		}
@@ -749,7 +749,7 @@ export class AudioRequests extends BaseRequest implements IRequest {
 	public async playback(audio: TAudio): Promise<any> {
 		if (!audio) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to pass audio object"
 			});
 		}
@@ -769,7 +769,7 @@ export class AudioRequests extends BaseRequest implements IRequest {
 	public async getFromWall(params: { owner_id: number; post_id: number; raw?: boolean }): Promise<TAudio[]> {
 		if (!params.owner_id || !params.post_id) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify owner id and post id"
 			});
 		}

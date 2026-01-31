@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.audio_id || !body.audio_owner_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "audio_id and audio_owner_id are required"
 		});
 	}
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
 
 	if (response.payload[0] !== 0) {
 		throw createError({
-			statusCode: 429,
+			status: 429,
 			message: "You're trying to edit a song too often, try again later"
 		});
 	}

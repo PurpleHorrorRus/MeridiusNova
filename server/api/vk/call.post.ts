@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.method) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "method is required"
 		});
 	}

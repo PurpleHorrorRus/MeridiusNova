@@ -23,7 +23,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	public async query(params: { q: string; count?: number }): Promise<TSearchResult> {
 		if (!params.q) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify search value"
 			});
 		}
@@ -298,7 +298,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	public async queryExtended(q: string, params: { count?: number; forcePlaylist?: boolean } = {}): Promise<TSearchResult> {
 		if (!q) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify search value"
 			});
 		}
@@ -610,7 +610,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	}> {
 		if (!params.q) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify query for search"
 			});
 		}
@@ -649,7 +649,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	}> {
 		if (!sectionId) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "sectionId is required"
 			});
 		}
@@ -731,7 +731,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	}> {
 		if (!link) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "link is required"
 			});
 		}
@@ -801,7 +801,7 @@ class SearchRequests extends BaseRequest implements IRequest {
 	}> {
 		if (!link) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "link is required"
 			});
 		}

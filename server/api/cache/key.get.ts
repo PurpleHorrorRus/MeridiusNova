@@ -5,8 +5,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!await cacheManager.isEnabled()) {
 		throw createError({
-			statusCode: 503,
-			statusMessage: "Cache is disabled"
+			status: 503,
+			statusText: "Cache is disabled"
 		});
 	}
 
@@ -16,8 +16,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!fullId || !keyName) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "full_id and key_name are required"
+			status: 400,
+			statusText: "full_id and key_name are required"
 		});
 	}
 
@@ -25,8 +25,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!keyData) {
 		throw createError({
-			statusCode: 404,
-			statusMessage: "Key not found"
+			status: 404,
+			statusText: "Key not found"
 		});
 	}
 

@@ -85,8 +85,8 @@ function startBackgroundCaching(fullId: string, exposedUrl: string): void {
 export const getAudioUrls = async (event: any, fullIds: string[], useCache: boolean = true): Promise<Record<string, string>> => {
 	if (!fullIds || fullIds.length === 0) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "Parameter 'fullIds' is required"
+			status: 400,
+			statusText: "Parameter 'fullIds' is required"
 		});
 	}
 
@@ -174,8 +174,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!token) {
 		throw createError({
-			statusCode: 401,
-			statusMessage: "Unauthorized - authentication required. Please ensure cookies are being sent with the request."
+			status: 401,
+			statusText: "Unauthorized - authentication required. Please ensure cookies are being sent with the request."
 		});
 	}
 
@@ -183,8 +183,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!query.ids) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "Parameter 'ids' is required"
+			status: 400,
+			statusText: "Parameter 'ids' is required"
 		});
 	}
 

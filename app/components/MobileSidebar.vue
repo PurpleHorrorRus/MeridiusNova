@@ -342,15 +342,21 @@ const switchAccount = async (account: any) => {
 
 .mobile-sidebar-search {
 	position: relative;
-	padding: 10px 20px;
-	border-bottom: 1px solid var(--border, #2a2a2a);
+	flex-shrink: 0;
+	height: 52px;
+	display: flex;
+	align-items: center;
+	padding: 0 12px 0 20px;
+	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
-		padding: 8px 16px;
+		height: 48px;
+		padding: 0 10px 0 16px;
 	}
 
 	@media (max-width: 800px) {
-		padding: 6px 12px;
+		height: 44px;
+		padding: 0 8px 0 12px;
 	}
 
 	@media (max-width: 600px) {
@@ -358,27 +364,39 @@ const switchAccount = async (account: any) => {
 	}
 }
 
-.search-input-wrapper {
+.mobile-sidebar-search .search-input-wrapper {
 	position: relative;
 	display: flex;
 	align-items: center;
+	width: 100%;
+	max-width: 100%;
+	height: 36px;
+	min-height: 36px;
 	background: var(--bg-tertiary, #2a2a2a);
+	border: 1px solid transparent;
 	border-radius: 6px;
-	padding: 8px 12px;
+	padding: 0 12px;
 	gap: 8px;
+	box-sizing: border-box;
 
 	@media (max-width: 1000px) {
-		padding: 6px 10px;
+		height: 32px;
+		min-height: 32px;
+		padding: 0 10px;
 		gap: 6px;
 	}
 
 	@media (max-width: 800px) {
-		padding: 5px 8px;
+		height: 30px;
+		min-height: 30px;
+		padding: 0 8px;
 		gap: 5px;
 	}
 
 	@media (max-width: 600px) {
-		padding: 8px;
+		height: 48px;
+		min-height: 48px;
+		padding: 0 8px;
 		width: 48px;
 		justify-content: center;
 	}

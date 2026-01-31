@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.attachment || !body.peer_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "attachment and peer_id are required"
 		});
 	}

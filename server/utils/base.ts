@@ -53,8 +53,8 @@ export class BaseRequest implements IRequest {
 
 		if (!userId) {
 			throw createError({
-				statusCode: 401,
-				statusMessage: "User ID is required"
+				status: 401,
+				statusText: "User ID is required"
 			});
 		}
 
@@ -505,7 +505,7 @@ export class BaseRequest implements IRequest {
 	}): Promise<{ list: TAudio[]; more: TMore }> {
 		if (!params.block && !params.type && !params.audio_id) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify block, type or audio_id"
 			});
 		}
@@ -562,7 +562,7 @@ export class BaseRequest implements IRequest {
 
 		if (!context.builder) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Builder function required"
 			});
 		}
@@ -591,7 +591,7 @@ export class BaseRequest implements IRequest {
 	} = {}): Promise<{ list: TAudio[]; more: TMore }> {
 		if (!this.validateMore(more)) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "Pass a valid \"more\" object"
 			});
 		}
@@ -607,7 +607,7 @@ export class BaseRequest implements IRequest {
 
 		if (!context.builder) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Builder function required"
 			});
 		}

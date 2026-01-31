@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.playlist_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "playlist_id is required"
 		});
 	}

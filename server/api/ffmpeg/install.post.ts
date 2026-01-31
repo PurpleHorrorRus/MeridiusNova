@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body || typeof body !== "object") {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Invalid request body"
 		});
 	}
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
 			error: "FFmpeg download not supported for this platform"
 		});
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "FFmpeg download not supported for this platform"
 		});
 	}
@@ -88,7 +88,7 @@ export default defineEventHandler(async (event) => {
 			error: `Failed to download ffmpeg: ${response.statusText}`
 		});
 		throw createError({
-			statusCode: response.status,
+			status: response.status,
 			message: `Failed to download ffmpeg: ${response.statusText}`
 		});
 	}
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
 			error: "Failed to get response body"
 		});
 		throw createError({
-			statusCode: 500,
+			status: 500,
 			message: "Failed to get response body"
 		});
 	}
@@ -145,7 +145,7 @@ export default defineEventHandler(async (event) => {
 			error: "ffmpeg.exe not found in archive"
 		});
 		throw createError({
-			statusCode: 500,
+			status: 500,
 			message: "ffmpeg.exe not found in archive"
 		});
 	}

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
     if (!body) {
         throw createError({
-            statusCode: 400,
+            status: 400,
             message: "Settings data is required"
         });
     }

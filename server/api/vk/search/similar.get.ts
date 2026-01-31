@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!query.audio_id || !query.audio_owner_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "audio_id and audio_owner_id are required"
 		});
 	}

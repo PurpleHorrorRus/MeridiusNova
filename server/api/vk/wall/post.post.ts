@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.attachments) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "attachments are required"
 		});
 	}

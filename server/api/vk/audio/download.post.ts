@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.audio_id || !body.audio_owner_id || !body.full_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "audio_id, audio_owner_id and full_id are required"
 		});
 	}
@@ -27,14 +27,14 @@ export default defineEventHandler(async (event) => {
 	const ffmpegCheck = checkFFmpeg();
 	if (!ffmpegCheck.exists || !ffmpegCheck.path) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "FFmpeg not installed. Please install FFmpeg first."
 		});
 	}
 
 	if (!downloadPath) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Download path not configured. Please set download path in settings."
 		});
 	}
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!rawAudioData) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "Audio not found"
 		});
 	}
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 	
 	if (!rawAudiosResult || !Array.isArray(rawAudiosResult) || rawAudiosResult.length === 0) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "Audio not found"
 		});
 	}
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!audio || !audio.url) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "Audio URL not found"
 		});
 	}

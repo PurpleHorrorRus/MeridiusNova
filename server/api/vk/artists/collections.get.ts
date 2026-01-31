@@ -6,7 +6,7 @@ export default defineCachedEventHandler(async (event) => {
 
 	if (!query.link) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "link parameter is required"
 		});
 	}

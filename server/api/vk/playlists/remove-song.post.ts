@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.audio_id || !body.audio_owner_id || !body.playlist_id || !body.playlist_owner_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "audio_id, audio_owner_id, playlist_id and playlist_owner_id are required"
 		});
 	}

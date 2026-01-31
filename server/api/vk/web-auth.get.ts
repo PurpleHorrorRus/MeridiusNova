@@ -7,8 +7,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!userId) {
 		throw createError({
-			statusCode: 401,
-			statusMessage: "User ID is required"
+			status: 401,
+			statusText: "User ID is required"
 		});
 	}
 

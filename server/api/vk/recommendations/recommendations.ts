@@ -43,14 +43,14 @@ class RecommendationsRequests extends BaseRequest implements IRequest {
 	public async configure(artists: number[], params: { hash: string }): Promise<any> {
 		if (!artists || !Array.isArray(artists) || artists.length < 5) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to pick five or more artists ids"
 			});
 		}
 
 		if (!params.hash) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to pass hash fetched from recommendations.onboarding()"
 			});
 		}

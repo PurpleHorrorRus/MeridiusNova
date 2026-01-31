@@ -491,10 +491,9 @@ const handleReorderSongs = async (newOrder: TAudio[], originalOrder?: TAudio[], 
 
 .tracks-header-duration {
 	grid-column: 3;
-	text-align: center;
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-end;
 
 	@media (max-width: 480px) {
 		grid-column: 2;

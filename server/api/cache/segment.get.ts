@@ -212,8 +212,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!await cacheManager.isEnabled()) {
 		throw createError({
-			statusCode: 503,
-			statusMessage: "Cache is disabled"
+			status: 503,
+			statusText: "Cache is disabled"
 		});
 	}
 
@@ -223,8 +223,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!fullId || !segmentName) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "full_id and segment_name are required"
+			status: 400,
+			statusText: "full_id and segment_name are required"
 		});
 	}
 
@@ -232,8 +232,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!token) {
 		throw createError({
-			statusCode: 401,
-			statusMessage: "Unauthorized"
+			status: 401,
+			statusText: "Unauthorized"
 		});
 	}
 
@@ -245,8 +245,8 @@ export default defineEventHandler(async (event) => {
 
 		if (!m3u8Content) {
 			throw createError({
-				statusCode: 404,
-				statusMessage: "Segment not found and m3u8 not available"
+				status: 404,
+				statusText: "Segment not found and m3u8 not available"
 			});
 		}
 
@@ -262,8 +262,8 @@ export default defineEventHandler(async (event) => {
 
 		if (!segment) {
 			throw createError({
-				statusCode: 404,
-				statusMessage: "Segment not found in m3u8"
+				status: 404,
+				statusText: "Segment not found in m3u8"
 			});
 		}
 
@@ -272,8 +272,8 @@ export default defineEventHandler(async (event) => {
 
 		if (!rawAudios || rawAudios.length === 0 || !rawAudios[0]) {
 			throw createError({
-				statusCode: 404,
-				statusMessage: "Audio not found"
+				status: 404,
+				statusText: "Audio not found"
 			});
 		}
 
@@ -287,8 +287,8 @@ export default defineEventHandler(async (event) => {
 
 		if (exposeError || !exposedUrl) {
 			throw createError({
-				statusCode: 500,
-				statusMessage: `Failed to expose source URL: ${exposeError?.message || "Unknown error"}`
+				status: 500,
+				statusText: `Failed to expose source URL: ${exposeError?.message || "Unknown error"}`
 			});
 		}
 
@@ -303,15 +303,15 @@ export default defineEventHandler(async (event) => {
 
 		if (fetchError || !segmentResponse) {
 			throw createError({
-				statusCode: 500,
-				statusMessage: `Failed to fetch segment: ${fetchError?.message || "Unknown error"}`
+				status: 500,
+				statusText: `Failed to fetch segment: ${fetchError?.message || "Unknown error"}`
 			});
 		}
 
 		if (!segmentResponse.ok) {
 			throw createError({
-				statusCode: segmentResponse.status,
-				statusMessage: `Failed to fetch segment: HTTP ${segmentResponse.status}`
+				status: segmentResponse.status,
+				statusText: `Failed to fetch segment: HTTP ${segmentResponse.status}`
 			});
 		}
 
@@ -322,8 +322,8 @@ export default defineEventHandler(async (event) => {
 
 		if (bufferError || !segmentData) {
 			throw createError({
-				statusCode: 500,
-				statusMessage: `Failed to read segment: ${bufferError?.message || "Unknown error"}`
+				status: 500,
+				statusText: `Failed to read segment: ${bufferError?.message || "Unknown error"}`
 			});
 		}
 
@@ -341,8 +341,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!segmentData) {
 		throw createError({
-			statusCode: 404,
-			statusMessage: "Segment not found"
+			status: 404,
+			statusText: "Segment not found"
 		});
 	}
 

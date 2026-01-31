@@ -79,7 +79,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!owner_id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -99,7 +99,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!response) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Empty response from VK"
 			});
 		}
@@ -107,7 +107,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		if (typeof response === "string") {
 			const responseStr = response as string;
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "VK returned HTML instead of JSON",
 				data: { responsePreview: responseStr.substring(0, 200) }
 			});
@@ -115,7 +115,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (Array.isArray(response)) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "VK returned array instead of object",
 				data: { responseLength: response.length }
 			});
@@ -123,7 +123,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (typeof response !== "object" || response === null) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: `Invalid response type. Expected object, got ${typeof response}`,
 				data: { responseType: typeof response }
 			});
@@ -131,7 +131,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!("payload" in response) || !response.payload) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Invalid response structure from VK: missing payload",
 				data: { responseKeys: Object.keys(response) }
 			});
@@ -204,7 +204,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 				count = payload.count || payload.totalCount || pl_objects.length;
 			} else {
 				throw createError({
-					statusCode: 500,
+					status: 500,
 					message: `Unexpected payload structure. Expected array or object with playlists, got ${typeof payload}`,
 					data: {
 						payloadType: typeof payload,
@@ -215,7 +215,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			}
 		} else {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: `Unexpected payload type. Expected array or object, got ${typeof payload}`,
 				data: { payloadType: typeof payload, payload }
 			});
@@ -225,13 +225,13 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 			const errorMessage = pl_objects;
 			if (/Access denied/i.test(errorMessage)) {
 				throw createError({
-					statusCode: 403,
+					status: 403,
 					message: "Access Denied",
 					data: { errorMessage }
 				});
 			}
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: `VK returned error string: ${errorMessage}`,
 				data: { errorMessage }
 			});
@@ -315,7 +315,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!owner_id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -516,7 +516,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}): Promise<TPlaylist> {
 		if (!params.playlist_id) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify playlist_id"
 			});
 		}
@@ -525,7 +525,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!owner_id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -740,14 +740,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}): Promise<TPlaylist> {
 		if (!params.title) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "title is required"
 			});
 		}
 
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -779,7 +779,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}): Promise<any> {
 		if (!params.playlist_id) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "playlist_id is required"
 			});
 		}
@@ -791,7 +791,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!playlist.edit_hash) {
 			throw createError({
-				statusCode: 403,
+				status: 403,
 				message: "Can't fetch edit_hash of playlist due internal VK error"
 			});
 		}
@@ -800,7 +800,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!owner_id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -823,7 +823,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	public async delete(playlist: TPlaylist): Promise<boolean> {
 		if (!playlist.edit_hash) {
 			throw createError({
-				statusCode: 403,
+				status: 403,
 				message: "Access denied"
 			});
 		}
@@ -832,7 +832,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!owner_id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -871,7 +871,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}): Promise<boolean> {
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -893,14 +893,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	public async addSong(audio: any, playlist: TPlaylist): Promise<any> {
 		if (!audio || !playlist) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify audio and playlist"
 			});
 		}
 
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -922,14 +922,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	public async removeSong(audio: any, playlist: TPlaylist): Promise<any> {
 		if (!audio || !playlist) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify audio and playlist"
 			});
 		}
 
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -955,14 +955,14 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	}): Promise<any> {
 		if (!params.playlist_id) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify playlist_id"
 			});
 		}
 
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -971,7 +971,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!params.Audios && playlist.size > 0 && !params.force) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "I'm not really sure you want to leave the playlist empty. But if you do, specify in params force: true"
 			});
 		}
@@ -1003,7 +1003,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	protected async getSaveHash(audio: any): Promise<string> {
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -1044,7 +1044,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 	protected async getUploadCoverURL(): Promise<string> {
 		if (!this.event.context.user?.id) {
 			throw createError({
-				statusCode: 401,
+				status: 401,
 				message: "Authentication required"
 			});
 		}
@@ -1054,7 +1054,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 
 		if (!urlMatch) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Could not find upload URL"
 			});
 		}
@@ -1062,7 +1062,7 @@ class PlaylistsRequests extends BaseRequest implements IRequest {
 		const hashMatch = response.match(/"hash":"(.*?)"/);
 		if (!hashMatch) {
 			throw createError({
-				statusCode: 500,
+				status: 500,
 				message: "Could not find hash"
 			});
 		}

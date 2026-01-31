@@ -56,7 +56,7 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 
 		if (!html || html.trim() === "") {
 			throw createError({
-				statusCode: 404,
+				status: 404,
 				message: "Artist not found"
 			});
 		}
@@ -66,7 +66,7 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 
 		if (!block) {
 			throw createError({
-				statusCode: 404,
+				status: 404,
 				message: "Artist not found"
 			});
 		}
@@ -236,7 +236,7 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 	}> {
 		if (!query) {
 			throw createError({
-				statusCode: 400,
+				status: 400,
 				message: "You must to specify query"
 			});
 		}

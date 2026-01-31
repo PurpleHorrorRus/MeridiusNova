@@ -11,8 +11,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!locale || !["ru", "en"].includes(locale)) {
 		throw createError({
-			statusCode: 400,
-			statusMessage: "Invalid locale. Supported locales: ru, en"
+			status: 400,
+			statusText: "Invalid locale. Supported locales: ru, en"
 		});
 	}
 
@@ -20,8 +20,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!localeData) {
 		throw createError({
-			statusCode: 404,
-			statusMessage: `Locale file not found: ${locale}`
+			status: 404,
+			statusText: `Locale file not found: ${locale}`
 		});
 	}
 

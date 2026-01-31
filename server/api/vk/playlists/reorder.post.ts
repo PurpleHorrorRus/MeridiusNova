@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.playlist_id || body.prev_playlist_id === undefined) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "playlist_id and prev_playlist_id are required"
 		});
 	}

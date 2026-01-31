@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!body.playlist_id || !body.owner_id) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "playlist_id and owner_id are required"
 		});
 	}
@@ -35,14 +35,14 @@ export default defineEventHandler(async (event) => {
 
 	if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "FFmpeg not installed. Please install FFmpeg first."
 		});
 	}
 
 	if (!downloadPath) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Download path not configured. Please set download path in settings."
 		});
 	}
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!playlist) {
 		throw createError({
-			statusCode: 404,
+			status: 404,
 			message: "Playlist not found"
 		});
 	}

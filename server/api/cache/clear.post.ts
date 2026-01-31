@@ -5,8 +5,8 @@ export default defineEventHandler(async (event) => {
 
 	if (!await cacheManager.isEnabled()) {
 		throw createError({
-			statusCode: 503,
-			statusMessage: "Cache is disabled"
+			status: 503,
+			statusText: "Cache is disabled"
 		});
 	}
 

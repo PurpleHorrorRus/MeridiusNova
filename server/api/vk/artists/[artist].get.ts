@@ -6,7 +6,7 @@ export default defineCachedEventHandler(async (event) => {
 
 	if (!artist) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Artist parameter is required"
 		});
 	}

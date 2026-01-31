@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
 	if (!query.q) {
 		throw createError({
-			statusCode: 400,
+			status: 400,
 			message: "Query parameter 'q' is required"
 		});
 	}
