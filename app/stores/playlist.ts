@@ -37,9 +37,7 @@ export const usePlaylistStore = defineStore("playlist", {
         vkMixSectionId: null as string | null,
         playlistMore: null as TMore | null,
         userPlaylists: [] as TPlaylist[],
-        userPlaylistsOwnerId: null as number | null,
-        // Tiny version counter to help force UI refreshes when queue changes
-        queueVersion: 0 as number
+        userPlaylistsOwnerId: null as number | null
     }),
 
 	getters: {
@@ -360,8 +358,6 @@ export const usePlaylistStore = defineStore("playlist", {
                     this.originalSongsOrder.splice(originalIndex, 1);
                 }
             }
-            // Trigger a tiny reactivity nudge for UI refresh
-            this.queueVersion = (this.queueVersion ?? 0) + 1;
         },
 
 		setCurrentIndex(index: number) {
