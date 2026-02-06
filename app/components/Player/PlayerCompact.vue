@@ -194,18 +194,29 @@ const handleLyrics = () => {
 		color: rgba(255, 255, 255, 0.6);
 		margin-top: 2px;
 		line-height: 1.2;
+		min-width: 70px;
+		font-family: monospace;
 	}
 
 	.compact-time-current {
 		color: rgba(255, 255, 255, 0.8);
+		display: inline-block;
+		min-width: 30px;
+		text-align: right;
 	}
 
 	.compact-time-separator {
 		color: rgba(255, 255, 255, 0.4);
+		display: inline-block;
+		min-width: 8px;
+		text-align: center;
 	}
 
 	.compact-time-duration {
 		color: rgba(255, 255, 255, 0.5);
+		display: inline-block;
+		min-width: 32px;
+		text-align: left;
 	}
 
 	.btn-control-compact {

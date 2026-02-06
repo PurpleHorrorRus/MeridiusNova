@@ -56,6 +56,7 @@
 
 			<div ref="tracksContainerRef" class="queue-content-tracks">
 				<SongList
+					:key="_queueVersion"
 					:songs="playlistStore.playingSongs"
 					:item-height="56"
 					:overscan="10"
@@ -81,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 
 import Song from "~/components/Song/Song.vue";
@@ -106,6 +107,9 @@ const { currentPlaylist, playlistSource } = storeToRefs(playlistStore);
 
 const tracksContainerRef = ref<HTMLElement | null>(null);
 const virtualListRef = ref<InstanceType<typeof SongList> | null>(null);
+
+// Ensure queue UI updates on queueVersion changes to force reactivity after deletions
+const _queueVersion = computed(() => (playlistStore as any).queueVersion ?? 0);
 
 if (props.autoScroll) {
 	useQueueScroll(

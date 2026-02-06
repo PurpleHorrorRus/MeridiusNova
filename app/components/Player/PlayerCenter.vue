@@ -208,6 +208,8 @@ const { paused, currentTime, duration } = storeToRefs(playerStore);
 	letter-spacing: 0.5px;
 	margin-left: 16px;
 	white-space: nowrap;
+	min-width: 100px;
+	font-family: monospace;
 
 	@media (max-width: 1400px) {
 		margin-left: 12px;
@@ -230,6 +232,23 @@ const { paused, currentTime, duration } = storeToRefs(playerStore);
 
 .time-current {
 	color: rgba(255, 255, 255, 0.9);
+	display: inline-block;
+	min-width: 45px;
+	text-align: right;
+}
+
+.time-separator {
+	color: rgba(255, 255, 255, 0.5);
+	display: inline-block;
+	min-width: 10px;
+	text-align: center;
+}
+
+.time-duration {
+	color: rgba(255, 255, 255, 0.6);
+	display: inline-block;
+	min-width: 45px;
+	text-align: left;
 }
 
 .time-separator {

@@ -77,6 +77,7 @@ watch(progress, (newProgress) => {
 	font-size: 14px;
 	font-weight: 500;
 	letter-spacing: 0.5px;
+	font-family: monospace;
 
 	@media (max-width: 768px) {
 		font-size: 12px;
@@ -180,10 +181,16 @@ watch(progress, (newProgress) => {
 
 .time-current-fullscreen {
 	color: rgba(255, 255, 255, 0.95);
+	display: inline-block;
+	min-width: 60px;
+	text-align: right;
 }
 
 .time-duration-fullscreen {
 	color: rgba(255, 255, 255, 0.7);
+	display: inline-block;
+	min-width: 60px;
+	text-align: left;
 }
 </style>
 

@@ -136,6 +136,10 @@ const isExternalServer = process.env.EXTERNAL_SERVER === "true"
 	|| process.env.EXTERNAL_SERVER === "1"
 	|| config.public.externalServer;
 
+const isActuallyExternalServer = computed(() => {
+	return isExternalServer && settings.value.general.server.enable;
+});
+
 const cacheStats = ref<{ size: number; tracks: number; sizeMB: number; maxSize: number; maxSizeMB: number } | null>(null);
 const clearing = ref(false);
 

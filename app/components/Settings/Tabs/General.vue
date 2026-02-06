@@ -46,7 +46,7 @@
 		</div>
 	</div>
 
-	<div v-if="!isExternalServer" class="settings-section">
+	<div v-if="!isActuallyExternalServer" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.discord.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -87,7 +87,7 @@
 		</div>
 	</div>
 
-	<div v-if="!isMobile && (isTauri() || !isExternalServer)" class="settings-section">
+	<div v-if="!isMobile && (isTauri() || !isActuallyExternalServer)" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.streamer.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
@@ -109,7 +109,7 @@
 	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.server.title") }}</h2>
 		<div class="settings-items">
-			<div v-if="settings.general.server.enable || isExternalServer" class="settings-item settings-item-warning">
+			<div v-if="isActuallyExternalServer" class="settings-item settings-item-warning">
 				<div class="settings-warning-content">
 					<Icon name="mdi:server-network" class="settings-warning-icon" />
 					<div class="settings-warning-text">
@@ -126,7 +126,7 @@
 				</button>
 			</div>
 
-			<div v-if="!isExternalServer" class="settings-item">
+			<div v-if="!isActuallyExternalServer" class="settings-item">
 				<label class="settings-label">
 					<input
 						type="checkbox"
@@ -267,6 +267,11 @@ const config = useRuntimeConfig();
 const isExternalServer = process.env.EXTERNAL_SERVER === "true"
 	|| process.env.EXTERNAL_SERVER === "1"
 	|| config.public.externalServer;
+
+// Проверяем, действительно ли мы на внешнем сервере
+const isActuallyExternalServer = computed(() => {
+	return isExternalServer && settings.value.general.server.enable;
+});
 const {
 	currentVersion,
 	checking: checkingUpdates,

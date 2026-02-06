@@ -25,20 +25,22 @@ type TSongWithFrom = TAudio & {
 };
 
 export const usePlaylistStore = defineStore("playlist", {
-	state: () => ({
-		current: null as TPlaylist | null,
-		playing: null as TPlaylist | null,
-		loaded: [] as TAudio[],
-		playingSongs: [] as TAudio[],
-		originalSongsOrder: [] as string[],
-		currentIndex: -1,
-		shuffle: false,
-		repeat: false,
-		vkMixSectionId: null as string | null,
-		playlistMore: null as TMore | null,
-		userPlaylists: [] as TPlaylist[],
-		userPlaylistsOwnerId: null as number | null
-	}),
+    state: () => ({
+        current: null as TPlaylist | null,
+        playing: null as TPlaylist | null,
+        loaded: [] as TAudio[],
+        playingSongs: [] as TAudio[],
+        originalSongsOrder: [] as string[],
+        currentIndex: -1,
+        shuffle: false,
+        repeat: false,
+        vkMixSectionId: null as string | null,
+        playlistMore: null as TMore | null,
+        userPlaylists: [] as TPlaylist[],
+        userPlaylistsOwnerId: null as number | null,
+        // Tiny version counter to help force UI refreshes when queue changes
+        queueVersion: 0 as number
+    }),
 
 	getters: {
 		currentSong: (state) => {
@@ -317,7 +319,7 @@ export const usePlaylistStore = defineStore("playlist", {
 			}
 		},
 
-		removeSongByFullId(fullId: string) {
+        removeSongByFullId(fullId: string) {
 			// Удаляем из playingSongs
 			const playingIndex = this.playingSongs.findIndex(songItem => songItem.full_id === fullId);
 			if (playingIndex >= 0) {
@@ -351,14 +353,16 @@ export const usePlaylistStore = defineStore("playlist", {
 				}
 			}
 
-			// Обновляем originalSongsOrder если shuffle включен
-			if (this.originalSongsOrder.length > 0) {
-				const originalIndex = this.originalSongsOrder.indexOf(fullId);
-				if (originalIndex >= 0) {
-					this.originalSongsOrder.splice(originalIndex, 1);
-				}
-			}
-		},
+            // Обновляем originalSongsOrder если shuffle включен
+            if (this.originalSongsOrder.length > 0) {
+                const originalIndex = this.originalSongsOrder.indexOf(fullId);
+                if (originalIndex >= 0) {
+                    this.originalSongsOrder.splice(originalIndex, 1);
+                }
+            }
+            // Trigger a tiny reactivity nudge for UI refresh
+            this.queueVersion = (this.queueVersion ?? 0) + 1;
+        },
 
 		setCurrentIndex(index: number) {
 			if (index >= 0 && index < this.playingSongs.length) {

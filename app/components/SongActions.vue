@@ -61,7 +61,15 @@
 		>
 			<Icon name="mdi:music-note" size="22" />
 		</button>
-	</div>
+<button
+    v-if="inQueue"
+    class="action-button"
+    @click="handleRemoveFromQueue"
+    title="Удалить из очереди"
+>
+    <Icon name="mdi:close" size="22" />
+</button>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -81,7 +89,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	action: [action: string, data?: any];
+    action: [action: string, data?: any];
+    // Optional: notify that queue changed to allow parent components to refresh
+    queueChanged?: () => void;
 }>();
 
 const songsContext = useSongsContext();
@@ -152,8 +162,26 @@ const handleShare = () => {
 	emit("action", "share", audio.value);
 };
 
-const handleSimilar = () => {
-	emit("action", "similar", audio.value);
+ const handleSimilar = () => {
+ 	emit("action", "similar", audio.value);
+ };
+
+ // Remove current track from playback queue
+const inQueue = computed(() => {
+    const a = audio.value;
+    if (!a) return false;
+    // Access queueVersion to ensure recomputation when queue changes
+    const _qv = (playlistStore as any).queueVersion;
+    void _qv;
+    return playlistStore.playingSongs?.some((s: any) => s?.full_id === a.full_id) ?? false;
+});
+
+const handleRemoveFromQueue = () => {
+    const a = audio.value;
+    if (!a) return;
+    playlistStore.removeSongByFullId(a.full_id);
+    // Notify potential parent components to refresh their queue UI
+    emit("queueChanged");
 };
 </script>
 
