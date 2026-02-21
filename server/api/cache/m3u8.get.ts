@@ -67,8 +67,8 @@ async function downloadSegment(segmentUrl: string, segmentName: string, fullId: 
             continue;
         }
 
-        const [bufferError, segmentData] = await response.buffer().then(
-            (data: Buffer) => [null, data] as const,
+        const [bufferError, segmentData] = await response.arrayBuffer().then(
+            (arrayBuffer: ArrayBuffer) => [null, Buffer.from(arrayBuffer)] as const,
             (error: Error) => [error, null] as const
         );
 
@@ -189,8 +189,8 @@ async function downloadAndCacheTrack(fullId: string, originalUrl: string, audioR
             throw new Error(`Failed to fetch key ${keyName}: HTTP ${keyResponse.status}`);
         }
 
-        const [keyBufferError, keyData] = await keyResponse.buffer().then(
-            (data: Buffer) => [null, data] as const,
+        const [keyBufferError, keyData] = await keyResponse.arrayBuffer().then(
+            (arrayBuffer: ArrayBuffer) => [null, Buffer.from(arrayBuffer)] as const,
             (error: Error) => [error, null] as const
         );
 

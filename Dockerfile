@@ -15,10 +15,12 @@ COPY locales ./locales
 
 RUN --mount=type=secret,id=NUXT_SESSION_PASSWORD \
 	--mount=type=secret,id=NUXT_COOKIE_KEY \
+	--mount=type=secret,id=NUXT_SERVER_PASSWORD_KEY \
 	--mount=type=secret,id=DISCORD_CLIENT_ID \
 	--mount=type=secret,id=DISCORD_CLIENT_SECRET \
 	NUXT_SESSION_PASSWORD="$(cat /run/secrets/NUXT_SESSION_PASSWORD)" \
 	NUXT_COOKIE_KEY="$(cat /run/secrets/NUXT_COOKIE_KEY)" \
+	NUXT_SERVER_PASSWORD_KEY="$(cat /run/secrets/NUXT_SERVER_PASSWORD_KEY)" \
 	DISCORD_CLIENT_ID="$(cat /run/secrets/DISCORD_CLIENT_ID)" \
 	DISCORD_CLIENT_SECRET="$(cat /run/secrets/DISCORD_CLIENT_SECRET)" \
     npx nuxt build

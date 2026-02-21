@@ -32,6 +32,7 @@ let controllerIndex = -1;
 let opposedControllerIndex = -1;
 let contextTimeout: NodeJS.Timeout | null = null;
 let debouncedSaveVolume: ((volume: number) => void) | null = null;
+let lastBroadcastTime = 0;
 
 const emptySong: TAudio = {
 	id: -1,
@@ -285,7 +286,7 @@ export const usePlayerStore = defineStore("player", {
 			const crossfadeConfig = settingsStore.settings.player.crossfade;
 
 		if (song.clear && this.song && !(song.crossfade && crossfadeConfig.enable)) {
-			await this.stop();
+			await this.stop({ clearServerState: false });
 		}
 
 		// Гарантируем, что full_id всегда установлен
@@ -407,6 +408,17 @@ export const usePlayerStore = defineStore("player", {
 					streamerStore.write(song).catch((error) => {
 						console.error("[Streamer Mode]: Failed to write song info", error);
 					});
+				}
+
+				if (settingsStore.settings.server.enable) {
+					$fetch("/api/streamer/now-playing", {
+						method: "POST",
+						body: {
+							song: this.song,
+							playlist: usePlaylistStore().playingSongs,
+							paused: false
+						}
+					}).catch(() => {});
 				}
 			}
 
@@ -587,6 +599,17 @@ export const usePlayerStore = defineStore("player", {
 							});
 						}
 					}
+
+					const now = Date.now();
+					if (now - lastBroadcastTime >= 1000 && useSettingsStore().settings.server.enable) {
+						lastBroadcastTime = now;
+						const duration = this.duration || controllerData.controller?.duration || 0;
+						const currentTime = controllerData.controller?.currentTime || 0;
+						$fetch("/api/streamer/now-playing", {
+							method: "POST",
+							body: { currentTime, duration }
+						}).catch(() => {});
+					}
 				}
 			};
 
@@ -656,6 +679,18 @@ export const usePlayerStore = defineStore("player", {
 			}
 
 			if (navigator.mediaSession) navigator.mediaSession.playbackState = "paused";
+
+			if (import.meta.client && useSettingsStore().settings.server.enable) {
+				const playlistStore = usePlaylistStore();
+				$fetch("/api/streamer/now-playing", {
+					method: "POST",
+					body: {
+						song: this.song,
+						playlist: playlistStore.playingSongs,
+						paused: true
+					}
+				}).catch(() => {});
+			}
 		},
 
 		resume() {
@@ -678,6 +713,19 @@ export const usePlayerStore = defineStore("player", {
 			}
 
 			if (navigator.mediaSession) navigator.mediaSession.playbackState = "playing";
+
+			if (import.meta.client && useSettingsStore().settings.server.enable) {
+				const playlistStore = usePlaylistStore();
+				$fetch("/api/streamer/now-playing", {
+					method: "POST",
+					body: {
+						song: this.song,
+						playlist: playlistStore.playingSongs,
+						paused: false
+					}
+				}).catch(() => {});
+			}
+
 			return true;
 		},
 
@@ -867,7 +915,7 @@ export const usePlayerStore = defineStore("player", {
 			await useSettingsStore().updateSection("player", { playbackRate: this.playbackRate });
 		},
 
-		stop() {
+		stop(options?: { clearServerState?: boolean }) {
 			this.resetController(0);
 			this.resetController(1);
 			controllerIndex = -1;
@@ -879,6 +927,14 @@ export const usePlayerStore = defineStore("player", {
 			if (navigator.mediaSession) {
 				navigator.mediaSession.metadata = null;
 				navigator.mediaSession.playbackState = "none";
+			}
+
+			const clearServer = options?.clearServerState !== false;
+			if (clearServer && import.meta.client && useSettingsStore().settings.server.enable) {
+				$fetch("/api/streamer/now-playing", {
+					method: "POST",
+					body: { song: null, playlist: [], paused: true }
+				}).catch(() => {});
 			}
 		},
 

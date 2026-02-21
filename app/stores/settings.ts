@@ -77,6 +77,11 @@ const defaultSettings: TSettings = {
 		}
 	},
 
+	server: {
+		enable: false,
+		passwordHash: ""
+	},
+
 	player: {
 		output: "default",
 		volume: 0.5,
@@ -188,16 +193,9 @@ const saveSettingsToServer = async (settings: TSettings): Promise<void> => {
 		return;
 	}
 
-	const { general, ...settingsWithoutGeneral } = settings;
-	const { server, ...generalWithoutServer } = general;
-	const settingsWithoutServer = {
-		...settingsWithoutGeneral,
-		general: generalWithoutServer
-	};
-
 	await $fetch("/api/settings", {
 		method: "POST",
-		body: settingsWithoutServer
+		body: settings
 	});
 };
 
@@ -247,12 +245,11 @@ export const useSettingsStore = defineStore("settings", {
 				const saved = await loadSettingsFromServer();
 
 				if (saved) {
-					const savedWithoutServer: Partial<TSettings> = { ...saved };
-					if (savedWithoutServer.general && saved.general) {
-						const { server, ...generalWithoutServer } = saved.general;
-						savedWithoutServer.general = generalWithoutServer as any;
+					this.settings = mergeSettings(saved, defaultSettings);
+					const serverFromSaved = (saved as Partial<TSettings>).server as { passwordHash?: string } | undefined;
+					if (serverFromSaved?.passwordHash) {
+						this.settings.server.passwordHash = serverFromSaved.passwordHash;
 					}
-					this.settings = mergeSettings(savedWithoutServer, defaultSettings);
 				}
 
 				if (isTauri()) {
@@ -284,7 +281,11 @@ export const useSettingsStore = defineStore("settings", {
 			if (isTauri()) {
 				saveTauriLocalSettings({
 					general: {
-						server: this.settings.general.server
+						server: {
+							enable: this.settings.general.server.enable,
+							url: this.settings.general.server.url,
+							port: this.settings.general.server.port
+						}
 					},
 					window: {
 						hardwareAcceleration: this.settings.window.hardwareAcceleration

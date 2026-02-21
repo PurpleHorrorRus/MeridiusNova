@@ -432,6 +432,10 @@ export type TSettings = {
 			port: number;
 		};
 	};
+	server: {
+		enable: boolean;
+		passwordHash: string;
+	};
 	player: {
 		output: string;
 		volume: number;

@@ -93,6 +93,9 @@ export default defineNuxtConfig({
 
 	nitro: {
 		compressPublicAssets: true,
+		experimental: {
+			websocket: true
+		},
 
 		prerender: {
 			crawlLinks: false,
@@ -145,6 +148,7 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		cookieKey: (process.env.NUXT_COOKIE_KEY || "").replace(/\\n/g, "\n"),
+		serverPasswordKey: process.env.NUXT_SERVER_PASSWORD_KEY || "",
 
 		session: {
 			password: process.env.NUXT_SESSION_PASSWORD || "",

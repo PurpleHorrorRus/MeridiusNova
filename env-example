@@ -27,3 +27,7 @@ FFMPEG_BINARY=
 # Формат: owner/repo (например: username/meridius-nova)
 # Необходимо для работы функции проверки обновлений
 REPOSITORY=
+
+# Секретный ключ для HMAC при хешировании пароля сервера (минимум 32 символа)
+# Используется при сохранении пароля в настройках и при проверке Bearer/WebSocket
+NUXT_SERVER_PASSWORD_KEY=

@@ -54,7 +54,8 @@
 			"equalizer": "Эквалайзер",
 			"hotkeys": "Горячие клавиши",
 			"cache": "Кэш",
-			"accounts": "Аккаунты"
+			"accounts": "Аккаунты",
+			"server": "Сервер"
 		},
 		"general": {
 			"language": {
@@ -80,24 +81,6 @@
 				"pathPlaceholder": "Выберите папку для сохранения",
 				"choose": "Выбрать"
 			},
-			"server": {
-				"title": "Сервер",
-				"enable": "Использовать внешний сервер",
-				"type": "Тип сервера",
-				"local": "Локальный сервер",
-				"remote": "Внешний сервер",
-				"url": "URL сервера",
-				"urlPlaceholder": "http://example.com",
-				"port": "Порт",
-				"portPlaceholder": "31415",
-				"check": "Проверить",
-				"checking": "Проверка...",
-				"available": "Сервер доступен",
-				"connect": "Подключиться",
-				"switchToLocal": "Вернуться на локальный сервер",
-				"remoteActive": "Используется внешний сервер",
-				"remoteActiveDescription": "Приложение подключено к внешнему серверу. Для возврата к локальному серверу нажмите кнопку ниже."
-			},
 			"updates": {
 				"title": "Обновления",
 				"currentVersion": "Текущая версия",
@@ -111,7 +94,44 @@
 				"checking": "Проверка обновлений...",
 				"available": "Доступно обновление",
 				"install": "Установить обновление"
+			},
+			"server": {
+				"title": "Удалённый сервер Meridius",
+				"enable": "Использовать внешний сервер",
+				"url": "URL сервера",
+				"urlPlaceholder": "http://example.com",
+				"port": "Порт",
+				"portPlaceholder": "31415",
+				"check": "Проверить",
+				"checking": "Проверка...",
+				"available": "Сервер доступен",
+				"connect": "Подключиться",
+				"switchToLocal": "Вернуться на локальный сервер",
+				"remoteActive": "Используется внешний сервер",
+				"remoteActiveDescription": "Приложение подключено к внешнему серверу. Для возврата к локальному серверу нажмите кнопку ниже."
 			}
+		},
+		"server": {
+			"title": "HTTP и WebSocket API",
+			"enable": "Включить HTTP и WebSocket API",
+			"password": "Пароль сервера",
+			"passwordPlaceholder": "Пароль не задан",
+			"passwordSet": "Пароль установлен",
+			"generatePassword": "Сгенерировать пароль",
+			"generating": "Генерация...",
+			"copy": "Копировать",
+			"passwordGeneratedOnce": "Сохраните пароль — он больше не будет показан.",
+			"endpointsTitle": "Доступные запросы",
+			"categoryHttp": "HTTP Get",
+			"categoryWebSocket": "WebSocket",
+			"endpointNowPlaying": "Текущий трек",
+			"endpointPlaylist": "Текущий плейлист",
+			"endpointTime": "Текущее время",
+			"response": "Ответ",
+			"resultOk": "OK",
+			"resultError": "Ошибка",
+			"resultAuthRequired": "Требуется пароль",
+			"resultChecking": "Проверка..."
 		},
 		"appearance": {
 			"themes": {

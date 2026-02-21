@@ -59,7 +59,7 @@ async function downloadAndCacheTrack(fullId: string, exposedUrl: string): Promis
 
 			if (!keys.has(keyUri)) {
 				const keyResponse = await fetch(keyUri, fetchOptions);
-				const keyData = await keyResponse.buffer();
+				const keyData = Buffer.from(await keyResponse.arrayBuffer());
 				keys.set(keyUri, keyData);
 				await cacheManager.saveKey(fullId, keyName, keyData);
 			}
@@ -70,7 +70,7 @@ async function downloadAndCacheTrack(fullId: string, exposedUrl: string): Promis
 		const segmentUrl = normalizeUri(segment.uri, root);
 
 		const segmentResponse = await fetch(segmentUrl, fetchOptions);
-		const segmentData = await segmentResponse.buffer();
+		const segmentData = Buffer.from(await segmentResponse.arrayBuffer());
 
 		await cacheManager.saveSegment(fullId, segmentName, segmentData);
 	}

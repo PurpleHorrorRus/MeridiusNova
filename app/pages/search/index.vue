@@ -198,6 +198,7 @@ const { getString } = useStrings();
 
 const searchStore = useSearchStore();
 const playlistStore = usePlaylistStore();
+const route = useRoute();
 
 const query = ref("");
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -440,6 +441,18 @@ watch(query, (newValue) => {
 	}
 });
 
+watch(() => route.query.q, (newQ) => {
+	if (route.path !== "/search") {
+		return;
+	}
+
+	const q = (newQ as string) || "";
+	if (query.value !== q) {
+		isInitializing.value = true;
+		query.value = q;
+	}
+});
+
 // Основной обработчик скролла для загрузки (обратная совместимость - когда нет категорий)
 useScrollLoad(() => {
 	handleLoadMore();
@@ -506,8 +519,6 @@ const getCategoryLink = (category: TSearchCategory) => {
 };
 
 onMounted(() => {
-	const route = useRoute();
-
 	if (route.query.q) {
 		isInitializing.value = true;
 		query.value = route.query.q as string;

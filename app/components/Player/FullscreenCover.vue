@@ -179,7 +179,6 @@ const handleNextClick = () => {
 	border-radius: 24px;
 	overflow: hidden;
 	flex-shrink: 1;
-	animation: scaleIn 0.4s ease;
 
 	&::before {
 		content: "";
@@ -238,39 +237,12 @@ const handleNextClick = () => {
 	}
 }
 
-:global(.fullscreen-fade-leave-active) .fullscreen-cover {
-	animation: scaleOut 0.3s ease;
-}
-
-@keyframes scaleIn {
-	from {
-		transform: scale(0.8);
-		opacity: 0;
-	}
-	to {
-		transform: scale(1);
-		opacity: 1;
-	}
-}
-
-@keyframes scaleOut {
-	from {
-		transform: scale(1);
-		opacity: 1;
-	}
-	to {
-		transform: scale(0.8);
-		opacity: 0;
-	}
-}
-
 .fullscreen-cover-image {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	position: relative;
 	z-index: 2;
-	animation: fadeIn 0.4s ease;
 }
 
 .fullscreen-cover-glow {
@@ -283,7 +255,6 @@ const handleNextClick = () => {
 	background-size: cover;
 	opacity: 0.4;
 	z-index: 1;
-	animation: fadeIn 0.4s ease;
 
 		&::after {
 			content: "";
@@ -296,15 +267,6 @@ const handleNextClick = () => {
 			filter: blur(40px) saturate(150%);
 			pointer-events: none;
 		}
-}
-
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
 }
 </style>
 

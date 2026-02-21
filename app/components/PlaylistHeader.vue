@@ -133,7 +133,8 @@ const showActionsMenu = ref(false);
 const isFollowing = ref(false);
 
 const canEdit = computed(() => {
-	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.edit;
+	const isOwnCreated = props.playlist.owner_id === vkStore.user_id && !props.playlist.followed;
+	return isOwnCreated || (props.playlist as any).permissions?.edit;
 });
 
 const canShare = computed(() => {
@@ -145,7 +146,8 @@ const canDownload = computed(() => {
 });
 
 const canDelete = computed(() => {
-	return props.playlist.owner_id === vkStore.user_id || (props.playlist as any).permissions?.delete;
+	const isOwnCreated = props.playlist.owner_id === vkStore.user_id && !props.playlist.followed;
+	return isOwnCreated || (props.playlist as any).permissions?.delete;
 });
 
 const wasFollowed = ref<boolean | null>(null);

@@ -45,4 +45,3 @@ export function isValidSession(sessionId: string, userId: number): boolean {
 	const session = getSessionData(sessionId);
 	return session !== undefined && session.userId === userId;
 }
-

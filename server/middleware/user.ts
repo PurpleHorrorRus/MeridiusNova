@@ -2,10 +2,28 @@ import jwt from "jsonwebtoken";
 
 import webTokenPost, { cookieSignOptions } from "../api/vk/web-token.post";
 import { isValidSession, updateSessionAccess } from "../utils/session-storage";
+import { getSettings } from "../utils/settings-read";
+import { verifyServerPassword } from "../utils/server-password";
 
 import type { TCookie, TWebTokenResponse } from "~~/server/types/auth";
 
 export default defineEventHandler(async event => {
+	const authHeader = getHeader(event, "authorization");
+	if (authHeader && authHeader.startsWith("Bearer ")) {
+		const token = authHeader.slice(7).trim();
+		if (token) {
+			const config = useRuntimeConfig();
+			const key = config.serverPasswordKey as string;
+			const settings = await getSettings();
+			const storedHash = settings?.server?.passwordHash;
+
+			if (key && storedHash && verifyServerPassword(token, storedHash, key)) {
+				event.context.user = { id: "server" };
+				return;
+			}
+		}
+	}
+
 	const token = getCookie(event, "token");
 
 	if (!token) {

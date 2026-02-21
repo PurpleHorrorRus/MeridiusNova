@@ -43,6 +43,7 @@ import SettingsHotkeys from "~/components/Settings/Tabs/Hotkeys.vue";
 import SettingsOptimization from "~/components/Settings/Tabs/Optimization.vue";
 import SettingsPlayer from "~/components/Settings/Tabs/Player.vue";
 import SettingsCache from "~/components/Settings/Tabs/Cache.vue";
+import SettingsServer from "~/components/Settings/Tabs/Server.vue";
 
 import { useModalStore } from "~/stores/modal";
 import { useSettingsStore } from "~/stores/settings";
@@ -68,7 +69,8 @@ const allTabs = [
 	{ id: "equalizer", label: "settings.tabs.equalizer", icon: "mdi:equalizer" },
 	{ id: "hotkeys", label: "settings.tabs.hotkeys", icon: "mdi:keyboard" },
 	{ id: "cache", label: "settings.tabs.cache", icon: "mdi:database" },
-	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" }
+	{ id: "accounts", label: "settings.tabs.accounts", icon: "mdi:account-multiple" },
+	{ id: "server", label: "settings.tabs.server", icon: "mdi:server-network" }
 ];
 
 const tabs = computed(() => {
@@ -84,7 +86,8 @@ const components: Record<string, any> = {
 	equalizer: SettingsEqualizer,
 	hotkeys: SettingsHotkeys,
 	cache: SettingsCache,
-	accounts: SettingsAccounts
+	accounts: SettingsAccounts,
+	server: SettingsServer
 };
 
 const currentComponent = computed(() => {

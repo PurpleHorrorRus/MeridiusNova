@@ -51,7 +51,8 @@
 		"tough-cookie": "^6.0.0",
 		"tough-cookie-file-store": "^3.3.0",
 		"vue": "^3.5.27",
-		"vue-router": "^5.0.1"
+		"vue-router": "^5.0.1",
+		"vue3-json-viewer": "^2.4.1"
 	},
 	"devDependencies": {
 		"@iconify-json/bx": "^1.2.2",

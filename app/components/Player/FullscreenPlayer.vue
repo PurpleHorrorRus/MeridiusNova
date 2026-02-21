@@ -18,7 +18,7 @@
 				
 				<div class="fullscreen-main-content">
 					<div class="fullscreen-left-section">
-						<FullscreenVolume />
+						<VolumeControl variant="fullscreen" />
 						
 						<FullscreenCover
 							:current-song="currentSong ?? null"
@@ -81,7 +81,7 @@ import { ref, computed, watch } from "vue";
 
 import FullscreenCover from "~/components/Player/FullscreenCover.vue";
 import FullscreenTrackInfo from "~/components/Player/FullscreenTrackInfo.vue";
-import FullscreenVolume from "~/components/Player/FullscreenVolume.vue";
+import VolumeControl from "~/components/Player/VolumeControl.vue";
 import FullscreenTimeline from "~/components/Player/FullscreenTimeline.vue";
 import FullscreenControls from "~/components/Player/FullscreenControls.vue";
 import FullscreenTopButtons from "~/components/Player/FullscreenTopButtons.vue";

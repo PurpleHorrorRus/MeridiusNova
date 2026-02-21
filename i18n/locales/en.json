@@ -54,7 +54,8 @@
 			"equalizer": "Equalizer",
 			"hotkeys": "Hotkeys",
 			"cache": "Cache",
-			"accounts": "Accounts"
+			"accounts": "Accounts",
+			"server": "Server"
 		},
 		"general": {
 			"language": {
@@ -80,24 +81,6 @@
 				"pathPlaceholder": "Select folder for saving",
 				"choose": "Choose"
 			},
-			"server": {
-				"title": "Server",
-				"enable": "Use remote server",
-				"type": "Server type",
-				"local": "Local server",
-				"remote": "Remote server",
-				"url": "Server URL",
-				"urlPlaceholder": "http://example.com",
-				"port": "Port",
-				"portPlaceholder": "31415",
-				"check": "Check",
-				"checking": "Checking...",
-				"available": "Server is available",
-				"connect": "Connect",
-				"switchToLocal": "Return to local server",
-				"remoteActive": "Remote server is active",
-				"remoteActiveDescription": "The application is connected to a remote server. Click the button below to return to the local server."
-			},
 			"updates": {
 				"title": "Updates",
 				"currentVersion": "Current Version",
@@ -111,7 +94,44 @@
 				"checking": "Checking for updates...",
 				"available": "Update available",
 				"install": "Install Update"
+			},
+			"server": {
+				"title": "Remote Meridius server",
+				"enable": "Use remote server",
+				"url": "Server URL",
+				"urlPlaceholder": "http://example.com",
+				"port": "Port",
+				"portPlaceholder": "31415",
+				"check": "Check",
+				"checking": "Checking...",
+				"available": "Server is available",
+				"connect": "Connect",
+				"switchToLocal": "Return to local server",
+				"remoteActive": "Remote server is active",
+				"remoteActiveDescription": "The application is connected to a remote server. Click the button below to return to the local server."
 			}
+		},
+		"server": {
+			"title": "HTTP and WebSocket API",
+			"enable": "Enable HTTP and WebSocket API",
+			"password": "Server password",
+			"passwordPlaceholder": "Password not set",
+			"passwordSet": "Password set",
+			"generatePassword": "Generate password",
+			"generating": "Generating...",
+			"copy": "Copy",
+			"passwordGeneratedOnce": "Save the password — it will not be shown again.",
+			"endpointsTitle": "Available endpoints",
+			"categoryHttp": "HTTP Get",
+			"categoryWebSocket": "WebSocket",
+			"endpointNowPlaying": "Current track",
+			"endpointPlaylist": "Current playlist",
+			"endpointTime": "Current time",
+			"response": "Response",
+			"resultOk": "OK",
+			"resultError": "Error",
+			"resultAuthRequired": "Password required",
+			"resultChecking": "Checking..."
 		},
 		"appearance": {
 			"themes": {

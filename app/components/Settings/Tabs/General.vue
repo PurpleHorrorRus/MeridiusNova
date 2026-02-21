@@ -245,13 +245,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 
 import { useStreamerStore } from "~/stores/streamer";
 import { useSettingsStore } from "~/stores/settings";
 
-import { useServerCheck } from "~/composables/useServerCheck";
 import { useUpdater } from "~/composables/useUpdater";
+import { useServerCheck } from "~/composables/useServerCheck";
 import { useIsMobile } from "~/composables/useIsMobile";
 
 import { isTauri } from "~/utils/tauri";
@@ -272,6 +273,7 @@ const isExternalServer = process.env.EXTERNAL_SERVER === "true"
 const isActuallyExternalServer = computed(() => {
 	return isExternalServer && settings.value.general.server.enable;
 });
+
 const {
 	currentVersion,
 	checking: checkingUpdates,
@@ -396,7 +398,7 @@ const updateServerPort = (event: Event) => {
 		settingsStore.updateSection("general", {
 			server: {
 				...settings.value.general.server,
-				port: port
+				port
 			}
 		});
 		resetServerCheck();
@@ -424,9 +426,7 @@ const checkServer = async () => {
 const connectToServer = async () => {
 	if (isTauri() && import.meta.client) {
 		await settingsStore.save();
-		
 		await new Promise(resolve => setTimeout(resolve, 500));
-
 		const { invoke } = await import("@tauri-apps/api/core");
 		await invoke("restart_app");
 	}
@@ -435,12 +435,9 @@ const connectToServer = async () => {
 const switchToLocalServer = async () => {
 	if (isTauri() && import.meta.client) {
 		settingsStore.settings.general.server.enable = false;
-		
 		await settingsStore.save();
 		resetServerCheck();
-		
 		await new Promise(resolve => setTimeout(resolve, 1000));
-
 		const { invoke } = await import("@tauri-apps/api/core");
 		await invoke("restart_app");
 	}
@@ -785,5 +782,75 @@ const installUpdate = async () => {
 	border: 1px solid var(--border, #3a3a3a);
 	color: var(--text, #fff);
 	flex-shrink: 0;
+}
+
+.settings-label-block {
+	display: block;
+	margin-bottom: 6px;
+}
+
+.settings-endpoints-table-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	overflow-x: auto;
+}
+
+.settings-endpoints-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+
+	th, td {
+		padding: 8px 12px;
+		text-align: left;
+		border: 1px solid var(--border, #3a3a3a);
+	}
+
+	th {
+		background: var(--bg-tertiary, #2a2a2a);
+		color: var(--text, #fff);
+		font-weight: 600;
+	}
+
+	td {
+		color: var(--text-secondary, #b3b3b3);
+	}
+}
+
+.settings-password-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.settings-password-modal {
+	background: var(--bg-secondary, #1a1a1a);
+	border: 1px solid var(--border, #3a3a3a);
+	border-radius: 12px;
+	padding: 24px;
+	max-width: 400px;
+	width: 90%;
+}
+
+.settings-password-modal-warning {
+	margin: 0 0 12px 0;
+	font-size: 13px;
+	color: var(--text-secondary, #b3b3b3);
+}
+
+.settings-password-modal-value {
+	margin: 0 0 16px 0;
+	padding: 12px;
+	background: var(--bg-tertiary, #2a2a2a);
+	border-radius: 6px;
+	font-family: monospace;
+	font-size: 14px;
+	word-break: break-all;
+	color: var(--text, #fff);
 }
 </style>
