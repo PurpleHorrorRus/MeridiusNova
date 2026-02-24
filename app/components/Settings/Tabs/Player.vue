@@ -57,39 +57,30 @@
 			<h2 class="section-title">{{ getString("settings.player.latest.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.latest.save"
-							@change="updateLatestSave"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.latest.save"
+						@update="updateLatestSave"
+					>
 						{{ getString("settings.player.latest.save") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="settings.player.latest.save" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.latest.exit"
-							@change="updateLatestExit"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.latest.exit"
+						@update="updateLatestExit"
+					>
 						{{ getString("settings.player.latest.exit") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="settings.player.latest.save" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.latest.play"
-							@change="updateLatestPlay"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.latest.play"
+						@update="updateLatestPlay"
+					>
 						{{ getString("settings.player.latest.play") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 			</div>
 		</div>
@@ -98,15 +89,12 @@
 			<h2 class="section-title">{{ getString("settings.player.rewind.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.rewind"
-							@change="updateRewind"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.rewind"
+						@update="updateRewind"
+					>
 						{{ getString("settings.player.rewind.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div class="settings-tip" v-text="i18n(getString('settings.hints.player.rewind'), { rewind: 5 })" />
@@ -117,15 +105,12 @@
 			<h2 class="section-title">{{ getString("settings.player.normalizer.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.normalizer.enable"
-							@change="updateNormalizerEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.normalizer.enable"
+						@update="updateNormalizerEnable"
+					>
 						{{ getString("settings.player.normalizer.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div class="settings-tip" v-text="getString('settings.hints.player.normalizer.tip')" />
@@ -154,15 +139,12 @@
 			<h2 class="section-title">{{ getString("settings.player.crossfade.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.crossfade.enable"
-							@change="updateCrossfadeEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.crossfade.enable"
+						@update="updateCrossfadeEnable"
+					>
 						{{ getString("settings.player.crossfade.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="settings.player.crossfade.enable" class="settings-item">
@@ -182,15 +164,12 @@
 				</div>
 
 				<div v-if="settings.player.crossfade.enable" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.player.crossfade.fade"
-							@change="updateCrossfadeFade"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.player.crossfade.fade"
+						@update="updateCrossfadeFade"
+					>
 						{{ getString("settings.player.crossfade.fade") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 			</div>
 		</div>
@@ -384,47 +363,42 @@ const updateVolumeDivider = (event: Event) => {
 	playerStore.setVolume(playerStore.volume);
 };
 
-const updateLatestSave = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateLatestSave = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
-			save: target.checked
+			save: checked
 		}
 	});
 };
 
-const updateLatestExit = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateLatestExit = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
-			exit: target.checked
+			exit: checked
 		}
 	});
 };
 
-const updateLatestPlay = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateLatestPlay = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		latest: {
 			...settings.value.player.latest,
-			play: target.checked
+			play: checked
 		}
 	});
 };
 
-const updateRewind = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("player", { rewind: target.checked });
+const updateRewind = (checked: boolean) => {
+	settingsStore.updateSection("player", { rewind: checked });
 };
 
-const updateNormalizerEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateNormalizerEnable = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		normalizer: {
 			...settings.value.player.normalizer,
-			enable: target.checked
+			enable: checked
 		}
 	});
 };
@@ -440,12 +414,11 @@ const updateNormalizerMax = (event: Event) => {
 	});
 };
 
-const updateCrossfadeEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateCrossfadeEnable = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		crossfade: {
 			...settings.value.player.crossfade,
-			enable: target.checked
+			enable: checked
 		}
 	});
 };
@@ -473,12 +446,11 @@ const updateCrossfadeDuration = (event: Event) => {
 	}
 };
 
-const updateCrossfadeFade = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateCrossfadeFade = (checked: boolean) => {
 	settingsStore.updateSection("player", {
 		crossfade: {
 			...settings.value.player.crossfade,
-			fade: target.checked
+			fade: checked
 		}
 	});
 };
@@ -630,13 +602,6 @@ const updatePlaybackRateStepHotkey = (event: Event) => {
 	color: var(--text, #fff);
 	flex: 1;
 	line-height: 1.5;
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-range {

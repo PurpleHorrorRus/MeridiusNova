@@ -3,6 +3,7 @@
 		"main": "Home",
 		"myMusic": "My Music",
 		"myLibrary": "My Library",
+		"subscriptions": "Subscriptions",
 		"playlists": "Playlists",
 		"discover": "Discover",
 		"radio": "Radio",
@@ -16,6 +17,9 @@
 	"general": {
 		"loading": "Loading...",
 		"error": "Error",
+		"subscriptions": "Subscriptions",
+		"subscriptionsEmpty": "No artist subscriptions",
+		"subscriptionsSeeAll": "See all",
 		"recommendations": "Recommendations",
 		"newAlbums": "New Albums",
 		"newArtists": "New Artists",
@@ -131,7 +135,13 @@
 			"resultOk": "OK",
 			"resultError": "Error",
 			"resultAuthRequired": "Password required",
-			"resultChecking": "Checking..."
+			"resultChecking": "Checking...",
+			"connectedClientsTitle": "Connected clients",
+			"connectedClientsEmpty": "No connections",
+			"connectionTypeSong": "Current track",
+			"connectionTypePlaylist": "Playlist",
+			"connectionTypeTime": "Time",
+			"connectedClientsRefresh": "Refresh"
 		},
 		"appearance": {
 			"themes": {
@@ -372,8 +382,6 @@
 			"myMusic": "My Music",
 			"userPlaylist": "User Playlist",
 			"wall": "Wall",
-			"feed": "Feed",
-			"updates": "Updates",
 			"general": "General",
 			"artist": "Artist",
 			"popular": "Popular",

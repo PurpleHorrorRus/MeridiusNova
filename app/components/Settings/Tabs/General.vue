@@ -21,68 +21,53 @@
 		<h2 class="section-title">{{ getString("settings.general.window.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.window.startup"
-						@change="updateStartup"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.window.startup"
+					@update="updateStartup"
+				>
 					{{ getString("settings.general.window.startup") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.window.hideOnClose"
-						@change="updateHideOnClose"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.window.hideOnClose"
+					@update="updateHideOnClose"
+				>
 					{{ getString("settings.general.window.hideOnClose") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 		</div>
 	</div>
 
-	<div v-if="!isActuallyExternalServer" class="settings-section">
+	<div v-if="isTauri()" class="settings-section">
 		<h2 class="section-title">{{ getString("settings.general.discord.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.general.discord.enable"
-						@change="updateDiscordEnable"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.general.discord.enable"
+					@update="updateDiscordEnable"
+				>
 					{{ getString("settings.general.discord.enable") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div v-if="settings.general.discord.enable" class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.general.discord.timeline"
-						@change="updateDiscordTimeline"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.general.discord.timeline"
+					@update="updateDiscordTimeline"
+				>
 					{{ getString("settings.general.discord.timeline") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div v-if="settings.general.discord.enable" class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.general.discord.reverse"
-						@change="updateDiscordReverse"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.general.discord.reverse"
+					@update="updateDiscordReverse"
+				>
 					{{ getString("settings.general.discord.reverse") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 		</div>
 	</div>
@@ -91,15 +76,12 @@
 		<h2 class="section-title">{{ getString("settings.general.streamer.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.general.streamer.enable"
-						@change="updateStreamerEnable"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.general.streamer.enable"
+					@update="updateStreamerEnable"
+				>
 					{{ getString("settings.general.streamer.enable") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div class="settings-tip" v-text="getString('settings.hints.general.streamer')" />
@@ -127,15 +109,12 @@
 			</div>
 
 			<div v-if="!isActuallyExternalServer" class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="settings.general.server.enable"
-						@change="updateServerEnable"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="settings.general.server.enable"
+					@update="updateServerEnable"
+				>
 					{{ getString("settings.general.server.enable") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div v-if="settings.general.server.enable" class="settings-item">
@@ -294,32 +273,28 @@ const updateLang = async (event: Event) => {
 	await loadLanguage(newLang);
 };
 
-const updateStartup = async (event: Event) => {
-	const target = event.target as HTMLInputElement;
-
+const updateStartup = async (checked: boolean) => {
 	if (isTauri() && import.meta.client) {
 		const { invoke } = await import("@tauri-apps/api/core");
-		await invoke("set_startup", { enable: target.checked });
+		await invoke("set_startup", { enable: checked });
 	}
 
-	settingsStore.updateSection("window", { startup: target.checked });
+	settingsStore.updateSection("window", { startup: checked });
 };
 
-const updateHideOnClose = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("window", { hideOnClose: target.checked });
+const updateHideOnClose = (checked: boolean) => {
+	settingsStore.updateSection("window", { hideOnClose: checked });
 };
 
-const updateDiscordEnable = async (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateDiscordEnable = async (checked: boolean) => {
 	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
-			enable: target.checked
+			enable: checked
 		}
 	});
 
-	if (import.meta.client && target.checked) {
+	if (import.meta.client && checked) {
 		const { useDiscordStore } = await import("~/stores/discord");
 		const discordStore = useDiscordStore();
 		await discordStore.connect();
@@ -328,53 +303,49 @@ const updateDiscordEnable = async (event: Event) => {
 		if (playerStore.song) {
 			await discordStore.setActivity(playerStore.song);
 		}
-	} else if (import.meta.client && !target.checked) {
+	} else if (import.meta.client && !checked) {
 		const { useDiscordStore } = await import("~/stores/discord");
 		const discordStore = useDiscordStore();
 		await discordStore.clearActivity();
 	}
 };
 
-const updateDiscordTimeline = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateDiscordTimeline = (checked: boolean) => {
 	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
-			timeline: target.checked
+			timeline: checked
 		}
 	});
 };
 
-const updateDiscordReverse = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateDiscordReverse = (checked: boolean) => {
 	settingsStore.updateSection("general", {
 		discord: {
 			...settings.value.general.discord,
-			reverse: target.checked
+			reverse: checked
 		}
 	});
 };
 
-const updateStreamerEnable = async (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateStreamerEnable = async (checked: boolean) => {
 	settingsStore.updateSection("general", {
 		streamer: {
 			...settings.value.general.streamer,
-			enable: target.checked
+			enable: checked
 		}
 	});
 
-	if (target.checked) {
+	if (checked) {
 		await streamerStore.init();
 	}
 };
 
-const updateServerEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateServerEnable = (checked: boolean) => {
 	settingsStore.updateSection("general", {
 		server: {
 			...settings.value.general.server,
-			enable: target.checked
+			enable: checked
 		}
 	});
 	resetServerCheck();
@@ -527,13 +498,6 @@ const installUpdate = async () => {
 .settings-label-block {
 	flex: 0 0 100%;
 	margin-bottom: 8px;
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-radio-group {

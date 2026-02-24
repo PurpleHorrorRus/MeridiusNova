@@ -26,15 +26,12 @@
 			<h2 class="section-title">{{ getString("settings.downloads.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.download.enable"
-							@change="updateDownloadEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.download.enable"
+						@update="updateDownloadEnable"
+					>
 						{{ getString("settings.downloads.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="isTauri()" class="settings-item">
@@ -101,9 +98,8 @@ const installFFmpeg = async () => {
 	await ffmpegStore.install();
 };
 
-const updateDownloadEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { enable: target.checked });
+const updateDownloadEnable = (checked: boolean) => {
+	settingsStore.updateSection("download", { enable: checked });
 };
 
 const chooseDownloadPath = async () => {
@@ -186,13 +182,6 @@ const updateTemplate = (event: Event) => {
 	color: var(--text, #fff);
 	flex: 1;
 	line-height: 1.5;
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-input-group {

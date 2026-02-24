@@ -188,6 +188,16 @@ const loadSettingsFromServer = async (): Promise<Partial<TSettings> | null> => {
 	return await $fetch<Partial<TSettings> | null>("/api/settings");
 };
 
+const applyFetchedSettings = (saved: Partial<TSettings> | null, store: { settings: TSettings }) => {
+	if (!saved) return;
+
+	store.settings = mergeSettings(saved, defaultSettings);
+	const serverFromSaved = (saved as Partial<TSettings>).server as { passwordHash?: string } | undefined;
+	if (serverFromSaved?.passwordHash) {
+		store.settings.server.passwordHash = serverFromSaved.passwordHash;
+	}
+};
+
 const saveSettingsToServer = async (settings: TSettings): Promise<void> => {
 	if (!import.meta.client) {
 		return;
@@ -243,14 +253,7 @@ export const useSettingsStore = defineStore("settings", {
 				}
 
 				const saved = await loadSettingsFromServer();
-
-				if (saved) {
-					this.settings = mergeSettings(saved, defaultSettings);
-					const serverFromSaved = (saved as Partial<TSettings>).server as { passwordHash?: string } | undefined;
-					if (serverFromSaved?.passwordHash) {
-						this.settings.server.passwordHash = serverFromSaved.passwordHash;
-					}
-				}
+				applyFetchedSettings(saved, this);
 
 				if (isTauri()) {
 					if (localSettings?.general?.server) {
@@ -269,6 +272,13 @@ export const useSettingsStore = defineStore("settings", {
 			}
 
 			this.loaded = true;
+		},
+
+		async refresh() {
+			if (!import.meta.client) return;
+
+			const saved = await loadSettingsFromServer();
+			applyFetchedSettings(saved, this);
 		},
 
 		async save() {

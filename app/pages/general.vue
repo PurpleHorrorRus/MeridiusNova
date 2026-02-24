@@ -29,6 +29,23 @@
 				<VKMix />
 			</div>
 
+			<!-- Subscriptions (followed artists) -->
+			<div v-if="subscriptionsArtists && subscriptionsArtists.length > 0" class="section">
+				<div class="section-header-with-link">
+					<h2 class="section-title">{{ getString("general.subscriptions") }}</h2>
+					<NuxtLink to="/artists" class="section-link">{{ getString("general.subscriptionsSeeAll") }}</NuxtLink>
+				</div>
+				<div class="artists-grid">
+					<LazyArtistCard
+						v-for="artist in subscriptionsArtists"
+						:key="`sub-${artist.id || artist.link}`"
+						v-memo="[artist.id, artist.link]"
+						hydrate-on-visible
+						:artist="artist"
+					/>
+				</div>
+			</div>
+
 			<!-- User Playlists Category -->
 			<div v-if="userPlaylistsCategory?.playlists?.length" class="section" ref="userPlaylistsSectionRef">
 				<h2 class="section-title">{{ userPlaylistsCategory.title || "Слушайте друг друга" }}</h2>
@@ -227,6 +244,9 @@ const toMutableArtist = (artist: { cover?: string; coverUrl_p?: string; coverUrl
 const { data: general, pending: generalLoading, error: generalError, execute: loadGeneral } = useFetch<TPlaylistCollection[]>("/api/vk/general");
 const currentParams = ref<{ count?: number }>({});
 const { data: exploreData, pending: exploreLoading, error: exploreError, execute: executeExplore } = useFetch<TExploreData>("/api/vk/explore");
+const { data: subscriptionsData } = await useFetch<TArtist[]>("/api/vk/artists/subscriptions");
+
+const subscriptionsArtists = computed(() => subscriptionsData.value || []);
 
 const loadExplore = async (newParams: { count?: number } = {}) => {
 	currentParams.value = newParams;
@@ -445,6 +465,25 @@ onMounted(() => {
 		gap: 16px;
 	}
 
+	&-header-with-link {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+	}
+
+	&-link {
+		color: var(--text-secondary, #b3b3b3);
+		font-size: 14px;
+		text-decoration: none;
+		flex-shrink: 0;
+		transition: color 0.2s ease;
+
+		&:hover {
+			color: var(--text, #fff);
+		}
+	}
+
 	&-title {
 		font-size: 28px;
 		font-weight: 700;
@@ -470,6 +509,19 @@ onMounted(() => {
 	flex-wrap: nowrap;
 	padding-bottom: 15px;
 	overflow-x: auto;
+}
+
+.playlists-grid :deep(.playlist-card) {
+	flex-shrink: 0;
+	width: 176px;
+
+	@media (max-width: 768px) {
+		width: 156px;
+	}
+
+	@media (max-width: 480px) {
+		width: 136px;
+	}
 }
 
 .user-playlists-list {

@@ -22,7 +22,6 @@ export default defineEventHandler(async (event) => {
 			return false;
 		});
 
-
 		if (decoded === false) {
 			return false;
 		}

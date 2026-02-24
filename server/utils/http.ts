@@ -4,7 +4,6 @@ import fs from "fs-extra";
 import { CookieJar } from "tough-cookie";
 import FileCookieStore from "tough-cookie-file-store";
 import type { UserSession } from "#auth-utils";
-import type { H3Event, EventHandlerRequest } from "h3";
 
 import { ERequestMethod } from "./types";
 
@@ -175,10 +174,10 @@ export class Http {
 						default: return `\\u${charCode.toString(16).padStart(4, "0")}`;
 					}
 				}
-				if (char === '"' || char === '\\') {
-					return `\\${char}`;
-				}
-				return char;
+
+				return char === '"' || char === "\\"
+					? `\\${char}`
+					: char;
 			});
 
 			// Пытаемся распарсить JSON с обработкой ошибок
@@ -288,7 +287,7 @@ export class Http {
 	protected getUuid() {
 		return Array.from({ length: 6 }, () => "abcdefghijklmnopqrstuvwxyz".charAt(Math.floor(Math.random() * 26))).join("");
 	}
-}
+};
 
 const solveCookiesPath = (userId: number): string => {
 	return userId !== -1
@@ -308,7 +307,7 @@ export const migrateCookies = (userId: number = -1): string => {
 	return userId !== -1
 		? targetCookiePath
 		: defaultCookiePath;
-}
+};
 
 export const getHttpInstance = (userId: number = -1): Http => {
 	const cookiesPath = solveCookiesPath(userId);

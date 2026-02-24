@@ -25,6 +25,15 @@ const songPeers = new Set<BroadcastPeer>();
 const playlistPeers = new Set<BroadcastPeer>();
 const timePeers = new Set<BroadcastPeer>();
 
+export type ConnectedClientEntry = { id: number; type: "song" | "playlist" | "time"; connectedAt: number; ip: string };
+
+let connectionIdNext = 0;
+const connectionMap = new Map<BroadcastPeer, ConnectedClientEntry>();
+
+export function getConnectedClients(): ConnectedClientEntry[] {
+	return Array.from(connectionMap.values());
+}
+
 export function getNowPlaying(): TAudio | null {
 	return state.song;
 }
@@ -67,17 +76,38 @@ export function setTime(currentTime: number, duration: number): void {
 	});
 }
 
-export function subscribeSong(peer: BroadcastPeer): () => void {
+function registerConnection(peer: BroadcastPeer, type: ConnectedClientEntry["type"], ip: string): void {
+	connectionIdNext += 1;
+	connectionMap.set(peer, { id: connectionIdNext, type, connectedAt: Date.now(), ip });
+}
+
+function unregisterConnection(peer: BroadcastPeer): void {
+	connectionMap.delete(peer);
+}
+
+export function subscribeSong(peer: BroadcastPeer, ip: string): () => void {
+	registerConnection(peer, "song", ip);
 	songPeers.add(peer);
-	return () => songPeers.delete(peer);
+	return () => {
+		songPeers.delete(peer);
+		unregisterConnection(peer);
+	};
 }
 
-export function subscribePlaylist(peer: BroadcastPeer): () => void {
+export function subscribePlaylist(peer: BroadcastPeer, ip: string): () => void {
+	registerConnection(peer, "playlist", ip);
 	playlistPeers.add(peer);
-	return () => playlistPeers.delete(peer);
+	return () => {
+		playlistPeers.delete(peer);
+		unregisterConnection(peer);
+	};
 }
 
-export function subscribeTime(peer: BroadcastPeer): () => void {
+export function subscribeTime(peer: BroadcastPeer, ip: string): () => void {
+	registerConnection(peer, "time", ip);
 	timePeers.add(peer);
-	return () => timePeers.delete(peer);
+	return () => {
+		timePeers.delete(peer);
+		unregisterConnection(peer);
+	};
 }

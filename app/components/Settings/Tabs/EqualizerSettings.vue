@@ -3,15 +3,12 @@
 		<h2 class="section-title">{{ getString("settings.equalizer.title") }}</h2>
 		<div class="settings-items">
 			<div class="settings-item">
-				<label class="settings-label">
-					<input
-						type="checkbox"
-						:checked="enabled"
-						@change="handleEnableChange"
-						class="settings-checkbox"
-					/>
+				<SettingsCheckbox
+					:checked="enabled"
+					@update="handleEnableChange"
+				>
 					{{ getString("settings.equalizer.enable") }}
-				</label>
+				</SettingsCheckbox>
 			</div>
 
 			<div class="settings-item">
@@ -67,9 +64,8 @@ const emit = defineEmits<Emits>();
 
 const { getString } = useStrings();
 
-const handleEnableChange = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	emit("update:enabled", target.checked);
+const handleEnableChange = (checked: boolean) => {
+	emit("update:enabled", checked);
 };
 
 const handlePresetChange = (event: Event) => {
@@ -141,13 +137,6 @@ const handleImport = () => {
 	color: var(--text, #fff);
 	flex: 1;
 	line-height: 1.5;
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-select {

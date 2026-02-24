@@ -35,7 +35,7 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 
 		if (!html || html.trim() === "") {
 			pageHtml = await this.request<string>({}, `/artist/${artistPath}`).catch((error: Error) => {
-				console.error("Failed to load artist page directly:", artist, error);
+				console.error("Failed to load artist page directly:", artist, error);	
 				return null;
 			});
 
@@ -228,6 +228,39 @@ class ArtistsRequests extends BaseRequest implements IRequest {
 		} as any, "al_artist.php");
 
 		return (response as TRawResponse<any>).payload[1][0];
+	}
+
+	public async getSubscriptions(): Promise<TArtist[]> {
+		const ownerId = this.event.context.user?.id;
+
+		if (!ownerId) {
+			return [];
+		}
+
+		const section = await this.getSection<TGetSectionPayload>({
+			owner_id: ownerId,
+			section: "all"
+		}).catch(() => null);
+
+		if (!section?.payload?.[1]) {
+			return [];
+		}
+
+		const p1 = section.payload[1] as unknown;
+		let html = "";
+
+		if (Array.isArray(p1) && p1.length > 0) {
+			const htmlRaw = p1[0];
+			html = Array.isArray(htmlRaw) ? htmlRaw.join("") : String(htmlRaw || "");
+		} else if (typeof p1 === "string") {
+			html = p1;
+		}
+
+		if (!html || html.trim() === "") {
+			return [];
+		}
+
+		return this.builderHTML(html);
 	}
 
 	public async search(query: string, params: { more?: TMore } = {}): Promise<{

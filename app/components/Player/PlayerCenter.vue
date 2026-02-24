@@ -7,8 +7,8 @@
 				</button>
 				
 			<button class="btn-play" @click.stop="playerStore.toggle()">
-				<Icon v-if="paused" name="mdi:play" />
-				<Icon v-else name="mdi:pause" />
+				<Icon v-if="paused" name="mdi:play" size="28" />
+				<Icon v-else name="mdi:pause" size="28" />
 			</button>
 				
 				<button class="btn-control" @click.stop="playerStore.next({ manual: true })">
@@ -154,8 +154,8 @@ const { paused, currentTime, duration } = storeToRefs(playerStore);
 
 	:deep(svg) {
 		pointer-events: none;
-		width: 24px;
-		height: 24px;
+		width: 36px;
+		height: 36px;
 	}
 
 	@media (max-width: 1200px) {
@@ -163,8 +163,8 @@ const { paused, currentTime, duration } = storeToRefs(playerStore);
 		height: 40px;
 
 		:deep(svg) {
-			width: 22px;
-			height: 22px;
+			width: 32px;
+			height: 32px;
 		}
 	}
 
@@ -173,8 +173,8 @@ const { paused, currentTime, duration } = storeToRefs(playerStore);
 		height: 38px;
 
 		:deep(svg) {
-			width: 20px;
-			height: 20px;
+			width: 30px;
+			height: 30px;
 		}
 	}
 

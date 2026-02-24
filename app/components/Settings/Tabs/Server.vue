@@ -4,15 +4,12 @@
 			<h2 class="section-title">{{ getString("settings.server.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.server.enable"
-							@change="updateServerEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.server.enable"
+						@update="updateServerEnable"
+					>
 						{{ getString("settings.server.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="settings.server.enable" class="settings-item">
@@ -49,6 +46,34 @@
 						ref="endpointsRef"
 						:endpoints="serverEndpoints"
 					/>
+				</div>
+
+				<div v-if="settings.server.enable" class="settings-item">
+					<h3 class="settings-label settings-label-block">{{ getString("settings.server.connectedClientsTitle") }}</h3>
+					<div class="settings-connected-clients">
+						<div v-if="connectedClients.length === 0" class="settings-connected-clients-empty">
+							{{ getString("settings.server.connectedClientsEmpty") }}
+						</div>
+						<ul v-else class="settings-connected-clients-list">
+							<li
+								v-for="client in connectedClients"
+								:key="client.id"
+								class="settings-connected-clients-item"
+							>
+								<span class="settings-connected-clients-ip">{{ client.ip }}</span>
+								<span class="settings-connected-clients-time">{{ formatConnectedAt(client.connectedAt) }}</span>
+							</li>
+						</ul>
+						<button
+							type="button"
+							class="settings-button settings-button-secondary"
+							:disabled="loadingClients"
+							@click="fetchConnectedClients"
+						>
+							<Icon v-if="loadingClients" name="mdi:loading" class="settings-button-icon spinning" />
+							{{ loadingClients ? getString("settings.server.resultChecking") : getString("settings.server.connectedClientsRefresh") }}
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -89,18 +114,36 @@ const serverEndpoints: Record<string, ServerEndpointItem> = {
 	wsTime: { method: "WS", path: "/socket/player/time", labelKey: "settings.server.endpointTime" }
 };
 
+type ConnectedClientEntry = { id: number; type: "song" | "playlist" | "time"; connectedAt: number; ip: string };
+
 const endpointsRef = ref<InstanceType<typeof SettingsServerEndpoints> | null>(null);
 const generatedPassword = ref<string | null>(null);
 const generating = ref(false);
+const connectedClients = ref<ConnectedClientEntry[]>([]);
+const loadingClients = ref(false);
 
-const updateServerEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+function formatConnectedAt(timestamp: number): string {
+	const diffMs = Date.now() - timestamp;
+	if (diffMs < 60000) return Math.floor(diffMs / 1000) + " s";
+	if (diffMs < 3600000) return Math.floor(diffMs / 60000) + " min";
+	return new Date(timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+const fetchConnectedClients = async () => {
+	if (loadingClients.value) return;
+	loadingClients.value = true;
+	const list = await $fetch<ConnectedClientEntry[]>("/api/settings/server-clients").catch(() => []);
+	loadingClients.value = false;
+	connectedClients.value = list;
+};
+
+const updateServerEnable = (checked: boolean) => {
 	settingsStore.updateSection("server", {
 		...settings.value.server,
-		enable: target.checked
+		enable: checked
 	});
 
-	if (target.checked) {
+	if (checked) {
 		nextTick(() => endpointsRef.value?.checkEndpoints());
 	}
 };
@@ -117,7 +160,7 @@ const generatePassword = async () => {
 
 	if (res?.password) {
 		generatedPassword.value = res.password;
-		await settingsStore.load();
+		await settingsStore.refresh();
 	}
 };
 
@@ -157,6 +200,7 @@ const closePasswordModal = () => {
 onMounted(() => {
 	if (settings.value.server.enable) {
 		nextTick(() => endpointsRef.value?.checkEndpoints());
+		fetchConnectedClients();
 	}
 });
 </script>
@@ -294,13 +338,6 @@ onMounted(() => {
 	&:active {
 		transform: translateY(0);
 	}
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-tip {
@@ -442,5 +479,49 @@ onMounted(() => {
 	font-size: 14px;
 	word-break: break-all;
 	color: var(--text, #fff);
+}
+
+.settings-connected-clients {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.settings-connected-clients-empty {
+	font-size: 14px;
+	color: var(--text-secondary, #b3b3b3);
+	padding: 12px 0;
+}
+
+.settings-connected-clients-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.settings-connected-clients-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 14px;
+	background: var(--bg-tertiary, #2a2a2a);
+	border: 1px solid var(--border, #3a3a3a);
+	border-radius: 6px;
+	font-size: 14px;
+}
+
+.settings-connected-clients-ip {
+	font-weight: 500;
+	color: var(--text, #fff);
+	font-family: ui-monospace, monospace;
+}
+
+.settings-connected-clients-time {
+	color: var(--text-secondary, #b3b3b3);
+	font-size: 13px;
 }
 </style>

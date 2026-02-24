@@ -1966,8 +1966,6 @@ export const usePlaylistStore = defineStore("playlist", {
 			} else if (playlist.context) {
 				const contextMap: Record<string, string> = {
 					"wall": getString("queue.source.wall"),
-					"feed": getString("queue.source.feed"),
-					"updates": getString("queue.source.updates"),
 					"general": getString("queue.source.general"),
 					"artist": getString("queue.source.artist"),
 					"popular": getString("queue.source.popular")

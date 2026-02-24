@@ -21,6 +21,19 @@ function getCookieToken(headers: WebSocketPeer["request"]): string {
 	return match ? decodeURIComponent(match[1].trim()) : "";
 }
 
+export function getClientIp(peer: WebSocketPeer): string {
+	const get = peer.request?.headers?.get;
+	if (!get) return "—";
+	const forwarded = get("x-forwarded-for") ?? get("X-Forwarded-For") ?? "";
+	if (forwarded) {
+		const first = forwarded.split(",")[0]?.trim();
+		if (first) return first;
+	}
+	const real = get("x-real-ip") ?? get("X-Real-IP") ?? "";
+	if (real) return real.trim();
+	return "—";
+}
+
 export async function verifyWebSocketPassword(peer: WebSocketPeer): Promise<boolean> {
 	const rawUrl = peer.request?.url ?? "";
 	const url = rawUrl.startsWith("http") ? new URL(rawUrl) : new URL("http://localhost" + (rawUrl || "/"));

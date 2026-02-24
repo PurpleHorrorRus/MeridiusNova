@@ -18,18 +18,6 @@ const route = useRoute();
 
 const navigation = [
 	{
-		id: "feed",
-		link: "/discover/feed",
-		icon: "mdi:wall",
-		title: "Лента"
-	},
-	{
-		id: "updates",
-		link: "/discover/updates",
-		icon: "mdi:rss",
-		title: "Обновления"
-	},
-	{
 		id: "friends",
 		link: "/discover/friends",
 		icon: "mdi:account-group",

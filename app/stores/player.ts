@@ -2,8 +2,9 @@ import Hls from "hls.js";
 import { storeToRefs } from "pinia";
 import * as lodash from "lodash";
 
-import { useDiscordStore } from "./discord";
 import { usePlaylistStore } from "./playlist";
+
+import { isTauri } from "~/utils/tauri";
 import { useSettingsStore } from "./settings";
 import { useStreamerStore } from "./streamer";
 import { CrossFade } from "./player/nodes/crossfade";
@@ -388,8 +389,9 @@ export const usePlayerStore = defineStore("player", {
 			// Setup Metadata
 			this.initMetadata(song);
 
-			// Discord RPC
-			if (import.meta.client) {
+			// Discord RPC (только в Tauri)
+			if (import.meta.client && isTauri()) {
+				const { useDiscordStore } = await import("./discord");
 				const discordStore = useDiscordStore();
 				discordStore.setActivity(song);
 			}

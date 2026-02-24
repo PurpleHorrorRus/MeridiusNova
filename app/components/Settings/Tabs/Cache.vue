@@ -4,15 +4,12 @@
 			<h2 class="section-title">{{ getString("settings.cache.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.cache.enable"
-							@change="updateCacheEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.cache.enable"
+						@update="updateCacheEnable"
+					>
 						{{ getString("settings.cache.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="settings.cache.enable && !isExternalServer && isTauri()" class="settings-item">
@@ -198,9 +195,8 @@ const cacheProgressPercentRounded = computed(() => {
 	return Math.round(cacheProgressPercent.value);
 });
 
-const updateCacheEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("cache", { enable: target.checked });
+const updateCacheEnable = (checked: boolean) => {
+	settingsStore.updateSection("cache", { enable: checked });
 
 	if (target.checked) {
 		loadCacheStats();
@@ -362,12 +358,6 @@ onUnmounted(() => {
 	gap: 8px;
 	font-size: 14px;
 	color: var(--text, #fff);
-	cursor: pointer;
-}
-
-.settings-checkbox {
-	width: 18px;
-	height: 18px;
 	cursor: pointer;
 }
 

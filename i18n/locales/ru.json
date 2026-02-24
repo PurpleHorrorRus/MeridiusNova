@@ -3,6 +3,7 @@
 		"main": "Главная",
 		"myMusic": "Моя музыка",
 		"myLibrary": "Моя библиотека",
+		"subscriptions": "Подписки",
 		"playlists": "Плейлисты",
 		"discover": "Открытия",
 		"radio": "Радио",
@@ -16,6 +17,9 @@
 	"general": {
 		"loading": "Загрузка...",
 		"error": "Ошибка",
+		"subscriptions": "Подписки",
+		"subscriptionsEmpty": "Нет подписок на исполнителей",
+		"subscriptionsSeeAll": "Все",
 		"recommendations": "Рекомендации",
 		"newAlbums": "Новые альбомы",
 		"newArtists": "Новые исполнители",
@@ -131,7 +135,13 @@
 			"resultOk": "OK",
 			"resultError": "Ошибка",
 			"resultAuthRequired": "Требуется пароль",
-			"resultChecking": "Проверка..."
+			"resultChecking": "Проверка...",
+			"connectedClientsTitle": "Подключённые клиенты",
+			"connectedClientsEmpty": "Нет подключений",
+			"connectionTypeSong": "Текущий трек",
+			"connectionTypePlaylist": "Плейлист",
+			"connectionTypeTime": "Время",
+			"connectedClientsRefresh": "Обновить"
 		},
 		"appearance": {
 			"themes": {
@@ -407,8 +417,6 @@
 			"myMusic": "Моя музыка",
 			"userPlaylist": "Плейлист пользователя",
 			"wall": "Стена",
-			"feed": "Лента",
-			"updates": "Обновления",
 			"general": "Главная",
 			"artist": "Артист",
 			"popular": "Популярное",

@@ -9,19 +9,16 @@
 		</div>
 
 		<div v-else class="content">
-			<h1 class="page-title">Исполнители</h1>
-			<div class="artists-grid">
+			<h1 class="page-title">{{ getString("navigation.subscriptions") }}</h1>
+			<div v-if="artists.length > 0" class="artists-grid">
 				<ArtistCard
 					v-for="artist in artists"
-					:key="artist.id"
+					:key="artist.id || artist.link"
 					:artist="artist"
 				/>
 			</div>
-
-			<div v-if="hasMore" class="load-more" ref="loadMoreRef">
-				<button @click="loadMore" :disabled="loadingMore">
-					Загрузить еще
-				</button>
+			<div v-else class="empty">
+				{{ getString("general.subscriptionsEmpty") }}
 			</div>
 		</div>
 	</div>
@@ -30,100 +27,77 @@
 <script setup lang="ts">
 import type { TArtist } from "~~/server/utils/types";
 
-const route = useRoute();
-const section = computed(() => (route.query.section as string) || "explore");
+const { getString } = useStrings();
 
 const { data: artistsData, pending: loading, error } = await useAsyncData<TArtist[]>(
-	"artists-list",
-	async () => {
-		// TODO: Implement artists.getByBlock API endpoint
-		return [];
-	}
+	"artists-subscriptions",
+	() => $fetch<TArtist[]>("/api/vk/artists/subscriptions")
 );
 
 const artists = computed(() => artistsData.value || []);
-const hasMore = ref(false);
-const loadingMore = ref(false);
-const loadMoreRef = ref<HTMLElement | null>(null);
-
-const loadMore = async () => {
-	// TODO: Implement load more
-};
 </script>
 
 <style scoped lang="scss">
 .page {
-	padding: 20px;
+	padding: 32px 48px;
+	min-height: 100%;
+
+	@media (max-width: 768px) {
+		padding: 20px 24px;
+	}
+
+	@media (max-width: 480px) {
+		padding: 16px;
+	}
 }
 
 .loading,
 .error {
 	text-align: center;
 	padding: 40px;
+	color: var(--text-secondary, #b3b3b3);
+}
+
+.empty {
+	text-align: center;
+	padding: 40px;
+	color: var(--text-secondary, #b3b3b3);
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: 20px;
+	gap: 32px;
 }
 
-h1 {
+.page-title {
 	font-size: 32px;
 	font-weight: 700;
+	margin: 0;
+	color: var(--text, #fff);
+
+	@media (max-width: 768px) {
+		font-size: 28px;
+	}
+
+	@media (max-width: 480px) {
+		font-size: 24px;
+	}
 }
 
 .artists-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-	gap: 20px;
-}
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 24px;
 
-.artist-item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10px;
-	cursor: pointer;
-	transition: transform 0.2s;
-
-	&:hover {
-		transform: scale(1.05);
+	@media (max-width: 768px) {
+		grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+		gap: 16px;
 	}
-}
 
-.artist-cover {
-	width: 150px;
-	height: 150px;
-	border-radius: 50%;
-	object-fit: cover;
-}
-
-.artist-name {
-	text-align: center;
-	font-size: 14px;
-}
-
-.load-more {
-	text-align: center;
-	padding: 20px;
-
-	button {
-		padding: 10px 20px;
-		background: #007bff;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-
-		&:hover:not(:disabled) {
-			background: #0056b3;
-		}
-
-		&:disabled {
-			opacity: 0.5;
-			cursor: not-allowed;
-		}
+	@media (max-width: 480px) {
+		grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+		gap: 12px;
 	}
 }
 </style>

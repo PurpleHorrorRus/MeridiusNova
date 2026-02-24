@@ -1,5 +1,5 @@
 import { getPlaylist, subscribePlaylist } from "~~/server/utils/broadcast-state";
-import { verifyWebSocketPassword } from "~~/server/utils/websocket-auth";
+import { getClientIp, verifyWebSocketPassword } from "~~/server/utils/websocket-auth";
 
 const unsubMap = new WeakMap<{ send: (data: string) => void }, () => void>();
 
@@ -11,7 +11,7 @@ export default defineWebSocketHandler({
 			return;
 		}
 		const peerRef = { send: (data: string) => peer.send(data) };
-		const unsub = subscribePlaylist(peerRef);
+		const unsub = subscribePlaylist(peerRef, getClientIp(peer as any));
 		unsubMap.set(peerRef, unsub);
 		(peer as any).__unsubRef = peerRef;
 		const playlist = getPlaylist();

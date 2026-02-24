@@ -8,6 +8,5 @@ export default defineEventHandler(async (event) => {
 		method: ERequestMethod.GET
 	});
 
-
 	return { loggedIn: !!await webTokenPost(event) }
 });

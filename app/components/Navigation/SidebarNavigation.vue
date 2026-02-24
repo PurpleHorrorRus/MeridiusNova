@@ -98,8 +98,7 @@ const userId = computed(() => vkStore.user_id || 0);
 const libraryItems = computed(() => [
 	{ path: "/general", label: getString("navigation.main"), icon: "mdi:home" },
 	{ path: userId.value ? `/playlist/${userId.value}/-1` : "/auth", label: getString("navigation.myMusic"), icon: "mdi:music-box-multiple" },
-	{ path: "/discover/feed", label: "Лента", icon: "mdi:wall" },
-	{ path: "/discover/updates", label: "Обновления", icon: "mdi:rss" },
+	{ path: "/artists", label: getString("navigation.subscriptions"), icon: "mdi:account-music" },
 	{ path: "/discover/friends", label: "Друзья", icon: "mdi:account-group" },
 	{ path: "/discover/communities", label: "Сообщества", icon: "mdi:account-multiple" }
 ]);
@@ -111,7 +110,7 @@ const getCustomActive = (path: string): boolean => {
 		return true;
 	}
 
-	if (path === "/discover/feed" && currentPath === "/discover") {
+	if (path === "/artists" && currentPath.startsWith("/artists")) {
 		return true;
 	}
 

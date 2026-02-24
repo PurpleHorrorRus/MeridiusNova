@@ -4,32 +4,26 @@
 			<h2 class="section-title">{{ getString("settings.optimization.title") }}</h2>
 			<div class="settings-items">
 				<div v-if="isTauri()" class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.window.hardwareAcceleration"
-							@change="updateHardwareAcceleration"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.window.hardwareAcceleration"
+						@update="updateHardwareAcceleration"
+					>
 						{{ getString("settings.optimization.hardwareAcceleration") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div v-if="isTauri()" class="settings-tip" v-text="getString('settings.hints.optimization.hardwareAcceleration')" />
 
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.optimization.download.auto"
-							@change="updateAutoDownloads"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.optimization.download.auto"
+						@update="updateAutoDownloads"
+					>
 						{{ getString("settings.optimization.download.auto") }}
 						<span v-if="settings.optimization.download.auto" class="settings-value">
 							({{ autoDownloadCount }})
 						</span>
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div class="settings-tip" v-text="getString('settings.hints.optimization.download.auto')" />
@@ -58,15 +52,12 @@
 			<h2 class="section-title">{{ getString("settings.downloads.title") }}</h2>
 			<div class="settings-items">
 				<div class="settings-item">
-					<label class="settings-label">
-						<input
-							type="checkbox"
-							:checked="settings.download.enable"
-							@change="updateDownloadEnable"
-							class="settings-checkbox"
-						/>
+					<SettingsCheckbox
+						:checked="settings.download.enable"
+						@update="updateDownloadEnable"
+					>
 						{{ getString("settings.downloads.enable") }}
-					</label>
+					</SettingsCheckbox>
 				</div>
 
 				<div class="settings-item">
@@ -113,17 +104,15 @@ const autoDownloadCount = computed(() => {
 const headers = "{{ index }}, {{ performer }}, {{ title }}, {{ id }}, {{ owner }}";
 const templatePlaceholder = "{{ performer }} - {{ title }}";
 
-const updateHardwareAcceleration = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("window", { hardwareAcceleration: target.checked });
+const updateHardwareAcceleration = (checked: boolean) => {
+	settingsStore.updateSection("window", { hardwareAcceleration: checked });
 };
 
-const updateAutoDownloads = (event: Event) => {
-	const target = event.target as HTMLInputElement;
+const updateAutoDownloads = (checked: boolean) => {
 	settingsStore.updateSection("optimization", {
 		download: {
 			...settings.value.optimization.download,
-			auto: target.checked
+			auto: checked
 		}
 	});
 };
@@ -139,9 +128,8 @@ const updateFixedDownloads = (event: Event) => {
 	});
 };
 
-const updateDownloadEnable = (event: Event) => {
-	const target = event.target as HTMLInputElement;
-	settingsStore.updateSection("download", { enable: target.checked });
+const updateDownloadEnable = (checked: boolean) => {
+	settingsStore.updateSection("download", { enable: checked });
 };
 
 const updateTemplate = (event: Event) => {
@@ -210,13 +198,6 @@ const updateTemplate = (event: Event) => {
 	color: var(--text, #fff);
 	flex: 1;
 	line-height: 1.5;
-}
-
-.settings-checkbox {
-	width: 20px;
-	height: 20px;
-	cursor: pointer;
-	accent-color: var(--secondary, #e9003f);
 }
 
 .settings-range {
